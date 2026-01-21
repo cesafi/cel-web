@@ -1,0 +1,322 @@
+/* Professional article content styling */
+.article-content {
+  /* Typography improvements */
+  line-height: 1.7;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  
+  /* Font family defaults - Roboto for body text */
+  font-family: var(--font-roboto), system-ui, arial, sans-serif;
+}
+
+/* Heading styles matching Lexical editor theme - Moderniz font for headings */
+.article-content h1 {
+  font-family: var(--font-moderniz), system-ui, arial, sans-serif;
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 1rem; /* mb-4 */
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  scroll-margin-top: 2rem;
+}
+
+.article-content h2 {
+  font-family: var(--font-moderniz), system-ui, arial, sans-serif;
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 0.75rem; /* mb-3 */
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  scroll-margin-top: 2rem;
+}
+
+.article-content h3 {
+  font-family: var(--font-moderniz), system-ui, arial, sans-serif;
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 0.5rem; /* mb-2 */
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+  scroll-margin-top: 2rem;
+}
+
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  font-family: var(--font-moderniz), system-ui, arial, sans-serif;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+  scroll-margin-top: 2rem;
+}
+
+/* Blockquote styles matching Lexical editor theme */
+.article-content blockquote {
+  border-left: 4px solid hsl(var(--border)); /* border-l-4 border-border */
+  padding-left: 1rem; /* pl-4 */
+  font-style: italic; /* italic */
+  margin: 1rem 0; /* my-4 */
+  color: hsl(var(--foreground));
+  background: transparent;
+  border-radius: 0;
+}
+
+.article-content blockquote p {
+  margin: 0;
+  font-style: italic;
+}
+
+/* List styles matching Lexical editor theme */
+.article-content ol {
+  list-style-type: decimal; /* list-decimal */
+  list-style-position: inside; /* list-inside */
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.article-content ul {
+  list-style-type: disc; /* list-disc */
+  list-style-position: inside; /* list-inside */
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.article-content li {
+  margin-bottom: 0.25rem; /* mb-1 */
+}
+
+.article-content ul li::marker {
+  color: hsl(var(--primary));
+}
+
+.article-content ol li::marker {
+  color: hsl(var(--primary));
+}
+
+/* Enhanced links */
+.article-content a {
+  position: relative;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.article-content a:hover {
+  border-bottom-color: hsl(var(--primary));
+}
+
+/* Enhanced code blocks */
+.article-content pre {
+  position: relative;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.article-content code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Inline code styling matching Lexical editor theme */
+.article-content code {
+  background: hsl(var(--secondary)); /* bg-secondary */
+  padding: 0.125rem 0.25rem; /* px-1 py-0.5 */
+  border-radius: 0.25rem; /* rounded */
+  font-size: 0.875rem; /* text-sm */
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace; /* font-mono */
+  color: hsl(var(--foreground));
+}
+
+/* Enhanced images */
+.article-content img,
+.article-content .article-image {
+  margin: 2rem auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: block;
+}
+
+.article-content img:hover,
+.article-content .article-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Text alignment support */
+.article-content p[style*="text-align: center"] {
+  text-align: center;
+}
+
+.article-content p[style*="text-align: right"] {
+  text-align: right;
+}
+
+.article-content p[style*="text-align: justify"] {
+  text-align: justify;
+}
+
+.article-content p[style*="text-align: left"] {
+  text-align: left;
+}
+
+/* Enhanced tables */
+.article-content table {
+  width: 100%;
+  margin: 2rem 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.article-content th {
+  font-weight: 600;
+  text-align: left;
+}
+
+.article-content tr:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+/* Enhanced horizontal rules */
+.article-content hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    hsl(var(--border)),
+    transparent
+  );
+  margin: 3rem 0;
+}
+
+/* Paragraph styles matching Lexical editor theme */
+.article-content p {
+  margin-bottom: 0.5rem; /* mb-2 matching Lexical theme */
+  line-height: 1.7;
+}
+
+/* Reading flow improvements */
+.article-content p + p {
+  margin-top: 0.5rem;
+}
+
+.article-content p + h1,
+.article-content p + h2,
+.article-content p + h3,
+.article-content p + h4 {
+  margin-top: 2rem;
+}
+
+.article-content h1 + p,
+.article-content h2 + p,
+.article-content h3 + p,
+.article-content h4 + p {
+  margin-top: 0.5rem;
+}
+
+/* Text formatting enhancements */
+.article-content u {
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--primary));
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.article-content s {
+  text-decoration: line-through;
+  text-decoration-color: hsl(var(--muted-foreground));
+  text-decoration-thickness: 2px;
+  opacity: 0.7;
+}
+
+.article-content strong {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.article-content em {
+  font-style: italic;
+  color: hsl(var(--foreground));
+}
+
+/* Focus improvements for accessibility */
+.article-content a:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Print styles */
+@media print {
+  .article-content {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  
+  .article-content h1,
+  .article-content h2,
+  .article-content h3 {
+    page-break-after: avoid;
+  }
+  
+  .article-content img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .article-content {
+    font-size: 1rem;
+  }
+  
+  .article-content h1 {
+    font-size: 1.75rem;
+  }
+  
+  .article-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .article-content blockquote {
+    margin: 1.5rem 0;
+    padding-left: 1rem;
+  }
+  
+  .article-content blockquote::before {
+    font-size: 3rem;
+  }
+}
+/* Le
+xical editor specific font classes for consistency */
+.lexical-editor h1,
+.lexical-editor h2,
+.lexical-editor h3,
+.lexical-editor h4,
+.lexical-editor h5,
+.lexical-editor h6 {
+  font-family: var(--font-moderniz), system-ui, sans-serif !important;
+}
+
+.lexical-editor p,
+.lexical-editor li,
+.lexical-editor blockquote,
+.lexical-editor span:not(.font-moderniz),
+.lexical-editor div:not(.font-moderniz) {
+  font-family: var(--font-roboto), system-ui, sans-serif !important;
+}
+
+/* Ensure font classes work in Lexical editor */
+.lexical-editor .font-moderniz {
+  font-family: var(--font-moderniz), system-ui, sans-serif !important;
+}
+
+.lexical-editor .font-roboto {
+  font-family: var(--font-roboto), system-ui, sans-serif !important;
+}
