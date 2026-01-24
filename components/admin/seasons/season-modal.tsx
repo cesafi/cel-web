@@ -76,10 +76,13 @@ export function SeasonModal({
   useEffect(() => {
     if (open) {
              if (mode === 'edit' && season) {
+         // Extract just the date portion (YYYY-MM-DD) from ISO date strings
+         const startDate = season.start_at ? season.start_at.split('T')[0] : '';
+         const endDate = season.end_at ? season.end_at.split('T')[0] : '';
          const editData = {
            id: season.id,
-           start_at: season.start_at,
-           end_at: season.end_at
+           start_at: startDate,
+           end_at: endDate
          };
          setFormData(editData);
        } else {

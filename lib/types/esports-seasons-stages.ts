@@ -5,4 +5,6 @@ export type EsportsSeasonStage = Database['public']['Tables']['esports_seasons_s
 
 export interface EsportsSeasonStageWithDetails extends EsportsSeasonStage {
   esports_categories: EsportCategoryWithEsport | null;
+  [key: string]: unknown;
 }
+

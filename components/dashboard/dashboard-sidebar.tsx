@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Building2,
   FileText,
@@ -7,7 +8,7 @@ import {
   Key,
   Trophy,
   Users,
-  Volleyball,
+  Gamepad2,
   Target,
   Shield,
   Group,
@@ -16,7 +17,10 @@ import {
   Calendar,
   Image as ImageIcon,
   HandHeart,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
+  User
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -24,6 +28,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { SeasonSwitcher } from '@/components/admin/season-switcher';
 import { useSeason } from '@/components/contexts/season-provider';
+import { useAllEsports } from '@/hooks/use-esports';
 
 interface NavigationItem {
   href: string;
@@ -37,11 +42,23 @@ interface DashboardSidebarProps {
 
 export default function DashboardSidebar({ userRole = 'admin' }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const [expandedGames, setExpandedGames] = useState<number[]>([]);
   
   // Always call the hook, but only use the result when needed
   const seasonContext = useSeason();
   const needsSeasonContext = userRole === 'admin' || userRole === 'league_operator';
   const currentSeason = needsSeasonContext ? seasonContext?.currentSeason : null;
+
+  // Fetch esports for the GAMES category
+  const { data: esports = [] } = useAllEsports();
+
+  const toggleGameExpanded = (esportId: number) => {
+    setExpandedGames(prev => 
+      prev.includes(esportId) 
+        ? prev.filter(id => id !== esportId)
+        : [...prev, esportId]
+    );
+  };
 
   const getGeneralNavigationItems = (role: string): NavigationItem[] => {
     switch (role) {
@@ -51,7 +68,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
           { href: '/admin/accounts', label: 'Accounts', icon: Key },
           { href: '/admin/schools', label: 'Schools', icon: Building2 },
           { href: '/admin/seasons', label: 'Seasons', icon: Trophy },
-          { href: '/admin/sports', label: 'Sports', icon: Volleyball },
+          { href: '/admin/esports', label: 'Esports', icon: Gamepad2 },
           { href: '/admin/sponsors', label: 'Sponsors', icon: HandHeart },
           { href: '/admin/articles', label: 'Articles', icon: FileText },
           { href: '/admin/departments', label: 'Departments', icon: Users }
@@ -110,9 +127,9 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
   const seasonalItems = getSeasonalNavigationItems();
 
   return (
-    <aside className="border-border bg-sidebar flex h-screen w-64 flex-col border-r">
+    <aside className="border-border bg-sidebar flex h-screen w-64 flex-col border-r overflow-hidden">
       {/* Logo and Season Switcher */}
-      <div className="border-border flex h-16 w-full items-center gap-3 border-b px-6">
+      <div className="border-border flex h-16 w-full items-center gap-3 border-b px-6 flex-shrink-0">
         <div className="flex items-center">
           <Image
             src="/img/cesafi-logo.webp"
@@ -125,8 +142,8 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
         {needsSeasonContext && <SeasonSwitcher />}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-6 p-4">
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 overflow-y-auto space-y-6 p-4">
         {/* General Category */}
         <div className="space-y-2">
           <h3 className="text-sidebar-foreground/70 text-xs font-semibold tracking-wider uppercase">
@@ -158,6 +175,76 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
             })}
           </div>
         </div>
+
+        {/* GAMES Category - Only show for admin */}
+        {userRole === 'admin' && esports.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sidebar-foreground/70 text-xs font-semibold tracking-wider uppercase">
+              Games
+            </h3>
+            <div className="space-y-1">
+              {esports.map((esport) => {
+                const isExpanded = expandedGames.includes(esport.id);
+                const charactersHref = `/admin/games/${esport.id}/characters`;
+                const isCharactersActive = pathname === charactersHref;
+                const isAnyChildActive = isCharactersActive;
+
+                return (
+                  <div key={esport.id}>
+                    {/* Game Header - Expandable */}
+                    <button
+                      onClick={() => toggleGameExpanded(esport.id)}
+                      className={cn(
+                        'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        isAnyChildActive
+                          ? 'bg-sidebar-primary/10 text-sidebar-primary'
+                          : 'text-sidebar-foreground hover:bg-sidebar-primary/5 hover:text-sidebar-foreground'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        {esport.logo_url ? (
+                          <Image
+                            src={esport.logo_url}
+                            alt={esport.name}
+                            width={20}
+                            height={20}
+                            className="h-5 w-5 rounded object-cover"
+                          />
+                        ) : (
+                          <Gamepad2 className="h-5 w-5" />
+                        )}
+                        <span className="truncate">{esport.abbreviation || esport.name}</span>
+                      </div>
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+
+                    {/* Sub-menu Items */}
+                    {isExpanded && (
+                      <div className="ml-4 mt-1 space-y-1 border-l border-border pl-3">
+                        <Link
+                          href={charactersHref}
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors',
+                            isCharactersActive
+                              ? 'bg-sidebar-primary/10 text-sidebar-primary font-medium'
+                              : 'text-sidebar-foreground hover:bg-sidebar-primary/5 hover:text-sidebar-foreground'
+                          )}
+                        >
+                          <User className="h-4 w-4" />
+                          Characters
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Landing Page Content Category - Only show for admin and head_writer */}
         {(userRole === 'admin' || userRole === 'head_writer') && (
@@ -229,7 +316,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
       </nav>
 
       {/* View Website Section */}
-      <div className="border-border border-t p-4">
+      <div className="border-border border-t p-4 flex-shrink-0">
         <Link
           href="/"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-primary/5 hover:text-sidebar-foreground transition-colors"
@@ -240,7 +327,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
       </div>
 
       {/* Footer */}
-      <div className="border-border border-t p-4">
+      <div className="border-border border-t p-4 flex-shrink-0">
         <div className="text-sidebar-foreground flex flex-col items-center justify-center space-y-1 text-xs">
           <p className="font-medium text-center">Cebu Schools Athletics Foundation, Inc.</p>
           <p>© 2025. All rights reserved.</p>

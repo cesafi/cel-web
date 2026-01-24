@@ -215,6 +215,57 @@
   }
 }
 
+/* CESAFI Button Utility Classes */
+.cesafi-primary {
+  background: linear-gradient(135deg, var(--yale) 0%, var(--marine) 100%);
+}
+
+.cesafi-primary:hover {
+  background: linear-gradient(135deg, var(--marine) 0%, var(--yale) 100%);
+}
+
+.cesafi-secondary {
+  background: linear-gradient(135deg, var(--chili) 0%, var(--pale) 100%);
+}
+
+.cesafi-secondary:hover {
+  background: linear-gradient(135deg, var(--pale) 0%, var(--chili) 100%);
+}
+
+.cesafi-accent {
+  background: linear-gradient(135deg, var(--ultramarine) 0%, var(--federal) 100%);
+}
+
+.cesafi-accent:hover {
+  background: linear-gradient(135deg, var(--federal) 0%, var(--ultramarine) 100%);
+}
+
+.cesafi-outline {
+  border-color: var(--yale);
+  color: var(--yale);
+}
+
+.cesafi-outline:hover {
+  background: var(--yale);
+  border-color: var(--yale);
+}
+
+.cesafi-ghost {
+  background: transparent;
+}
+
+.cesafi-ghost:hover {
+  background: var(--muted);
+}
+
+.cesafi-link {
+  color: var(--yale);
+}
+
+.cesafi-link:hover {
+  color: var(--marine);
+}
+
 /* Custom font variables */
 :root {
   --font-moderniz: var(--font-moderniz);

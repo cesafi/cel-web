@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useAllEsports, useAllEsportCategories } from '@/hooks/use-esports';
 import { useAllEsportsSeasonsStages } from '@/hooks/use-esports-seasons-stages';
+import { useSeason } from '@/components/contexts/season-provider';
 import { formatCategoryName } from '@/lib/utils/esports';
 
 interface LeagueStageSelectorProps {
@@ -26,6 +27,9 @@ export function LeagueStageSelector({
   onStageChange,
   className
 }: LeagueStageSelectorProps) {
+  // Get current season from context
+  const { currentSeason } = useSeason();
+
   // Fetch all sports
   const {
     data: allSports = [],
@@ -50,10 +54,15 @@ export function LeagueStageSelector({
     return allCategories.filter(category => category.esport_id === selectedSportId);
   }, [allCategories, selectedSportId]);
 
+  // Filter stages by BOTH category AND current season
   const filteredStages = useMemo(() => {
     if (!allStages || !selectedCategoryId) return [];
-    return allStages.filter(stage => stage.esport_category_id === selectedCategoryId);
-  }, [allStages, selectedCategoryId]);
+    return allStages.filter(stage => 
+      stage.esport_category_id === selectedCategoryId &&
+      (!currentSeason || stage.season_id === currentSeason.id)
+    );
+  }, [allStages, selectedCategoryId, currentSeason]);
+
 
   // Auto-select first sport if none selected
   useEffect(() => {

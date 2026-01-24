@@ -112,20 +112,26 @@ export type Database = {
       }
       esports: {
         Row: {
+          abbreviation: string | null
           created_at: string
           id: number
+          logo_url: string | null
           name: string
           updated_at: string
         }
         Insert: {
+          abbreviation?: string | null
           created_at?: string
           id?: number
+          logo_url?: string | null
           name: string
           updated_at?: string
         }
         Update: {
+          abbreviation?: string | null
           created_at?: string
           id?: number
+          logo_url?: string | null
           name?: string
           updated_at?: string
         }
@@ -251,6 +257,7 @@ export type Database = {
         Row: {
           created_at: string | null
           esport_id: number | null
+          icon_url: string | null
           id: number
           name: string
           role: string
@@ -258,6 +265,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           esport_id?: number | null
+          icon_url?: string | null
           id?: number
           name: string
           role: string
@@ -265,6 +273,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           esport_id?: number | null
+          icon_url?: string | null
           id?: number
           name?: string
           role?: string
@@ -811,15 +820,12 @@ export type Database = {
           deaths: number | null
           game_id: number
           gold: number | null
-          gpm: number | null
           hero_name: string | null
           id: string
           kills: number | null
           player_id: string
           team_id: string | null
           turret_damage: number | null
-          xp: number | null
-          xpm: number | null
         }
         Insert: {
           assists?: number | null
@@ -829,15 +835,12 @@ export type Database = {
           deaths?: number | null
           game_id: number
           gold?: number | null
-          gpm?: number | null
           hero_name?: string | null
           id?: string
           kills?: number | null
           player_id: string
           team_id?: string | null
           turret_damage?: number | null
-          xp?: number | null
-          xpm?: number | null
         }
         Update: {
           assists?: number | null
@@ -847,15 +850,12 @@ export type Database = {
           deaths?: number | null
           game_id?: number
           gold?: number | null
-          gpm?: number | null
           hero_name?: string | null
           id?: string
           kills?: number | null
           player_id?: string
           team_id?: string | null
           turret_damage?: number | null
-          xp?: number | null
-          xpm?: number | null
         }
         Relationships: [
           {
@@ -884,14 +884,12 @@ export type Database = {
       stats_valorant_game_player: {
         Row: {
           acs: number | null
-          adr: number | null
           agent_name: string | null
           assists: number | null
           created_at: string
           deaths: number | null
           first_bloods: number | null
           game_id: number
-          headshot_percent: number | null
           id: string
           kills: number | null
           player_id: string
@@ -899,14 +897,12 @@ export type Database = {
         }
         Insert: {
           acs?: number | null
-          adr?: number | null
           agent_name?: string | null
           assists?: number | null
           created_at?: string
           deaths?: number | null
           first_bloods?: number | null
           game_id: number
-          headshot_percent?: number | null
           id?: string
           kills?: number | null
           player_id: string
@@ -914,14 +910,12 @@ export type Database = {
         }
         Update: {
           acs?: number | null
-          adr?: number | null
           agent_name?: string | null
           assists?: number | null
           created_at?: string
           deaths?: number | null
           first_bloods?: number | null
           game_id?: number
-          headshot_percent?: number | null
           id?: string
           kills?: number | null
           player_id?: string

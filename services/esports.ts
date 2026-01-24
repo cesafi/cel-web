@@ -2,7 +2,7 @@ import {
   ServiceResponse
 } from '@/lib/types/base';
 import { BaseService } from './base';
-import { Esport, EsportCategoryWithEsport } from '@/lib/types/esports';
+import { Esport, EsportCategoryWithEsport, EsportInsert, EsportUpdate } from '@/lib/types/esports';
 
 const TABLE_NAME = 'esports';
 const CATEGORIES_TABLE_NAME = 'esports_categories';
@@ -23,6 +23,82 @@ export class EsportsService extends BaseService {
       return { success: true, data: data as Esport[] };
     } catch (err) {
       return this.formatError(err, `Failed to fetch all ${TABLE_NAME}`);
+    }
+  }
+
+  static async getById(id: number): Promise<ServiceResponse<Esport>> {
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: data as Esport };
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch esport with id ${id}`);
+    }
+  }
+
+  static async create(esportData: EsportInsert): Promise<ServiceResponse<Esport>> {
+    try {
+      const supabase = await this.getAdminClient();
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .insert(esportData)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: data as Esport };
+    } catch (err) {
+      return this.formatError(err, 'Failed to create esport');
+    }
+  }
+
+  static async update(id: number, esportData: EsportUpdate): Promise<ServiceResponse<Esport>> {
+    try {
+      const supabase = await this.getAdminClient();
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .update({ ...esportData, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: data as Esport };
+    } catch (err) {
+      return this.formatError(err, `Failed to update esport with id ${id}`);
+    }
+  }
+
+  static async delete(id: number): Promise<ServiceResponse<void>> {
+    try {
+      const supabase = await this.getAdminClient();
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to delete esport with id ${id}`);
     }
   }
 
@@ -68,4 +144,68 @@ export class EsportsService extends BaseService {
       return this.formatError(err, `Failed to fetch all esports categories`);
     }
   }
+
+  static async createCategory(categoryData: { esport_id: number; division: string; levels: string }): Promise<ServiceResponse<EsportCategoryWithEsport>> {
+    try {
+      const supabase = await this.getAdminClient();
+      const { data, error } = await supabase
+        .from(CATEGORIES_TABLE_NAME)
+        .insert(categoryData)
+        .select(`
+          *,
+          esports (*)
+        `)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: data as unknown as EsportCategoryWithEsport };
+    } catch (err) {
+      return this.formatError(err, 'Failed to create esport category');
+    }
+  }
+
+  static async updateCategory(id: number, categoryData: { esport_id?: number; division?: string; levels?: string }): Promise<ServiceResponse<EsportCategoryWithEsport>> {
+    try {
+      const supabase = await this.getAdminClient();
+      const { data, error } = await supabase
+        .from(CATEGORIES_TABLE_NAME)
+        .update({ ...categoryData, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select(`
+          *,
+          esports (*)
+        `)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: data as unknown as EsportCategoryWithEsport };
+    } catch (err) {
+      return this.formatError(err, `Failed to update esport category with id ${id}`);
+    }
+  }
+
+  static async deleteCategory(id: number): Promise<ServiceResponse<void>> {
+    try {
+      const supabase = await this.getAdminClient();
+      const { error } = await supabase
+        .from(CATEGORIES_TABLE_NAME)
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to delete esport category with id ${id}`);
+    }
+  }
 }
+

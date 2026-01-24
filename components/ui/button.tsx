@@ -10,23 +10,23 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cesafi-primary",
+          "bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
         primary:
-          "text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cesafi-primary",
+          "bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
         secondary:
-          "text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cesafi-secondary",
+          "bg-secondary text-secondary-foreground shadow-lg hover:bg-secondary/90 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
         accent:
-          "text-gray-900 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] font-semibold cesafi-accent",
+          "bg-accent text-accent-foreground shadow-lg hover:bg-accent/90 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
         destructive:
-          "bg-red-600 text-white shadow-lg hover:bg-red-700 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
+          "bg-destructive text-destructive-foreground shadow-lg hover:bg-destructive/90 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
         "primary-outline":
-          "border-2 bg-transparent shadow-sm hover:text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cesafi-outline",
+          "border-2 border-primary bg-transparent text-primary shadow-sm hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
         ghost: 
-          "text-muted-foreground hover:scale-[1.02] active:scale-[0.98] cesafi-ghost",
+          "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] active:scale-[0.98]",
         link: 
-          "underline-offset-4 hover:underline cesafi-link",
+          "text-primary underline-offset-4 hover:underline",
         live:
           "bg-red-600 text-white shadow-lg hover:bg-red-700 hover:shadow-red-500/25 hover:scale-[1.02] active:scale-[0.98] animate-pulse",
       } as const,

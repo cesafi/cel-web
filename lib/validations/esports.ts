@@ -1,12 +1,16 @@
 import { z } from 'zod';
 
-export const createsportschema = z.object({
+export const createEsportSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  abbreviation: z.string().max(10, 'Abbreviation must be 10 characters or less').optional().nullable(),
+  logo_url: z.string().url('Invalid URL format').optional().nullable(),
 });
 
-export const updatesportschema = z.object({
+export const updateEsportSchema = z.object({
   id: z.number(),
   name: z.string().min(1, 'Name is required'),
+  abbreviation: z.string().max(10, 'Abbreviation must be 10 characters or less').optional().nullable(),
+  logo_url: z.string().url('Invalid URL format').optional().nullable(),
 });
 
 export const createsportCategorySchema = z.object({
@@ -21,3 +25,4 @@ export const updatesportCategorySchema = z.object({
   division: z.string().optional(),
   levels: z.string().optional(),
 });
+

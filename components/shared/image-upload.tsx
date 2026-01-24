@@ -60,6 +60,16 @@ export const UPLOAD_PRESETS = {
     maxFileSize: 3 * 1024 * 1024, // 3MB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
   },
+  ESPORT_LOGO: {
+    folder: 'esports/logos',
+    maxWidth: 400,
+    maxHeight: 400,
+    aspectRatio: 1,
+    quality: 'auto',
+    format: 'auto',
+    maxFileSize: 2 * 1024 * 1024, // 2MB
+    acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
+  },
   GENERAL: {
     folder: 'general',
     maxWidth: 1200,

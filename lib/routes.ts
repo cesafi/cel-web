@@ -56,7 +56,7 @@ export const PROTECTED_ROUTES = [
   '/admin/schools',
   '/admin/seasons',
   '/admin/sponsors',
-  '/admin/sports',
+  '/admin/esports',
   '/admin/timeline',
   '/admin/volunteers',
 
@@ -131,7 +131,7 @@ export const ROUTE_PATTERNS = {
     /^\/admin\/schools$/,
     /^\/admin\/seasons$/,
     /^\/admin\/sponsors$/,
-    /^\/admin\/sports$/,
+    /^\/admin\/esports$/,
     /^\/admin\/timeline$/,
     /^\/admin\/volunteers$/,
 
