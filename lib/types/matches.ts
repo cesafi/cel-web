@@ -104,3 +104,14 @@ export interface ScheduleResponse {
   hasMore: boolean;
   totalCount?: number;
 }
+
+export interface LeagueOperatorStats {
+  totalMatches: number;
+  upcomingMatches: number;
+  completedMatches: number;
+  pendingActions: number;
+  matchesToday: number;
+  activeStages: number;
+  participatingTeams: number;
+  averageAttendance: number;
+}

@@ -1,10 +1,12 @@
-import { getPublicActiveSchools } from '@/actions/schools'
 import { School } from '@/lib/types/schools';
+import Image from 'next/image';
 
-export default async function SchoolsGrid() {
-  const schoolsResponse = await getPublicActiveSchools();
+interface SchoolsGridProps {
+  schools: School[];
+}
 
-  if (!schoolsResponse.success || !schoolsResponse.data) {
+export default function SchoolsGrid({ schools }: SchoolsGridProps) {
+  if (!schools || schools.length === 0) {
     return (
       <section className="overflow-hidden">
         <div className="py-8 w-full text-center text-gray-500">
@@ -13,8 +15,6 @@ export default async function SchoolsGrid() {
       </section>
     );
   }
-
-  const schools = schoolsResponse.data;
 
   const logos = schools.map((school: School) => ({
     src: school.logo_url || '/img/cesafi-logo.webp',
@@ -28,27 +28,31 @@ export default async function SchoolsGrid() {
         <h2 className="text-center text-3xl md:text-4xl font-bold mb-12 font-moderniz uppercase tracking-wider">
           <span className="text-teal">Participating</span> <span className="text-emerald">Schools</span>
         </h2>
-        
+
         <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 lg:gap-14">
           {logos.map((school, index) => (
             <div key={`${school.src}-${index}`} className="group relative">
               {school.url ? (
-                <a 
+                <a
                   href={school.url}
                   className="block w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 relative transition-all duration-300 transform hover:scale-110"
                 >
-                  <img
+                  <Image
                     src={school.src}
                     alt={school.alt}
-                    className="w-full h-full object-contain"
+                    fill
+                    sizes="(max-width: 768px) 64px, (max-width: 1024px) 80px, 96px"
+                    className="object-contain"
                   />
                 </a>
               ) : (
                 <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 relative transition-all duration-300 transform hover:scale-110">
-                  <img
+                  <Image
                     src={school.src}
                     alt={school.alt}
-                    className="w-full h-full object-contain"
+                    fill
+                    sizes="(max-width: 768px) 64px, (max-width: 1024px) 80px, 96px"
+                    className="object-contain"
                   />
                 </div>
               )}

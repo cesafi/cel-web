@@ -1,7 +1,5 @@
-'use client';
-
-import { 
-  FileText, 
+import {
+  FileText,
   Edit3,
   Clock,
   CheckCircle,
@@ -13,100 +11,49 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { usePaginatedArticles } from '@/hooks/use-articles';
-import { useMemo } from 'react';
+import { getWriterDashboardStats } from '@/actions/dashboard';
+import { getCurrentUserAction } from '@/actions/auth';
+import { redirect } from 'next/navigation';
 
-export default function WriterOverviewPage() {
-  // Get articles data for the current user
-  const { data: articlesData, isLoading } = usePaginatedArticles({
-    page: 1,
-    pageSize: 100, // Get more articles for stats
-    sortBy: 'created_at',
-    sortOrder: 'desc'
-  });
+export default async function WriterOverviewPage() {
+  // Get current user
+  const userResult = await getCurrentUserAction();
 
-  // Calculate stats from real data
-  const writerStats = useMemo(() => {
-    if (!articlesData?.data) {
-      return {
-        totalArticles: 0,
-        needRevision: 0,
-        published: 0,
-        underReview: 0,
-        drafts: 0,
-        acceptanceRate: 0
-      };
-    }
+  if (!userResult.success || !userResult.data) {
+    redirect('/login');
+  }
 
-    const articles = articlesData.data;
-    const totalArticles = articles.length;
-    const needRevision = articles.filter(a => a.status === 'archived').length;
-    const published = articles.filter(a => a.status === 'published').length;
-    const underReview = articles.filter(a => a.status === 'review').length;
-    const drafts = articles.filter(a => a.status === 'draft').length;
-    const acceptanceRate = totalArticles > 0 ? Math.round((published / totalArticles) * 100) : 0;
+  // Get stats for the user
+  const dashboardData = await getWriterDashboardStats(userResult.data.id);
 
-    return {
-      totalArticles,
-      needRevision,
-      published,
-      underReview,
-      drafts,
-      acceptanceRate
-    };
-  }, [articlesData]);
+  const stats = dashboardData.success && dashboardData.data ? dashboardData.data.stats : {
+    total: 0,
+    draft: 0,
+    review: 0,
+    published: 0,
+    archived: 0,
+    featured: 0
+  };
 
-  // Get recent activity from real data
-  const recentActivity = useMemo(() => {
-    if (!articlesData?.data) return [];
-    
-    return articlesData.data.slice(0, 4).map(article => ({
-      id: article.id,
-      title: article.title,
-      status: article.status,
-      date: new Date(article.created_at).toLocaleDateString()
-    }));
-  }, [articlesData]);
+  const recentActivity = dashboardData.success && dashboardData.data ? dashboardData.data.recentActivity : [];
+
+  // Calculate acceptance rate
+  const acceptanceRate = stats.total > 0
+    ? Math.round((stats.published / stats.total) * 100)
+    : 0;
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, { label: string; className: string }> = {
       draft: { label: "Draft", className: "bg-muted text-muted-foreground border-border" },
       review: { label: "Under Review", className: "bg-blue-100 text-blue-800 border-blue-200" },
       published: { label: "Published", className: "bg-green-100 text-green-800 border-green-200" },
       archived: { label: "Archived", className: "bg-red-100 text-red-800 border-red-200" },
       featured: { label: "Featured", className: "bg-purple-100 text-purple-800 border-purple-200" }
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+
+    const config = statusConfig[status] || statusConfig.draft;
     return <Badge className={config.className}>{config.label}</Badge>;
   };
-
-  if (isLoading) {
-    return (
-      <div className="w-full space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Writer Dashboard</h1>
-          <p className="text-muted-foreground">
-            Create and manage your articles. Focus on writing quality content.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-                <div className="h-4 w-4 bg-muted animate-pulse rounded" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 w-16 bg-muted animate-pulse rounded mb-2" />
-                <div className="h-3 w-32 bg-muted animate-pulse rounded" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full space-y-6">
@@ -126,7 +73,7 @@ export default function WriterOverviewPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{writerStats.totalArticles}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
               Total articles written
             </p>
@@ -139,7 +86,7 @@ export default function WriterOverviewPage() {
             <Edit3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{writerStats.needRevision}</div>
+            <div className="text-2xl font-bold">{stats.archived}</div>
             <p className="text-xs text-muted-foreground">
               Articles requiring updates
             </p>
@@ -152,7 +99,7 @@ export default function WriterOverviewPage() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{writerStats.published}</div>
+            <div className="text-2xl font-bold">{stats.published}</div>
             <p className="text-xs text-muted-foreground">
               Articles published
             </p>
@@ -165,7 +112,7 @@ export default function WriterOverviewPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{writerStats.underReview}</div>
+            <div className="text-2xl font-bold">{stats.review}</div>
             <p className="text-xs text-muted-foreground">
               Articles being reviewed
             </p>
@@ -178,7 +125,7 @@ export default function WriterOverviewPage() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{writerStats.drafts}</div>
+            <div className="text-2xl font-bold">{stats.draft}</div>
             <p className="text-xs text-muted-foreground">
               Articles in progress
             </p>
@@ -191,7 +138,7 @@ export default function WriterOverviewPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{writerStats.acceptanceRate}%</div>
+            <div className="text-2xl font-bold">{acceptanceRate}%</div>
             <p className="text-xs text-muted-foreground">
               Acceptance rate
             </p>
@@ -216,7 +163,7 @@ export default function WriterOverviewPage() {
                 <p className="text-sm text-muted-foreground">Start writing a new article</p>
               </div>
             </Link>
-            
+
             <Link
               href="/writer/articles"
               className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
@@ -224,10 +171,10 @@ export default function WriterOverviewPage() {
               <Edit3 className="h-5 w-5 text-primary" />
               <div>
                 <p className="font-medium">Edit Drafts</p>
-                <p className="text-sm text-muted-foreground">{writerStats.drafts} draft articles to continue</p>
+                <p className="text-sm text-muted-foreground">{stats.draft} draft articles to continue</p>
               </div>
             </Link>
-            
+
             <Link
               href="/writer/articles"
               className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
@@ -235,10 +182,10 @@ export default function WriterOverviewPage() {
               <AlertCircle className="h-5 w-5 text-primary" />
               <div>
                 <p className="font-medium">Revise Articles</p>
-                <p className="text-sm text-muted-foreground">{writerStats.needRevision} articles need revision</p>
+                <p className="text-sm text-muted-foreground">{stats.archived} articles need revision</p>
               </div>
             </Link>
-            
+
             <Link
               href="/writer/articles"
               className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
@@ -258,24 +205,27 @@ export default function WriterOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${
-                      activity.status === 'published' ? 'bg-green-500' :
-                      activity.status === 'featured' ? 'bg-purple-500' :
-                      activity.status === 'review' ? 'bg-blue-500' :
-                      activity.status === 'archived' ? 'bg-red-500' :
-                      'bg-gray-500'
-                    }`}></div>
-                    <div>
-                      <p className="text-sm font-medium">{activity.title}</p>
-                      <p className="text-xs text-muted-foreground">{activity.date}</p>
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-2 w-2 rounded-full ${activity.status === 'published' ? 'bg-green-500' :
+                          activity.status === 'featured' ? 'bg-purple-500' :
+                            activity.status === 'review' ? 'bg-blue-500' :
+                              activity.status === 'archived' ? 'bg-red-500' :
+                                'bg-gray-500'
+                        }`}></div>
+                      <div>
+                        <p className="text-sm font-medium">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(activity.created_at).toLocaleDateString()}</p>
+                      </div>
                     </div>
+                    {getStatusBadge(activity.status)}
                   </div>
-                  {getStatusBadge(activity.status)}
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No recent activity</p>
+              )}
             </div>
           </CardContent>
         </Card>

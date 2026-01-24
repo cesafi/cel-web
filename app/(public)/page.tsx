@@ -8,30 +8,36 @@ import SponsorsGrid from '@/components/landing/sponsors-grid';
 import SchoolsGrid from '@/components/landing/schools-grid';
 import { getLatestArticles, getUpcomingMatches } from '@/actions/landing';
 import { getHighlightedFaq } from '@/actions/faq';
+import { getPublicActiveSchools } from '@/actions/schools';
+import { getCurrentActiveHeroSection } from '@/actions/hero-section';
 import { Article } from '@/lib/types/articles';
 import { MatchWithFullDetails } from '@/lib/types/matches';
 import { Faq } from '@/lib/types/faq';
+import { School } from '@/lib/types/schools';
 import LeaderboardPreview from '@/components/landing/leaderboard-preview';
 
 export default async function LandingPage() {
   // Fetch data server-side
-  const [articlesResult, matchesResult, faqResult] = await Promise.all([
+  const [articlesResult, matchesResult, faqResult, schoolsResult, heroResult] = await Promise.all([
     getLatestArticles(4),
     getUpcomingMatches(4),
-    getHighlightedFaq()
+    getHighlightedFaq(),
+    getPublicActiveSchools(),
+    getCurrentActiveHeroSection()
   ]);
 
   const articles: Article[] = articlesResult.success && 'data' in articlesResult && articlesResult.data ? articlesResult.data : [];
   const matches: MatchWithFullDetails[] = matchesResult.success && 'data' in matchesResult && matchesResult.data ? matchesResult.data : [];
   const highlightedFaqs: Faq[] = faqResult.success && 'data' in faqResult && faqResult.data ? faqResult.data : [];
+  const schools: School[] = schoolsResult.success && schoolsResult.data ? schoolsResult.data : [];
 
   return (
     <>
       {/* Hero Section - Full screen impact */}
-      <HeroSection />
+      <HeroSection initialData={heroResult} />
 
       {/* Schools Carousel - Member institutions */}
-      <SchoolsGrid />
+      <SchoolsGrid schools={schools} />
 
       {/* About CESAFI - Mission and vision */}
       <AboutCesafi />

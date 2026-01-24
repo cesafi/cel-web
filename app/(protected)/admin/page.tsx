@@ -4,13 +4,12 @@ import {
   RecentActivity,
   QuickActions
 } from '@/components/admin/overview';
-import { getDashboardStats, getQuickActionsData } from '@/actions/dashboard';
+import { getDashboardStats } from '@/actions/dashboard';
 import { getCurrentUserAction } from '@/actions/auth';
 
 export default async function AdminOverviewPage() {
-  const [statsResult, quickActionsResult, userResult] = await Promise.all([
+  const [statsResult, userResult] = await Promise.all([
     getDashboardStats(),
-    getQuickActionsData(),
     getCurrentUserAction()
   ]);
 
@@ -18,26 +17,25 @@ export default async function AdminOverviewPage() {
     statsResult.success && statsResult.data
       ? statsResult.data
       : {
-          counts: { schools: 0, sports: 0, articles: 0, volunteers: 0, seasons: 0, games: 0 },
-          recentActivity: { articles: [], games: [], matches: [] }
-        };
+        counts: { schools: 0, sports: 0, articles: 0, volunteers: 0, seasons: 0, games: 0 },
+        recentActivity: { articles: [], games: [], matches: [] }
+      };
 
-  const quickActions =
-    quickActionsResult.success && quickActionsResult.data
-      ? quickActionsResult.data
-      : {
-          schools: 0,
-          seasons: 0,
-          articles: 0
-        };
+  // Derive quick actions data directly from the main stats count
+  // This avoids a redundant database call since we already have these counts
+  const quickActions = {
+    schools: stats.counts.schools,
+    seasons: stats.counts.seasons,
+    articles: stats.counts.articles
+  };
 
   const user =
     userResult.success && userResult.data
       ? userResult.data
       : {
-          userName: 'Admin',
-          email: 'admin@cesafi.com'
-        };
+        userName: 'Admin',
+        email: 'admin@cesafi.com'
+      };
 
   return (
     <div className="w-full space-y-6">

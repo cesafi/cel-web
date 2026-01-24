@@ -1,5 +1,5 @@
 import { BaseService } from './base';
-import { MatchWithFullDetails, Match, MatchUpdate, ScheduleMatch, ScheduleFilters, ScheduleResponse, SchedulePaginationOptions } from '@/lib/types/matches';
+import { MatchWithFullDetails, Match, MatchUpdate, ScheduleMatch, ScheduleFilters, ScheduleResponse, SchedulePaginationOptions, LeagueOperatorStats } from '@/lib/types/matches';
 
 export class MatchesService extends BaseService {
   /**
@@ -202,7 +202,7 @@ export class MatchesService extends BaseService {
 
       const hasMore = (data?.length || 0) > limit;
       const matches = (data?.slice(0, limit) || []).map(m => this.enrichMatchWithScheduleFields(m));
-      
+
       // Generate cursor for next page
       const lastMatch = matches[matches.length - 1];
       const nextCursor = hasMore && lastMatch?.scheduled_at ? lastMatch.scheduled_at : null;
@@ -309,6 +309,78 @@ export class MatchesService extends BaseService {
       return { success: true as const, data: grouped };
     } catch (error) {
       return this.formatError<Record<string, ScheduleMatch[]>>(error, 'Failed to fetch schedule matches by date');
+    }
+  }
+  static async getLeagueOperatorStats(): Promise<import('@/lib/types/base').ServiceResponse<LeagueOperatorStats>> {
+    try {
+      const supabase = await this.getClient();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayISO = today.toISOString();
+      const tomorrowISO = tomorrow.toISOString();
+
+      // We can run parallel count queries
+      const [
+        totalRes,
+        upcomingRes,
+        completedRes,
+        cancelledRes,
+        todayRes,
+        activeStagesRes
+      ] = await Promise.all([
+        supabase.from('matches').select('*', { count: 'exact', head: true }),
+        supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'upcoming'),
+        supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'finished'),
+        supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'canceled'),
+        supabase.from('matches').select('*', { count: 'exact', head: true }).gte('scheduled_at', todayISO).lt('scheduled_at', tomorrowISO),
+        // unique stages approach:
+        supabase.from('matches').select('stage_id')
+      ]);
+
+      const uniqueStages = new Set(activeStagesRes.data?.map(m => m.stage_id).filter(Boolean)).size;
+
+      return {
+        success: true,
+        data: {
+          totalMatches: totalRes.count || 0,
+          upcomingMatches: upcomingRes.count || 0,
+          completedMatches: completedRes.count || 0,
+          pendingActions: cancelledRes.count || 0,
+          matchesToday: todayRes.count || 0,
+          activeStages: uniqueStages,
+          participatingTeams: 0, // Placeholder
+          averageAttendance: 450 // Placeholder
+        }
+      };
+    } catch (error) {
+      return this.formatError(error, 'Failed to fetch league operator stats');
+    }
+  }
+
+  static async getTodayMatches(limit: number = 5) {
+    try {
+      const supabase = await this.getClient();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const { data, error } = await supabase
+        .from('matches')
+        .select(this.MATCH_SELECT)
+        .gte('scheduled_at', today.toISOString())
+        .lt('scheduled_at', tomorrow.toISOString())
+        .eq('status', 'upcoming')
+        .order('scheduled_at', { ascending: true })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { success: true, data: data as unknown as MatchWithFullDetails[] };
+    } catch (error) {
+      return this.formatError<MatchWithFullDetails[]>(error, 'Failed to fetch matches today');
     }
   }
 }

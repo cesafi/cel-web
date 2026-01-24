@@ -1,6 +1,7 @@
 'use server';
 
 import { StatisticsService, StatisticsFilters } from '../services/statistics';
+import { getSupabaseServer } from '@/lib/supabase/server';
 
 export async function getMlbbStats(filters?: Partial<StatisticsFilters>) {
   return StatisticsService.getMlbbPlayerStats(filters);
@@ -16,4 +17,63 @@ export async function getLeaderboard(
   limit: number = 5
 ) {
   return StatisticsService.getLeaderboard(game, metric, limit);
+}
+
+// Hero/Agent/Map/Team Statistics Actions
+
+export async function getHeroStats(seasonId?: number, stageId?: number) {
+  return StatisticsService.getHeroStats(seasonId, stageId);
+}
+
+export async function getAgentStats(seasonId?: number, stageId?: number) {
+  return StatisticsService.getAgentStats(seasonId, stageId);
+}
+
+export async function getMapStats(seasonId?: number, stageId?: number) {
+  return StatisticsService.getMapStats(seasonId, stageId);
+}
+
+export async function getTeamStats(
+  game: 'mlbb' | 'valorant',
+  seasonId?: number,
+  stageId?: number
+) {
+  return StatisticsService.getTeamStats(game, seasonId, stageId);
+}
+
+// Filter Data Actions
+
+export async function getAvailableSeasons() {
+  return StatisticsService.getAvailableSeasons();
+}
+
+export async function getStagesBySeason(seasonId: number) {
+  return StatisticsService.getStagesBySeason(seasonId);
+}
+
+// Esports (Games) Data Action
+
+export interface EsportGame {
+  id: number;
+  name: string;
+  abbreviation: string | null;
+  logo_url: string | null;
+}
+
+export async function getEsports(): Promise<{ success: boolean; data?: EsportGame[]; error?: string }> {
+  try {
+    const supabase = await getSupabaseServer();
+
+    const { data, error } = await supabase
+      .from('esports')
+      .select('id, name, abbreviation, logo_url')
+      .order('name');
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Failed to fetch esports:', error);
+    return { success: false, error: 'Failed to fetch esports' };
+  }
 }

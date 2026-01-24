@@ -31,6 +31,8 @@ export const PUBLIC_ROUTES = [
   '/schools/[slug]', // Dynamic route pattern
   '/volunteers',
   '/partners',
+  '/statistics',
+
 
   // Error pages
   '/not-found',
@@ -104,6 +106,7 @@ export const ROUTE_PATTERNS = {
     /^\/news\/[^\/]+$/, // /news/[slug]
     /^\/schedule$/,
     /^\/standings$/,
+    /^\/statistics$/,
     /^\/schools$/,
     /^\/schools\/[^\/]+$/, // /schools/[slug]
     /^\/volunteers$/,

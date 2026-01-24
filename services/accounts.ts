@@ -55,8 +55,63 @@ export class AccountsService extends BaseService {
   static async getAll(): Promise<ServiceResponse<AccountEntity[]>> {
     try {
       const supabase = await this.getAdminClient();
+      let allUsers: User[] = [];
+      let page = 1;
+      const perPage = 50;
+      let hasMore = true;
 
-      const { data: users, error } = await supabase.auth.admin.listUsers();
+      while (hasMore) {
+        const { data: users, error } = await supabase.auth.admin.listUsers({
+          page,
+          perPage
+        });
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+
+        if (!users.users || users.users.length === 0) {
+          hasMore = false;
+        } else {
+          allUsers = [...allUsers, ...users.users];
+          if (users.users.length < perPage) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        }
+      }
+
+      const accounts: AccountEntity[] = allUsers.map((user: User) => ({
+        id: user.id,
+        email: user.email || '',
+        role: (user.app_metadata?.role as UserRole) || 'writer',
+        displayName:
+          user.user_metadata?.display_name ||
+          user.user_metadata?.full_name ||
+          user.user_metadata?.displayName ||
+          user.user_metadata?.name,
+        createdAt: user.created_at,
+        lastSignInAt: user.last_sign_in_at
+      }));
+
+      return { success: true, data: accounts };
+    } catch (error) {
+      return this.formatError(error, 'Failed to fetch accounts');
+    }
+  }
+
+  static async getPaginated(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<ServiceResponse<{ users: AccountEntity[]; total: number }>> {
+    try {
+      const supabase = await this.getAdminClient();
+
+      const { data: users, error } = await supabase.auth.admin.listUsers({
+        page,
+        perPage: pageSize
+      });
 
       if (error) {
         return { success: false, error: error.message };
@@ -75,9 +130,12 @@ export class AccountsService extends BaseService {
         lastSignInAt: user.last_sign_in_at
       }));
 
-      return { success: true, data: accounts };
+      return {
+        success: true,
+        data: { users: accounts, total: users.total || 0 }
+      };
     } catch (error) {
-      return this.formatError(error, 'Failed to fetch accounts');
+      return this.formatError(error, 'Failed to fetch paginated accounts');
     }
   }
 

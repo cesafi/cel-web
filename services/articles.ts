@@ -72,7 +72,7 @@ export class ArticleService extends BaseService {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select('id, title, created_at, status')
+        .select('id, title, created_at, status, authored_by')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -260,6 +260,203 @@ export class ArticleService extends BaseService {
       return { success: true, data: data || [] };
     } catch (err) {
       return this.formatError(err, `Failed to fetch articles scheduled for publishing.`);
+    }
+  }
+
+  static async getStatsByAuthor(userId: string): Promise<ServiceResponse<{
+    total: number;
+    draft: number;
+    review: number;
+    published: number;
+    archived: number;
+    featured: number;
+  }>> {
+    try {
+      const supabase = await this.getClient();
+
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('status')
+        .eq('authored_by', userId);
+
+      if (error) throw error;
+
+      const articles = data || [];
+      const stats = {
+        total: articles.length,
+        draft: 0,
+        review: 0,
+        published: 0,
+        archived: 0,
+        featured: 0
+      };
+
+      articles.forEach(article => {
+        const status = article.status as keyof typeof stats;
+        if (Object.prototype.hasOwnProperty.call(stats, status)) {
+          stats[status]++;
+        }
+      });
+
+      return { success: true, data: stats };
+    } catch (err) {
+      return this.formatError(err, `Failed to get article stats for author.`);
+    }
+  }
+
+  static async getRecentByAuthor(
+    userId: string,
+    limit: number = 5
+  ): Promise<ServiceResponse<Pick<Article, 'id' | 'title' | 'created_at' | 'status'>[]>> {
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('id, title, created_at, status')
+        .eq('authored_by', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch recent articles for author.`);
+    }
+  }
+
+  static async getHeadWriterStats(): Promise<ServiceResponse<{
+    totalArticles: number;
+    activeWriters: number;
+    pendingReviews: number;
+    publishedThisWeek: number;
+    averageReviewTime: number;
+    teamPerformance: number;
+  }>> {
+    try {
+      const supabase = await this.getClient();
+
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('status, authored_by, updated_at, created_at');
+
+      if (error) throw error;
+
+      const articles = data || [];
+      const totalArticles = articles.length;
+      const pendingReviews = articles.filter(a => a.status === 'review').length;
+      const published = articles.filter(a => a.status === 'published').length;
+
+      // Published this week
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const publishedThisWeek = articles.filter(a =>
+        a.status === 'published' && new Date(a.updated_at) > oneWeekAgo
+      ).length;
+
+      // Active writers (unique authors)
+      const uniqueAuthors = new Set(articles.map(a => a.authored_by).filter(Boolean)).size;
+
+      // Team performance (published vs total)
+      const teamPerformance = totalArticles > 0 ? Math.round((published / totalArticles) * 100) : 0;
+
+      return {
+        success: true,
+        data: {
+          totalArticles,
+          activeWriters: uniqueAuthors,
+          pendingReviews,
+          publishedThisWeek,
+          averageReviewTime: 2.5, // Placeholder as in original
+          teamPerformance
+        }
+      };
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch head writer stats.`);
+    }
+  }
+
+  static async getWriterPerformance(): Promise<ServiceResponse<Array<{
+    name: string;
+    articles: number;
+    published: number;
+    pending: number;
+  }>>> {
+    try {
+      const supabase = await this.getClient();
+
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('authored_by, status');
+
+      if (error) throw error;
+
+      const authorStats = new Map<string, {
+        id: string;
+        articles: number;
+        published: number;
+        pending: number;
+      }>();
+
+      data.forEach(article => {
+        const authorId = article.authored_by;
+
+        if (!authorStats.has(authorId)) {
+          authorStats.set(authorId, {
+            id: authorId,
+            articles: 0,
+            published: 0,
+            pending: 0
+          });
+        }
+
+        const stats = authorStats.get(authorId)!;
+        stats.articles++;
+
+        if (article.status === 'published') {
+          stats.published++;
+        } else if (article.status === 'review') {
+          stats.pending++;
+        }
+      });
+
+      // Sort by articles count desc and take top 5
+      const topWriters = Array.from(authorStats.values())
+        .sort((a, b) => b.articles - a.articles)
+        .slice(0, 5);
+
+      // Fetch user details for the top 5 writers
+      // We need the admin client to fetch user details from auth.users
+      const adminSupabase = await this.getAdminClient();
+
+      const enrichedPerformance = await Promise.all(
+        topWriters.map(async (writer) => {
+          let name = 'Unknown Author';
+          try {
+            const { data: userData } = await adminSupabase.auth.admin.getUserById(writer.id);
+            if (userData?.user) {
+              name = userData.user.user_metadata?.full_name ||
+                userData.user.user_metadata?.display_name ||
+                userData.user.email?.split('@')[0] ||
+                'Unknown Author';
+            }
+          } catch (e) {
+            console.error(`Failed to fetch user ${writer.id}`, e);
+          }
+
+          return {
+            name,
+            articles: writer.articles,
+            published: writer.published,
+            pending: writer.pending
+          };
+        })
+      );
+
+      return { success: true, data: enrichedPerformance };
+
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch writer performance.`);
     }
   }
 }

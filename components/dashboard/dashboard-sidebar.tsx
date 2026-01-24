@@ -43,7 +43,7 @@ interface DashboardSidebarProps {
 export default function DashboardSidebar({ userRole = 'admin' }: DashboardSidebarProps) {
   const pathname = usePathname();
   const [expandedGames, setExpandedGames] = useState<number[]>([]);
-  
+
   // Always call the hook, but only use the result when needed
   const seasonContext = useSeason();
   const needsSeasonContext = userRole === 'admin' || userRole === 'league_operator';
@@ -53,8 +53,8 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
   const { data: esports = [] } = useAllEsports();
 
   const toggleGameExpanded = (esportId: number) => {
-    setExpandedGames(prev => 
-      prev.includes(esportId) 
+    setExpandedGames(prev =>
+      prev.includes(esportId)
         ? prev.filter(id => id !== esportId)
         : [...prev, esportId]
     );
@@ -95,7 +95,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
 
   const getLandingPageNavigationItems = (role: string): NavigationItem[] => {
     const basePath = role === 'head_writer' ? '/head-writer' : '/admin';
-    
+
     if (role === 'head_writer') {
       // Head writers can only manage Timeline and FAQ
       return [
@@ -103,7 +103,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
         { href: `${basePath}/faq`, label: 'FAQ', icon: HelpCircle },
       ];
     }
-    
+
     // Admins get full access to all landing page content
     return [
       { href: `${basePath}/timeline`, label: 'Timeline', icon: Calendar },
@@ -185,7 +185,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
             <div className="space-y-1">
               {esports.map((esport) => {
                 const isExpanded = expandedGames.includes(esport.id);
-                const charactersHref = `/admin/games/${esport.id}/characters`;
+                const charactersHref = `/admin/game-data/${esport.id}/characters`;
                 const isCharactersActive = pathname === charactersHref;
                 const isAnyChildActive = isCharactersActive;
 

@@ -27,6 +27,26 @@ export async function getPaginatedAccounts(options: PaginationOptions<TableFilte
     const { page = 1, pageSize = 10, searchQuery, filters } = options;
 
 
+    // Optimization: If no search or filters, use direct database pagination
+    if (!searchQuery && (!filters?.role || filters.role === 'all')) {
+      const paginatedResult = await AccountsService.getPaginated(page, pageSize);
+
+      if (!paginatedResult.success || !paginatedResult.data) {
+        return { success: false, error: paginatedResult.error || 'Failed to fetch accounts' };
+      }
+
+      return {
+        success: true,
+        data: {
+          data: paginatedResult.data.users,
+          totalCount: paginatedResult.data.total,
+          pageCount: Math.ceil(paginatedResult.data.total / pageSize),
+          currentPage: page
+        }
+      };
+    }
+
+    // Fallback: Fetch all users (now recursively fixed) and filter in memory
     const accountsResponse = await AccountsService.getAll();
 
     if (!accountsResponse.success || !accountsResponse.data) {
@@ -92,11 +112,11 @@ export async function updateAccount(userId: string, accountData: UpdateAccountFo
 export async function createAccount(accountData: CreateAccountFormData): Promise<{ success: boolean; data?: AccountEntity; error?: string }> {
   try {
     const result = await AccountsService.createAccount(accountData);
-    
+
     if (result.success) {
       RevalidationHelper.revalidateAdminDashboard(); // New accounts affect admin dashboard
     }
-    
+
     return result;
   } catch (error) {
     return {
@@ -109,11 +129,11 @@ export async function createAccount(accountData: CreateAccountFormData): Promise
 export async function updateAccountRole(userId: string, newRole: string): Promise<{ success: boolean; data?: AccountEntity; error?: string }> {
   try {
     const result = await AccountsService.updateAccountRole(userId, newRole as UserRole);
-    
+
     if (result.success) {
       RevalidationHelper.revalidateAdminDashboard(); // Role changes affect admin dashboard
     }
-    
+
     return result;
   } catch (error) {
     return {
@@ -138,11 +158,11 @@ export async function resetPassword(userId: string, newPassword: string): Promis
 export async function deleteAccount(userId: string): Promise<{ success: boolean; data?: undefined; error?: string }> {
   try {
     const result = await AccountsService.deleteAccount(userId);
-    
+
     if (result.success) {
       RevalidationHelper.revalidateAdminDashboard(); // Account deletion affects admin dashboard
     }
-    
+
     return result;
   } catch (error) {
     return {

@@ -7,14 +7,18 @@ import { Loader2, AlertCircle, ChevronDown, Play } from 'lucide-react'
 import Image from 'next/image'
 import LazyYouTube from '@/components/ui/lazy-youtube'
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  initialData?: { success: boolean; data?: any; error?: string };
+}
+
+export default function HeroSection({ initialData }: HeroSectionProps) {
   const ref = useRef(null)
   const _scrollYProgress = useScroll({
     target: ref,
     offset: ['start start', 'end start'],
   })
 
-  const { data: heroData, isLoading, error } = useCurrentActiveHeroSection()
+  const { data: heroData, isLoading, error } = useCurrentActiveHeroSection(initialData)
 
   // Fallback video ID (current hardcoded video)
   const FALLBACK_VIDEO_ID = '8Mz9ytswq7E'

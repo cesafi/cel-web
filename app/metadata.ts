@@ -43,5 +43,4 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  themeColor: '#16166b',
 }
