@@ -18,7 +18,6 @@ import { useRouter } from 'next/navigation';
 import { useSeason } from '@/components/contexts/season-provider';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useMatchRefetch } from '@/hooks/use-matches';
 
 interface MatchesTableProps {
   userRole: 'admin' | 'league_operator';
@@ -36,7 +35,6 @@ export function MatchesTable({ userRole, showLeagueStageSelector = true }: Match
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<MatchWithStageDetails | undefined>();
   const router = useRouter();
-  const { refetchAllMatchData } = useMatchRefetch();
 
   const {
     matches,
@@ -98,11 +96,6 @@ export function MatchesTable({ userRole, showLeagueStageSelector = true }: Match
       deleteMatch(matchToDelete.id);
       setIsDeleteModalOpen(false);
       setMatchToDelete(undefined);
-      
-      // Force comprehensive refetch after deletion
-      setTimeout(() => {
-        refetchAllMatchData();
-      }, 500); // Small delay to ensure server-side revalidation completes
     } catch {
       setIsDeleteModalOpen(false);
       setMatchToDelete(undefined);
@@ -113,8 +106,8 @@ export function MatchesTable({ userRole, showLeagueStageSelector = true }: Match
     if (modalMode === 'add') {
       // For add mode, we need to handle participants
       createMatch(data as MatchInsert, participantTeamIds);
-    } else {
-      updateMatch(data as MatchUpdate);
+    } else if (editingMatch) {
+      updateMatch({ ...(data as MatchUpdate), id: editingMatch.id });
     }
   };
 

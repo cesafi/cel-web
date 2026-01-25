@@ -596,6 +596,7 @@ export type Database = {
           is_active: boolean | null
           player_id: string
           season_id: number
+          team_id: string | null
         }
         Insert: {
           created_at?: string
@@ -603,6 +604,7 @@ export type Database = {
           is_active?: boolean | null
           player_id: string
           season_id: number
+          team_id?: string | null
         }
         Update: {
           created_at?: string
@@ -610,6 +612,7 @@ export type Database = {
           is_active?: boolean | null
           player_id?: string
           season_id?: number
+          team_id?: string | null
         }
         Relationships: [
           {
@@ -624,6 +627,13 @@ export type Database = {
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_seasons_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
             referencedColumns: ["id"]
           },
         ]

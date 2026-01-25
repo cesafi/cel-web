@@ -1,5 +1,5 @@
 import { BaseService } from './base';
-import { MatchWithFullDetails, Match, MatchUpdate, ScheduleMatch, ScheduleFilters, ScheduleResponse, SchedulePaginationOptions, LeagueOperatorStats } from '@/lib/types/matches';
+import { MatchWithFullDetails, Match, MatchInsert, MatchUpdate, ScheduleMatch, ScheduleFilters, ScheduleResponse, SchedulePaginationOptions, LeagueOperatorStats } from '@/lib/types/matches';
 
 export class MatchesService extends BaseService {
   /**
@@ -148,6 +148,108 @@ export class MatchesService extends BaseService {
       return { success: true as const, data: updatedMatch as Match };
     } catch (error) {
       return this.formatError<Match>(error, 'Failed to update match');
+    }
+  }
+
+  /**
+   * Get matches by stage ID with pagination
+   */
+  static async getMatchesByStageId(stageId: number, options: { page?: number; pageSize?: number } = {}) {
+    try {
+      const supabase = await this.getClient();
+      const { page = 1, pageSize = 10 } = options;
+      const offset = (page - 1) * pageSize;
+
+      // First get total count
+      const { count, error: countError } = await supabase
+        .from('matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('stage_id', stageId);
+
+      if (countError) throw countError;
+
+      // Then get paginated data
+      const { data, error } = await supabase
+        .from('matches')
+        .select(this.MATCH_SELECT)
+        .eq('stage_id', stageId)
+        .order('scheduled_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      return { 
+        success: true as const, 
+        data: {
+          matches: data as unknown as MatchWithFullDetails[],
+          totalCount: count || 0,
+          pageCount: Math.ceil((count || 0) / pageSize)
+        }
+      };
+    } catch (error) {
+      return this.formatError<{ matches: MatchWithFullDetails[]; totalCount: number; pageCount: number }>(error, 'Failed to fetch matches by stage');
+    }
+  }
+
+  /**
+   * Create a new match with participants
+   */
+  static async createMatch(matchData: MatchInsert, participantTeamIds?: string[]) {
+    try {
+      const supabase = await this.getClient();
+
+      // Insert the match
+      const { data: newMatch, error: matchError } = await supabase
+        .from('matches')
+        .insert(matchData)
+        .select()
+        .single();
+
+      if (matchError) throw matchError;
+
+      // Insert match participants if provided
+      if (participantTeamIds && participantTeamIds.length > 0) {
+        const participants = participantTeamIds.map(teamId => ({
+          match_id: newMatch.id,
+          team_id: teamId,
+          match_score: 0
+        }));
+
+        const { error: participantError } = await supabase
+          .from('match_participants')
+          .insert(participants);
+
+        if (participantError) throw participantError;
+      }
+
+      return { success: true as const, data: newMatch as Match };
+    } catch (error) {
+      return this.formatError<Match>(error, 'Failed to create match');
+    }
+  }
+
+  /**
+   * Delete a match by ID
+   */
+  static async deleteMatchById(id: number) {
+    try {
+      const supabase = await this.getClient();
+
+      // Delete in order: games first, then participants, then match
+      // Note: This assumes CASCADE isn't set up. If it is, we only need to delete the match.
+      await supabase.from('games').delete().eq('match_id', id);
+      await supabase.from('match_participants').delete().eq('match_id', id);
+
+      const { error } = await supabase
+        .from('matches')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      return { success: true as const, data: undefined };
+    } catch (error) {
+      return this.formatError<undefined>(error, 'Failed to delete match');
     }
   }
 

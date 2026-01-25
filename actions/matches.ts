@@ -1,7 +1,8 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { MatchesService } from '@/services/matches';
-import { SchedulePaginationOptions, ScheduleFilters } from '@/lib/types/matches';
+import { SchedulePaginationOptions, ScheduleFilters, MatchInsert } from '@/lib/types/matches';
 
 export async function getMatchById(id: number) {
   return MatchesService.getMatchById(id);
@@ -35,6 +36,23 @@ export async function getAvailableSportCategories() {
 }
 
 export async function updateMatchById(data: Parameters<typeof MatchesService.updateMatchById>[0]) {
-  return MatchesService.updateMatchById(data);
+  const result = await MatchesService.updateMatchById(data);
+  if (result.success) revalidatePath('/admin/matches');
+  return result;
 }
 
+export async function getMatchesByStageId(stageId: number, options?: { page?: number; pageSize?: number }) {
+  return MatchesService.getMatchesByStageId(stageId, options);
+}
+
+export async function createMatch(matchData: MatchInsert, participantTeamIds?: string[]) {
+  const result = await MatchesService.createMatch(matchData, participantTeamIds);
+  if (result.success) revalidatePath('/admin/matches');
+  return result;
+}
+
+export async function deleteMatchById(id: number) {
+  const result = await MatchesService.deleteMatchById(id);
+  if (result.success) revalidatePath('/admin/matches');
+  return result;
+}

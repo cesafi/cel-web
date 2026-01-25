@@ -70,6 +70,26 @@ export const UPLOAD_PRESETS = {
     maxFileSize: 2 * 1024 * 1024, // 2MB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
   },
+  GAME_CHARACTER: {
+    folder: 'game-characters/icons',
+    maxWidth: 128,
+    maxHeight: 128,
+    aspectRatio: 1,
+    quality: 'auto',
+    format: 'auto',
+    maxFileSize: 1 * 1024 * 1024, // 1MB
+    acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
+  },
+  PLAYER_PHOTO: {
+    folder: 'players/photos',
+    maxWidth: 300,
+    maxHeight: 300,
+    aspectRatio: 1,
+    quality: 'auto',
+    format: 'auto',
+    maxFileSize: 2 * 1024 * 1024, // 2MB
+    acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
+  },
   GENERAL: {
     folder: 'general',
     maxWidth: 1200,

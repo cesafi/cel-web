@@ -1,6 +1,13 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMatchById } from '@/actions/matches';
-import { MatchWithFullDetails, MatchUpdate } from '@/lib/types/matches';
+import { 
+  getMatchById, 
+  getMatchesByStageId, 
+  createMatch as createMatchAction, 
+  updateMatchById as updateMatchByIdAction,
+  deleteMatchById as deleteMatchByIdAction 
+} from '@/actions/matches';
+import { MatchWithFullDetails, MatchInsert, MatchUpdate } from '@/lib/types/matches';
 import { toast } from 'sonner';
 
 export const matchKeys = {
@@ -67,60 +74,128 @@ export function usePaginatedMatches(options: any) {
 }
 
 export function useMatchesTable(stageId: number | null) {
-    // Stub implementation with correct return type
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const queryClient = useQueryClient();
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    
+    // Fetch matches by stage ID
+    const { 
+      data: matchesData,
+      isLoading,
+      error,
+      refetch
+    } = useQuery({
+      queryKey: ['matches', 'list', stageId, currentPage, pageSize],
+      queryFn: async () => {
+        if (!stageId) return { matches: [], totalCount: 0, pageCount: 0 };
+        const result = await getMatchesByStageId(stageId, { page: currentPage, pageSize });
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+      enabled: !!stageId,
+      staleTime: 30000, // Data stays fresh for 30 seconds
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false
+    });
+    
+    // Create match mutation
+    const createMutation = useMutation({
+      mutationFn: async ({ data, participantTeamIds }: { data: MatchInsert; participantTeamIds?: string[] }) => {
+        const result = await createMatchAction(data, participantTeamIds);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['matches'] });
+        toast.success('Match created successfully');
+      },
+      onError: (error) => {
+        toast.error(`Failed to create match: ${error.message}`);
+      }
+    });
+    
+    // Update match mutation
+    const updateMutation = useMutation({
+      mutationFn: async (data: MatchUpdate & { id: number }) => {
+        const result = await updateMatchByIdAction(data);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['matches'] });
+        toast.success('Match updated successfully');
+      },
+      onError: (error) => {
+        toast.error(`Failed to update match: ${error.message}`);
+      }
+    });
+    
+    // Delete match mutation
+    const deleteMutation = useMutation({
+      mutationFn: async (id: number) => {
+        const result = await deleteMatchByIdAction(id);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['matches'] });
+        toast.success('Match deleted successfully');
+      },
+      onError: (error) => {
+        toast.error(`Failed to delete match: ${error.message}`);
+      }
+    });
     
     return {
         // Data
-        matches: [] as MatchWithFullDetails[],
-        totalCount: 0,
-        pageCount: 0,
-        currentPage: 1,
-        pageSize: 10,
+        matches: matchesData?.matches || [] as MatchWithFullDetails[],
+        totalCount: matchesData?.totalCount || 0,
+        pageCount: matchesData?.pageCount || 0,
+        currentPage,
+        pageSize,
         
         // Loading states
-        loading: false,
-        tableBodyLoading: false,
-        error: null as string | null,
+        loading: isLoading,
+        tableBodyLoading: isLoading,
+        error: error?.message || null,
         
-        // Mutation handlers (stubs)
-        createMatch: (data: any, participantTeamIds?: string[]) => {
-            console.log('createMatch stub called', data, participantTeamIds);
+        // Mutation handlers
+        createMatch: (data: MatchInsert, participantTeamIds?: string[]) => {
+            createMutation.mutate({ data, participantTeamIds });
         },
-        updateMatch: (data: MatchUpdate) => {
-            console.log('updateMatch stub called', data);
+        updateMatch: (data: MatchUpdate & { id: number }) => {
+            updateMutation.mutate(data);
         },
         deleteMatch: (id: number) => {
-            console.log('deleteMatch stub called', id);
+            deleteMutation.mutate(id);
         },
         
         // Mutation states
-        isCreating: false,
-        isUpdating: false,
-        isDeleting: false,
+        isCreating: createMutation.isPending,
+        isUpdating: updateMutation.isPending,
+        isDeleting: deleteMutation.isPending,
         
         // Pagination handlers
         onPageChange: (page: number) => {
-            console.log('onPageChange stub called', page);
+            setCurrentPage(page);
         },
         onPageSizeChange: (size: number) => {
-            console.log('onPageSizeChange stub called', size);
+            setPageSize(size);
+            setCurrentPage(1);
         },
         onSortChange: (sortBy: string, sortOrder: 'asc' | 'desc') => {
-            console.log('onSortChange stub called', sortBy, sortOrder);
+            console.log('onSortChange called', sortBy, sortOrder);
         },
         onSearchChange: (search: string) => {
-            console.log('onSearchChange stub called', search);
+            console.log('onSearchChange called', search);
         },
         onFiltersChange: (filters: Record<string, unknown>) => {
-            console.log('onFiltersChange stub called', filters);
+            console.log('onFiltersChange called', filters);
         },
         
         // Refetch
-        refetch: () => {
-            console.log('refetch stub called');
-        }
+        refetch
     };
 }
 

@@ -35,7 +35,12 @@ export function CategoryModal({
   onSubmit,
   isSubmitting
 }: CategoryModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    id?: number;
+    esport_id: number;
+    division: string;
+    levels: string;
+  }>({
     esport_id: 0,
     division: '',
     levels: ''
@@ -54,6 +59,7 @@ export function CategoryModal({
     if (open) {
       if (mode === 'edit' && category) {
         setFormData({
+          id: category.id,
           esport_id: category.esport_id,
           division: category.division,
           levels: category.levels

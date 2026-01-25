@@ -61,6 +61,8 @@ export const PROTECTED_ROUTES = [
   '/admin/esports',
   '/admin/timeline',
   '/admin/volunteers',
+  '/admin/game-data/[esportId]/characters',
+  '/admin/players',
 
   // Head Writer routes
   '/head-writer',
@@ -137,6 +139,8 @@ export const ROUTE_PATTERNS = {
     /^\/admin\/esports$/,
     /^\/admin\/timeline$/,
     /^\/admin\/volunteers$/,
+    /^\/admin\/game-data\/[^\/]+\/characters$/, // /admin/game-data/[esportId]/characters
+    /^\/admin\/players$/,
 
     // Head Writer routes
     /^\/head-writer$/,

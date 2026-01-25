@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { TableSearchAndFilters } from './table-search-filters';
@@ -81,6 +81,32 @@ export function DataTable<T extends BaseEntity>({
     setSortOrder(order);
     onSortChange(key, order);
   };
+
+  // Client-side sorting
+  const sortedData = useMemo(() => {
+    if (!sortBy) return data;
+    
+    return [...data].sort((a, b) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+      
+      // Handle null/undefined
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return sortOrder === 'asc' ? 1 : -1;
+      if (bValue == null) return sortOrder === 'asc' ? -1 : 1;
+      
+      // Handle strings
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const comparison = aValue.localeCompare(bValue);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      }
+      
+      // Handle numbers/dates
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [data, sortBy, sortOrder]);
 
   const renderCell = (item: T, column: TableColumn<T>, index: number) => {
     if (column.render) {
@@ -186,7 +212,7 @@ export function DataTable<T extends BaseEntity>({
                 actions={actions} 
                 rowCount={Math.min(5, pageSize || 10)} 
               />
-            ) : data.length === 0 ? (
+            ) : sortedData.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
@@ -213,12 +239,12 @@ export function DataTable<T extends BaseEntity>({
                 </td>
               </tr>
             ) : (
-              data.map((item, index) => (
+              sortedData.map((item, index) => (
                 <tr
                   key={index}
                   className={`border-border border-b transition-all duration-200 ${
                     index % 2 === 0 ? 'bg-background' : 'bg-muted/30'
-                  } hover:bg-primary/5 hover:shadow-sm`}
+                  } hover:bg-muted/50`}
                 >
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 text-sm">

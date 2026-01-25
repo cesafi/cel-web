@@ -18,4 +18,15 @@ export interface PlayerSeasonWithDetails extends PlayerSeason {
     start_at: string;
     end_at: string;
   } | null;
+  schools_teams: {
+    id: string;
+    name: string;
+    schools: {
+      id: string;
+      name: string;
+      abbreviation: string;
+      logo_url: string | null;
+    } | null;
+  } | null;
 }
+
