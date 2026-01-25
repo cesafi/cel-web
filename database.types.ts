@@ -1081,6 +1081,9 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
+      is_head_writer: { Args: never; Returns: boolean }
+      is_league_operator: { Args: never; Returns: boolean }
+      is_writer: { Args: never; Returns: boolean }
     }
     Enums: {
       article_status: "review" | "published" | "draft" | "archived" | "featured"
