@@ -11,14 +11,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-    SheetFooter,
-} from '@/components/ui/dialog';
 import { FilterOption } from '@/lib/types/stats-enhanced';
 
 interface FilterPanelProps {

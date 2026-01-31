@@ -173,7 +173,7 @@ export function StatisticsContent() {
         return (
           <PlayerLeaderboard
             game={game}
-            data={sortData(playerData)}
+            data={sortData(playerData as (MlbbPlayerStats | ValorantPlayerStats)[])}
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onSort={handleSort}

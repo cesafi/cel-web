@@ -8,10 +8,9 @@ import MatchCard from './match-card';
 
 interface DateGroupProps {
   readonly dateGroup: ScheduleDateGroup;
-  readonly onMatchClick?: (match: ScheduleMatch) => void;
 }
 
-export default function DateGroup({ dateGroup, onMatchClick }: DateGroupProps) {
+export default function DateGroup({ dateGroup }: DateGroupProps) {
   return (
     <div className="space-y-8">
       {/* Date Group Container */}
@@ -34,7 +33,7 @@ export default function DateGroup({ dateGroup, onMatchClick }: DateGroupProps) {
         {/* Matches */}
         <div className="space-y-3">
           {dateGroup.matches.map((match) => (
-            <MatchCard key={match.id} match={match} onMatchClick={onMatchClick} />
+            <MatchCard key={match.id} match={match} />
           ))}
         </div>
       </div>

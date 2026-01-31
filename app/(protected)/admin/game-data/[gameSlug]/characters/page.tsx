@@ -20,7 +20,20 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
 export default function CharactersManagementPage() {
   const params = useParams();
-  const esportId = parseInt(params.esportId as string);
+  const gameSlug = params.gameSlug as string;
+
+  const { data: esports = [], isLoading: isLoadingEsports } = useAllEsports();
+
+  // Find esport by slug (abbreviation or ID)
+  const currentEsport = useMemo(() => {
+    if (!esports.length) return undefined;
+    return esports.find(e => 
+      e.abbreviation?.toLowerCase() === gameSlug?.toLowerCase() || 
+      e.id.toString() === gameSlug
+    );
+  }, [esports, gameSlug]);
+
+  const esportId = currentEsport?.id || 0;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -32,16 +45,14 @@ export default function CharactersManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { data: characters = [], isLoading, error, refetch } = useGameCharactersByEsportId(esportId);
-  const { data: esports = [] } = useAllEsports();
+  const { data: characters = [], isLoading: isLoadingCharacters, error, refetch } = useGameCharactersByEsportId(esportId);
+  
   const createMutation = useCreateGameCharacter();
   const updateMutation = useUpdateGameCharacter();
   const deleteMutation = useDeleteGameCharacter();
 
-  // Get current esport name
-  const currentEsport = useMemo(() => {
-    return esports.find(e => e.id === esportId);
-  }, [esports, esportId]);
+  // Aggregate loading state
+  const isLoading = isLoadingEsports || isLoadingCharacters;
 
   // Calculate pagination
   const totalCount = characters.length;

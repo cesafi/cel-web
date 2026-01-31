@@ -187,7 +187,8 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
             <div className="space-y-1">
               {esports.map((esport) => {
                 const isExpanded = expandedGames.includes(esport.id);
-                const charactersHref = `/admin/game-data/${esport.id}/characters`;
+                const slug = esport.abbreviation?.toLowerCase() || esport.id.toString();
+                const charactersHref = `/admin/game-data/${slug}/characters`;
                 const isCharactersActive = pathname === charactersHref;
                 const isAnyChildActive = isCharactersActive;
 

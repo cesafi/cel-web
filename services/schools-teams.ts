@@ -109,16 +109,27 @@ export class SchoolsTeamService extends BaseService {
     }
   }
 
-  static async getAll(): Promise<ServiceResponse<SchoolsTeam[]>> {
+  static async getAll(): Promise<ServiceResponse<SchoolsTeamWithSportDetails[]>> {
     try {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select()
+        .select(`
+          *,
+          esports_categories (
+            id,
+            division,
+            levels,
+            esports (
+              id,
+              name
+            )
+          )
+        `)
         .order('name');
 
       if (error) throw error;
-      return { success: true, data };
+      return { success: true, data: data as unknown as SchoolsTeamWithSportDetails[] };
     } catch (err) {
       return this.formatError(err, `Failed to fetch all teams`);
     }

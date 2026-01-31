@@ -20,10 +20,10 @@ export class MatchesService extends BaseService {
           name
         )
       ),
-      esports_seasons (
+      seasons (
         id,
-        name,
-        year
+        start_at,
+        end_at
       )
     ),
     match_participants (
@@ -31,7 +31,6 @@ export class MatchesService extends BaseService {
       schools_teams (
         id,
         name,
-        logo_url,
         school:schools (
           id,
           name,
@@ -483,6 +482,47 @@ export class MatchesService extends BaseService {
       return { success: true, data: data as unknown as MatchWithFullDetails[] };
     } catch (error) {
       return this.formatError<MatchWithFullDetails[]>(error, 'Failed to fetch matches today');
+    }
+  }
+  static async getMatchByVetoToken(token: string) {
+    try {
+      const supabase = await this.getClient();
+
+      // We need to find which team this token belongs to
+      const { data, error } = await supabase
+        .from('matches')
+        .select(this.MATCH_SELECT)
+        .or(`team1_veto_token.eq.${token},team2_veto_token.eq.${token}`)
+        .single();
+
+      if (error) throw error;
+      if (!data) return { success: false, error: 'Invalid token' };
+
+      const match = data as unknown as MatchWithFullDetails;
+      
+      // Determine which team the token belongs to
+      let teamId: string | undefined;
+      let teamSide: 'team1' | 'team2' | undefined;
+
+      if (match.team1_veto_token === token) {
+        teamSide = 'team1';
+        // Find team1 ID from participants
+        teamId = match.match_participants?.[0]?.team_id; 
+      } else if (match.team2_veto_token === token) {
+        teamSide = 'team2';
+        teamId = match.match_participants?.[1]?.team_id;
+      }
+
+      return { 
+        success: true as const, 
+        data: { 
+          match, 
+          teamId,
+          teamSide
+        } 
+      };
+    } catch (error) {
+      return this.formatError(error, 'Failed to fetch match by token');
     }
   }
 }

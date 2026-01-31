@@ -23,13 +23,13 @@ import Image from 'next/image';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { determineWinner } from './utils';
 import { getSportIcon } from '@/lib/utils/sports';
+import Link from 'next/link';
 
 interface MatchCardProps {
   readonly match: ScheduleMatch;
-  readonly onMatchClick?: (match: ScheduleMatch) => void;
 }
 
-export default function MatchCard({ match, onMatchClick }: MatchCardProps) {
+export default function MatchCard({ match }: MatchCardProps) {
   // Transform match_participants to the format expected by determineWinner
   const participants = match.match_participants.map((p) => ({
     id: p.id,
@@ -126,10 +126,10 @@ export default function MatchCard({ match, onMatchClick }: MatchCardProps) {
   };
 
   return (
-    <Card
-      className="border-border bg-card hover:border-primary/20 cursor-pointer overflow-hidden transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
-      onClick={() => onMatchClick?.(match)}
-    >
+    <Link href={`/matches/${match.id}`} prefetch={false} className="block">
+      <Card
+        className="border-border bg-card hover:border-primary/20 cursor-pointer overflow-hidden transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+      >
       {/* Main Content */}
       <CardContent className="p-6">
         {/* Match Header */}
@@ -244,6 +244,7 @@ export default function MatchCard({ match, onMatchClick }: MatchCardProps) {
           </div>
         </div>
       </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }

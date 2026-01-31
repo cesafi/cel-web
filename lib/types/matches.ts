@@ -12,7 +12,6 @@ export interface MatchWithFullDetails extends Match {
     schools_teams: {
       id: string;
       name: string;
-      logo_url: string | null;
       school: {
         id: number;
         name: string;
@@ -36,10 +35,10 @@ export interface MatchWithFullDetails extends Match {
         name: string;
       } | null;
     } | null;
-    esports_seasons: {
+    seasons: {
       id: number;
-      name: string;
-      year: string;
+      start_at: string;
+      end_at: string;
     } | null;
   } | null;
   [key: string]: unknown;

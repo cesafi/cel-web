@@ -19,7 +19,6 @@ interface ScheduleContentProps {
 }
 
 export default function ScheduleContent({ initialMatches, availableCategories }: ScheduleContentProps) {
-  const [selectedMatch, setSelectedMatch] = useState<ScheduleMatch | null>(null);
   const [selectedSport, setSelectedSport] = useState<string>('all');
 
   // Memoize the sport filter to prevent unnecessary re-renders
@@ -49,10 +48,7 @@ export default function ScheduleContent({ initialMatches, availableCategories }:
 
   const matches = data?.matches || [];
 
-  // Memoize handlers to prevent unnecessary re-renders
-  const handleMatchClick = useCallback((match: ScheduleMatch) => {
-    setSelectedMatch(match);
-  }, []);
+
 
   const handleLoadMore = useCallback((direction: 'future' | 'past') => {
     if (direction === 'future' && hasNextPage && !isFetchingNextPage) {
@@ -88,7 +84,6 @@ export default function ScheduleContent({ initialMatches, availableCategories }:
       <div className="flex-shrink-0">
         <InfiniteSchedule
           matches={displayMatches}
-          onMatchClick={handleMatchClick}
           onLoadMore={handleLoadMore}
           hasMoreFuture={hasNextPage}
           hasMorePast={hasPreviousPage}
@@ -98,23 +93,6 @@ export default function ScheduleContent({ initialMatches, availableCategories }:
           availableSports={availableSports}
         />
       </div>
-
-      {/* Match Details Modal Placeholder */}
-      {selectedMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="mx-4 w-full max-w-2xl">
-            <CardHeader>
-              <CardTitle className="font-mango-grotesque">{selectedMatch.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-roboto">Match details would be displayed here...</p>
-              <Button onClick={() => setSelectedMatch(null)} className="mt-4">
-                Close
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

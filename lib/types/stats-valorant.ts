@@ -24,3 +24,41 @@ export interface StatsValorantGamePlayerWithDetails extends StatsValorantGamePla
     } | null;
   } | null;
 }
+
+// Extracted Data from OCR (Raw)
+export interface ValorantScreenshotData {
+  matchResult: 'VICTORY' | 'DEFEAT' | 'DRAW';
+  score: {
+    ally: number;
+    enemy: number;
+  };
+  mapName: string;
+  players: ValorantPlayerScreenshotStat[];
+}
+
+export interface ValorantPlayerScreenshotStat {
+  agentName: string;
+  playerName: string;
+  team: 'Ally' | 'Enemy'; // Based on color usually, or relative to the screenshot taker
+  acs: number;
+  kda: {
+    kills: number;
+    deaths: number;
+    assists: number;
+  };
+  econRating?: number; 
+  firstBloods: number;
+  plants?: number; 
+  defuses?: number; 
+  // Derived/mapped fields for UI
+  mappedPlayerId?: string;
+  mappedTeamId?: string;
+}
+
+// UI State for the Editor
+export interface StatsEditState {
+  gameId: number | null;
+  extractedData: ValorantScreenshotData | null;
+  playerMapping: Record<string, string>; // playerName from OCR -> system playerId
+  teamMapping: Record<string, string>; // 'Ally'/'Enemy' -> system teamId
+}

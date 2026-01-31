@@ -9,7 +9,6 @@ import FloatingNavButton from './floating-nav-button';
 
 interface InfiniteScheduleProps {
   readonly matches: ScheduleMatch[];
-  readonly onMatchClick?: (match: ScheduleMatch) => void;
   readonly onLoadMore?: (direction: 'future' | 'past') => void;
   readonly hasMoreFuture?: boolean;
   readonly hasMorePast?: boolean;
@@ -21,7 +20,6 @@ interface InfiniteScheduleProps {
 
 export default function InfiniteSchedule({
   matches,
-  onMatchClick,
   onLoadMore,
   hasMoreFuture = false,
   hasMorePast = false,
@@ -258,7 +256,7 @@ export default function InfiniteSchedule({
         <div className="space-y-12">
           {dateGroups.map((dateGroup) => (
             <div key={dateGroup.date} id={`date-group-${dateGroup.date}`}>
-              <DateGroup dateGroup={dateGroup} onMatchClick={onMatchClick} />
+              <DateGroup dateGroup={dateGroup} />
             </div>
           ))}
         </div>

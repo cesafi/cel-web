@@ -12,8 +12,9 @@ export function MatchDetailsHeader({ match }: MatchDetailsHeaderProps) {
   const team1 = match.match_participants[0];
   const team2 = match.match_participants[1];
   
-  const stageName = match.esports_seasons_stages?.name || 'Unknown Stage';
-  const seasonName = match.esports_seasons_stages?.esports_seasons?.name || '';
+  const stageName = match.esports_seasons_stages?.competition_stage?.replace(/_/g, ' ') || 'Unknown Stage';
+  const seasonStart = match.esports_seasons_stages?.seasons?.start_at;
+  const seasonName = seasonStart ? `Season ${new Date(seasonStart).getFullYear()}` : '';
   const matchDate = match.scheduled_at ? new Date(match.scheduled_at) : null;
 
   return (
@@ -37,9 +38,9 @@ export function MatchDetailsHeader({ match }: MatchDetailsHeaderProps) {
         {/* Team 1 */}
         <div className="flex flex-col items-center gap-3 flex-1">
           <div className="relative w-24 h-24 md:w-32 md:h-32">
-            {team1?.schools_teams?.logo_url ? (
+            {team1?.schools_teams?.school?.logo_url ? (
               <Image
-                src={team1.schools_teams.logo_url}
+                src={team1.schools_teams.school.logo_url}
                 alt={team1.schools_teams.name}
                 fill
                 className="object-contain"
@@ -78,9 +79,9 @@ export function MatchDetailsHeader({ match }: MatchDetailsHeaderProps) {
         {/* Team 2 */}
         <div className="flex flex-col items-center gap-3 flex-1">
           <div className="relative w-24 h-24 md:w-32 md:h-32">
-            {team2?.schools_teams?.logo_url ? (
+            {team2?.schools_teams?.school?.logo_url ? (
               <Image
-                src={team2.schools_teams.logo_url}
+                src={team2.schools_teams.school.logo_url}
                 alt={team2.schools_teams.name}
                 fill
                 className="object-contain"

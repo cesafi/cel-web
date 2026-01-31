@@ -111,7 +111,7 @@ export function LeagueStageSelector({
     <div className={`space-y-4 ${className}`}>
       {/* Sport Selection */}
       <div className="space-y-2">
-        <Label htmlFor="sport-selector">Sport</Label>
+        <Label htmlFor="sport-selector">Esport</Label>
         <Select value={selectedSportId?.toString()} onValueChange={(value) => onSportChange(parseInt(value))}>
           <SelectTrigger id="sport-selector" className="w-full">
             <SelectValue placeholder="Select a sport" />
@@ -128,7 +128,7 @@ export function LeagueStageSelector({
 
       {/* Sport Category Selection */}
       <div className="space-y-2">
-        <Label htmlFor="sport-category-selector">Sport Category</Label>
+        <Label htmlFor="sport-category-selector">Esport Category</Label>
         <Select 
           value={selectedCategoryId?.toString()} 
           onValueChange={(value) => onCategoryChange(parseInt(value))}

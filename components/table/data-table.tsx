@@ -64,17 +64,10 @@ export function DataTable<T extends BaseEntity>({
     }
   }, [initialSortBy, initialSortOrder]);
 
-  // Auto-refetch data when component mounts or when data changes
-  useEffect(() => {
-    if (refetch && !loading) {
-      // Small delay to ensure any pending mutations have completed
-      const timer = setTimeout(() => {
-        refetch();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [refetch, loading]);
+  // Auto-refetch removed: let React Query handle data freshness
+  // useEffect(() => {
+  //   if (refetch && !loading) { ... }
+  // }, [refetch, loading]);
 
   const handleSort = (key: string, order: 'asc' | 'desc') => {
     setSortBy(key);

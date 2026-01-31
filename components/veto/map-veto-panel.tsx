@@ -1,0 +1,516 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Ban, 
+  Check,
+  RotateCcw,
+  Map,
+  Shield,
+  Sword,
+  Copy,
+  ExternalLink
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import Image from 'next/image';
+
+// Types
+import { ValorantMapVetoWithTeam } from '@/lib/types/valorant-map-vetoes';
+import { ValorantMap } from '@/lib/types/valorant-maps';
+import { getVetoSequence, getCurrentVetoStep, VetoAction, GameSide } from '@/lib/types/map-veto';
+
+// Actions
+import { getActiveValorantMaps } from '@/actions/valorant-maps';
+import { 
+  getValorantMapVetoesByMatchId, 
+  createValorantMapVeto, 
+  deleteValorantMapVetoesByMatchId 
+} from '@/actions/valorant-map-vetoes';
+import { performPublicVeto } from '@/actions/veto-public';
+
+interface MapVetoPanelProps {
+  matchId: number;
+  bestOf: number;
+  team1: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    logoUrl?: string | null;
+  };
+  team2: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    logoUrl?: string | null;
+  };
+  isAdmin?: boolean;
+  isPublicView?: boolean;
+  publicToken?: string;
+  userSide?: 'team1' | 'team2';
+  onVetoComplete?: () => void;
+}
+
+// Action colors for visual distinction
+const actionColors = {
+  ban: 'border-red-500/50 bg-red-500/10 text-red-400',
+  pick: 'border-green-500/50 bg-green-500/10 text-green-400',
+  remain: 'border-amber-500/50 bg-amber-500/10 text-amber-400',
+};
+
+const actionIcons = {
+  ban: <Ban className="w-4 h-4" />,
+  pick: <Check className="w-4 h-4" />,
+  remain: <Map className="w-4 h-4" />,
+};
+
+export function MapVetoPanel({
+  matchId,
+  bestOf,
+  team1,
+  team2,
+  isAdmin = false,
+  isPublicView = false,
+  publicToken,
+  userSide,
+  onVetoComplete
+}: MapVetoPanelProps) {
+  const queryClient = useQueryClient();
+  const [pendingSideSelection, setPendingSideSelection] = useState<{
+    vetoId: string;
+    mapName: string;
+  } | null>(null);
+
+  // Fetch all active maps
+  const { data: maps = [], isLoading: isLoadingMaps } = useQuery({
+    queryKey: ['valorant-maps-active'],
+    queryFn: async () => {
+      const result = await getActiveValorantMaps();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+  });
+
+  // Fetch current vetoes for this match
+  const { data: vetoes = [], isLoading: isLoadingVetoes } = useQuery({
+    queryKey: ['valorant-map-vetoes', matchId],
+    queryFn: async () => {
+      const result = await getValorantMapVetoesByMatchId(matchId);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: !!matchId,
+  });
+
+  // Add veto mutation
+  const addVetoMutation = useMutation({
+    mutationFn: async ({ 
+      mapName, 
+      teamId, 
+      action, 
+      sequenceOrder 
+    }: { 
+      mapName: string; 
+      teamId: string; 
+      action: VetoAction;
+      sequenceOrder: number;
+    }) => {
+      const result = await createValorantMapVeto({ 
+        match_id: matchId, 
+        map_name: mapName, 
+        team_id: teamId, 
+        action,
+        sequence_order: sequenceOrder 
+      });
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
+    },
+  });
+
+  // Public veto mutation
+  const publicVetoMutation = useMutation({
+    mutationFn: async ({ 
+      mapName, 
+      action, 
+      sequenceOrder 
+    }: { 
+      mapName: string; 
+      action: VetoAction;
+      sequenceOrder: number;
+    }) => {
+      if (!publicToken) throw new Error('No token provided');
+      const result = await performPublicVeto(publicToken, mapName, action, sequenceOrder);
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
+      toast.success('Choice recorded');
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    }
+  });
+
+  // Reset veto mutation
+  const resetVetoMutation = useMutation({
+    mutationFn: async () => {
+      const result = await deleteValorantMapVetoesByMatchId(matchId);
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
+      toast.success('Map veto reset successfully');
+    },
+  });
+
+  // Get vetoed map names
+  const vetoedMapNames = useMemo(() => 
+    vetoes.map((v: ValorantMapVetoWithTeam) => v.map_name),
+    [vetoes]
+  );
+
+  // Get current veto step
+  const vetoSequence = getVetoSequence(bestOf);
+  const currentStep = getCurrentVetoStep(vetoes as ValorantMapVetoWithTeam[], bestOf);
+
+  // Get available maps (not yet vetoed)
+  const availableMaps = useMemo(() => 
+    maps.filter((map: ValorantMap) => !vetoedMapNames.includes(map.name)),
+    [maps, vetoedMapNames]
+  );
+
+  // Handle map selection
+  const handleMapSelect = async (map: ValorantMap) => {
+    if (!currentStep) return;
+    
+    // Auth check
+    if (!isAdmin && !isPublicView) return;
+    if (isPublicView) {
+      if (currentStep.team !== userSide) {
+        toast.error('It is not your turn');
+        return;
+      }
+    }
+
+    const teamId = currentStep.team === 'team1' ? team1.id : team2.id;
+
+    try {
+      if (isPublicView) {
+        await publicVetoMutation.mutateAsync({
+          mapName: map.name,
+          action: currentStep.action,
+          sequenceOrder: currentStep.stepNumber
+        });
+      } else {
+        await addVetoMutation.mutateAsync({
+          mapName: map.name,
+          teamId,
+          action: currentStep.action,
+          sequenceOrder: currentStep.stepNumber
+        });
+      }
+
+      // Check if veto is complete
+      if (currentStep.stepNumber >= currentStep.totalSteps) {
+        onVetoComplete?.();
+      }
+    } catch (error) {
+      // Error handled in mutation
+    }
+  };
+
+  // Generate share link
+  const generateShareLink = (teamNumber: 1 | 2) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const teamId = teamNumber === 1 ? team1.id : team2.id;
+    const link = `${baseUrl}/veto/${matchId}?team=${teamId}`;
+    navigator.clipboard.writeText(link);
+    toast.success(`Link copied for ${teamNumber === 1 ? team1.abbreviation : team2.abbreviation}`);
+  };
+
+  if (isLoadingMaps || isLoadingVetoes) {
+    return <MapVetoPanelSkeleton />;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Veto Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {currentStep ? (
+            <Badge 
+              variant="outline" 
+              className={cn('text-lg px-4 py-2', actionColors[currentStep.action])}
+            >
+              {actionIcons[currentStep.action]}
+              <span className="ml-2">
+                Step {currentStep.stepNumber}/{currentStep.totalSteps} - {currentStep.team === 'team1' ? team1.abbreviation : team2.abbreviation} {currentStep.action}s
+              </span>
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-lg px-4 py-2 border-green-500/50 text-green-400 bg-green-500/10">
+              <Check className="w-4 h-4 mr-2" />
+              Veto Complete
+            </Badge>
+          )}
+        </div>
+
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateShareLink(1)}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              {team1.abbreviation} Link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateShareLink(2)}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              {team2.abbreviation} Link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => resetVetoMutation.mutate()}
+              disabled={resetVetoMutation.isPending}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Veto Sequence Timeline */}
+      <Card className="bg-gradient-to-b from-background to-muted/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Veto Sequence</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            {vetoSequence.map((step, index) => {
+              const veto = vetoes[index] as ValorantMapVetoWithTeam | undefined;
+              const isCompleted = !!veto;
+              const isCurrent = index === vetoes.length;
+
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all',
+                    isCompleted && actionColors[step.action],
+                    isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+                    !isCompleted && !isCurrent && 'border-dashed border-muted-foreground/30 text-muted-foreground'
+                  )}
+                >
+                  <div className="flex items-center gap-1">
+                    {actionIcons[step.action]}
+                    <span className="text-sm font-medium">
+                      {step.team === 'team1' ? team1.abbreviation : team2.abbreviation}
+                    </span>
+                  </div>
+                  {isCompleted && veto && (
+                    <Badge variant="secondary" className="text-xs">
+                      {veto.map_name}
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Map Pool Grid */}
+      <Card className="bg-gradient-to-b from-background to-muted/20 border-muted">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Map Pool</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {maps.map((map: ValorantMap) => {
+              const veto = vetoes.find((v: ValorantMapVetoWithTeam) => v.map_name === map.name) as ValorantMapVetoWithTeam | undefined;
+              const isBanned = veto?.action === 'ban';
+              const isPicked = veto?.action === 'pick';
+              const isRemaining = veto?.action === 'remain';
+              const isAvailable = !vetoedMapNames.includes(map.name);
+              
+              // Interaction logic
+              const isMyTurn = isPublicView ? currentStep?.team === userSide : isAdmin;
+              const canSelect = isAvailable && isMyTurn && !!currentStep;
+
+              return (
+                <MapCard
+                  key={map.id}
+                  map={map}
+                  veto={veto}
+                  isBanned={isBanned}
+                  isPicked={isPicked}
+                  isRemaining={isRemaining}
+                  isSelectable={canSelect}
+                  vetoedByTeam={veto?.schools_teams?.schools?.abbreviation}
+                  onClick={() => handleMapSelect(map)}
+                />
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Map Card Component
+interface MapCardProps {
+  map: ValorantMap;
+  veto?: ValorantMapVetoWithTeam;
+  isBanned: boolean;
+  isPicked: boolean;
+  isRemaining: boolean;
+  isSelectable: boolean;
+  vetoedByTeam?: string;
+  onClick: () => void;
+}
+
+function MapCard({ 
+  map, 
+  veto,
+  isBanned, 
+  isPicked, 
+  isRemaining,
+  isSelectable, 
+  vetoedByTeam,
+  onClick 
+}: MapCardProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!isSelectable}
+      className={cn(
+        'relative group aspect-video rounded-xl overflow-hidden border-2 transition-all duration-200',
+        isSelectable && 'hover:scale-105 hover:shadow-xl hover:z-10 cursor-pointer',
+        isBanned && 'border-red-500/50 grayscale',
+        isPicked && 'border-green-500 ring-2 ring-green-500/30',
+        isRemaining && 'border-amber-500 ring-2 ring-amber-500/30',
+        !isBanned && !isPicked && !isRemaining && 'border-muted hover:border-primary'
+      )}
+    >
+      {/* Map Image */}
+      {map.splash_image_url ? (
+        <Image
+          src={map.splash_image_url}
+          alt={map.name}
+          fill
+          className="object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+          <Map className="w-12 h-12 text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Overlay for banned/picked */}
+      {(isBanned || isPicked || isRemaining) && (
+        <div className={cn(
+          'absolute inset-0 flex flex-col items-center justify-center',
+          isBanned && 'bg-black/70',
+          isPicked && 'bg-green-500/20',
+          isRemaining && 'bg-amber-500/20'
+        )}>
+          {isBanned && <Ban className="w-10 h-10 text-red-500" />}
+          {isPicked && <Check className="w-10 h-10 text-green-500" />}
+          {isRemaining && <Map className="w-10 h-10 text-amber-500" />}
+          
+          {vetoedByTeam && (
+            <Badge 
+              variant="outline" 
+              className={cn(
+                'mt-2',
+                isBanned && 'border-red-500/50 text-red-400',
+                isPicked && 'border-green-500/50 text-green-400',
+                isRemaining && 'border-amber-500/50 text-amber-400'
+              )}
+            >
+              {vetoedByTeam}
+            </Badge>
+          )}
+
+          {/* Side Selection for picked maps */}
+          {(isPicked || isRemaining) && veto?.side_selected && (
+            <div className="mt-2 flex items-center gap-1">
+              {veto.side_selected === 'attack' ? (
+                <Sword className="w-4 h-4 text-orange-400" />
+              ) : (
+                <Shield className="w-4 h-4 text-blue-400" />
+              )}
+              <span className="text-xs capitalize">{veto.side_selected}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Map Name */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+        <p className="text-white font-bold text-lg">{map.name}</p>
+      </div>
+
+      {/* Hover Effect */}
+      {isSelectable && (
+        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+          <span className="text-white font-bold text-lg bg-black/50 px-4 py-2 rounded-lg">
+            Select
+          </span>
+        </div>
+      )}
+    </button>
+  );
+}
+
+// Skeleton
+function MapVetoPanelSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-10 w-64" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-24" />
+        </div>
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex gap-3">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-24" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-4 gap-4">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-video" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

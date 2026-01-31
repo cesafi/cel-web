@@ -26,9 +26,11 @@ export async function getScheduleMatchesWithCategories(options?: SchedulePaginat
   return MatchesService.getScheduleMatchesWithCategories(options);
 }
 
-export async function getMatchDeletionPreview(matchId: number) {
+export async function getMatchDeletionPreview(matchId: number): Promise<{ success: true; data: { gamesCount: number; gameScoresCount: number; participantsCount: number }; error?: undefined } | { success: false; error: string }> {
   // This would need a real implementation if used
-  return { success: true as const, data: { gamesCount: 0, gameScoresCount: 0, participantsCount: 0 } };
+  // For now, return placeholder data
+  void matchId; // Unused parameter
+  return { success: true, data: { gamesCount: 0, gameScoresCount: 0, participantsCount: 0 } };
 }
 
 export async function getAvailableSportCategories() {
