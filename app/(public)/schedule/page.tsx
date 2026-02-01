@@ -1,16 +1,15 @@
 import { Calendar, TrendingUp, Clock } from 'lucide-react';
 import { SeasonProvider } from '@/components/contexts/season-provider';
 import { ScheduleContent } from '@/components/schedule';
-import { getScheduleMatchesWithCategories, getAvailableSportCategories, getAvailableSeasons, getAvailableStages } from '@/actions/matches';
+import { getScheduleMatchesAroundDate, getAvailableSportCategories, getAvailableSeasons, getAvailableStages } from '@/actions/matches';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { moderniz, roboto } from '@/lib/fonts';
 
 export default async function SchedulePage() {
-  // Fetch initial data server-side
+  // Fetch initial data server-side using bidirectional loading
   const [matchesResult, categoriesResult, seasonsResult, stagesResult] = await Promise.all([
-    getScheduleMatchesWithCategories({
-      limit: 50,
-      direction: 'future',
+    getScheduleMatchesAroundDate({
+      totalLimit: 40,
       filters: {}
     }),
     getAvailableSportCategories(),
@@ -19,6 +18,10 @@ export default async function SchedulePage() {
   ]);
 
   const matches = matchesResult.success && matchesResult.data ? matchesResult.data.matches : [];
+  const hasMorePast = matchesResult.success && matchesResult.data ? matchesResult.data.hasMorePast : false;
+  const hasMoreFuture = matchesResult.success && matchesResult.data ? matchesResult.data.hasMoreFuture : false;
+  const pastCursor = matchesResult.success && matchesResult.data ? matchesResult.data.pastCursor : null;
+  const futureCursor = matchesResult.success && matchesResult.data ? matchesResult.data.futureCursor : null;
   const categories = categoriesResult.success && categoriesResult.data ? categoriesResult.data : [];
   const seasons = seasonsResult.success && seasonsResult.data ? seasonsResult.data : [];
   const stages = stagesResult.success && stagesResult.data ? stagesResult.data : [];
@@ -104,6 +107,10 @@ export default async function SchedulePage() {
         <div className="container mx-auto max-w-[1000px] px-4 py-6 sm:py-8">
           <ScheduleContent 
             initialMatches={matches} 
+            initialHasMorePast={hasMorePast}
+            initialHasMoreFuture={hasMoreFuture}
+            initialPastCursor={pastCursor}
+            initialFutureCursor={futureCursor}
             availableCategories={categories}
             availableSeasons={seasons}
             availableStages={stages}

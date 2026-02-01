@@ -27,6 +27,10 @@ export interface RichSportCategory {
 
 interface ScheduleContentProps {
   initialMatches: ScheduleMatch[];
+  initialHasMorePast?: boolean;
+  initialHasMoreFuture?: boolean;
+  initialPastCursor?: string | null;
+  initialFutureCursor?: string | null;
   availableCategories: RichSportCategory[];
   availableSeasons: Season[];
   availableStages: EsportsSeasonStageWithDetails[];
@@ -34,6 +38,10 @@ interface ScheduleContentProps {
 
 export default function ScheduleContent({ 
   initialMatches, 
+  initialHasMorePast = true,
+  initialHasMoreFuture = false,
+  initialPastCursor = null,
+  initialFutureCursor = null,
   availableCategories,
   availableSeasons,
   availableStages
@@ -112,8 +120,8 @@ export default function ScheduleContent({
         <InfiniteSchedule
           matches={displayMatches}
           onLoadMore={handleLoadMore}
-          hasMoreFuture={hasNextPage}
-          hasMorePast={hasPreviousPage}
+          hasMoreFuture={data ? hasNextPage : initialHasMoreFuture}
+          hasMorePast={data ? hasPreviousPage : initialHasMorePast}
           isLoading={isFetching || isFetchingNextPage || isFetchingPreviousPage}
           selectedEsportId={selectedEsport}
           onEsportChange={handleEsportChange}

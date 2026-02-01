@@ -28,6 +28,14 @@ export async function getScheduleMatchesWithCategories(options?: SchedulePaginat
   return MatchesService.getScheduleMatchesWithCategories(options);
 }
 
+export async function getScheduleMatchesAroundDate(options?: {
+  totalLimit?: number;
+  referenceDate?: string;
+  filters?: ScheduleFilters;
+}) {
+  return MatchesService.getScheduleMatchesAroundDate(options);
+}
+
 export async function getMatchDeletionPreview(matchId: number): Promise<{ success: true; data: { gamesCount: number; gameScoresCount: number; participantsCount: number }; error?: undefined } | { success: false; error: string }> {
   // This would need a real implementation if used
   // For now, return placeholder data

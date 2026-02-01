@@ -14,6 +14,234 @@ export type Database = {
   }
   public: {
     Tables: {
+      _migration_mlbb_games: {
+        Row: {
+          new_game_id: number | null
+          old_game_id: string
+          old_series_id: string | null
+          team_a_status: string | null
+          team_b_status: string | null
+        }
+        Insert: {
+          new_game_id?: number | null
+          old_game_id: string
+          old_series_id?: string | null
+          team_a_status?: string | null
+          team_b_status?: string | null
+        }
+        Update: {
+          new_game_id?: number | null
+          old_game_id?: string
+          old_series_id?: string | null
+          team_a_status?: string | null
+          team_b_status?: string | null
+        }
+        Relationships: []
+      }
+      _migration_series_to_matches: {
+        Row: {
+          new_match_id: number | null
+          old_series_id: string
+        }
+        Insert: {
+          new_match_id?: number | null
+          old_series_id: string
+        }
+        Update: {
+          new_match_id?: number | null
+          old_series_id?: string
+        }
+        Relationships: []
+      }
+      _migration_valo_games: {
+        Row: {
+          new_game_id: number | null
+          old_game_id: string
+          old_series_id: string | null
+          team_a_rounds: number | null
+          team_b_rounds: number | null
+        }
+        Insert: {
+          new_game_id?: number | null
+          old_game_id: string
+          old_series_id?: string | null
+          team_a_rounds?: number | null
+          team_b_rounds?: number | null
+        }
+        Update: {
+          new_game_id?: number | null
+          old_game_id?: string
+          old_series_id?: string | null
+          team_a_rounds?: number | null
+          team_b_rounds?: number | null
+        }
+        Relationships: []
+      }
+      _old_mlbb_games_migration: {
+        Row: {
+          created_at: string | null
+          id: string
+          match_duration: string | null
+          match_number: number | null
+          series_id: string | null
+          team_a_status: string | null
+          team_b_status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          match_duration?: string | null
+          match_number?: number | null
+          series_id?: string | null
+          team_a_status?: string | null
+          team_b_status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          match_duration?: string | null
+          match_number?: number | null
+          series_id?: string | null
+          team_a_status?: string | null
+          team_b_status?: string | null
+        }
+        Relationships: []
+      }
+      _old_players_migration: {
+        Row: {
+          created_at: string | null
+          first_name: string | null
+          id: string
+          ingame_name: string | null
+          is_active: boolean | null
+          last_name: string | null
+          old_team_id: string | null
+          picture_url: string | null
+          platform_id: string | null
+          roles: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          first_name?: string | null
+          id: string
+          ingame_name?: string | null
+          is_active?: boolean | null
+          last_name?: string | null
+          old_team_id?: string | null
+          picture_url?: string | null
+          platform_id?: string | null
+          roles?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          ingame_name?: string | null
+          is_active?: boolean | null
+          last_name?: string | null
+          old_team_id?: string | null
+          picture_url?: string | null
+          platform_id?: string | null
+          roles?: string[] | null
+        }
+        Relationships: []
+      }
+      _old_series_migration: {
+        Row: {
+          created_at: string | null
+          end_time: string | null
+          id: string
+          league_schedule_id: string | null
+          match_number: number | null
+          platform_id: string | null
+          series_type: string | null
+          start_time: string | null
+          status: string | null
+          team_a_id: string | null
+          team_a_score: number | null
+          team_a_status: string | null
+          team_b_id: string | null
+          team_b_score: number | null
+          team_b_status: string | null
+          week: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string | null
+          id: string
+          league_schedule_id?: string | null
+          match_number?: number | null
+          platform_id?: string | null
+          series_type?: string | null
+          start_time?: string | null
+          status?: string | null
+          team_a_id?: string | null
+          team_a_score?: number | null
+          team_a_status?: string | null
+          team_b_id?: string | null
+          team_b_score?: number | null
+          team_b_status?: string | null
+          week?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          league_schedule_id?: string | null
+          match_number?: number | null
+          platform_id?: string | null
+          series_type?: string | null
+          start_time?: string | null
+          status?: string | null
+          team_a_id?: string | null
+          team_a_score?: number | null
+          team_a_status?: string | null
+          team_b_id?: string | null
+          team_b_score?: number | null
+          team_b_status?: string | null
+          week?: number | null
+        }
+        Relationships: []
+      }
+      _old_valo_games_migration: {
+        Row: {
+          created_at: string | null
+          id: string
+          map_id: string | null
+          match_duration: string | null
+          match_number: number | null
+          series_id: string | null
+          team_a_rounds: number | null
+          team_a_status: string | null
+          team_b_rounds: number | null
+          team_b_status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          map_id?: string | null
+          match_duration?: string | null
+          match_number?: number | null
+          series_id?: string | null
+          team_a_rounds?: number | null
+          team_a_status?: string | null
+          team_b_rounds?: number | null
+          team_b_status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          map_id?: string | null
+          match_duration?: string | null
+          match_number?: number | null
+          series_id?: string | null
+          team_a_rounds?: number | null
+          team_a_status?: string | null
+          team_b_rounds?: number | null
+          team_b_status?: string | null
+        }
+        Relationships: []
+      }
       articles: {
         Row: {
           authored_by: string
@@ -379,10 +607,10 @@ export type Database = {
           end_at: string | null
           game_number: number
           id: number
-          map_name: string | null
           match_id: number
           start_at: string | null
           updated_at: string
+          valorant_map_id: number | null
         }
         Insert: {
           created_at?: string
@@ -390,10 +618,10 @@ export type Database = {
           end_at?: string | null
           game_number?: number
           id?: number
-          map_name?: string | null
           match_id: number
           start_at?: string | null
           updated_at?: string
+          valorant_map_id?: number | null
         }
         Update: {
           created_at?: string
@@ -401,10 +629,10 @@ export type Database = {
           end_at?: string | null
           game_number?: number
           id?: number
-          map_name?: string | null
           match_id?: number
           start_at?: string | null
           updated_at?: string
+          valorant_map_id?: number | null
         }
         Relationships: [
           {
@@ -412,6 +640,13 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_valorant_map_id_fkey"
+            columns: ["valorant_map_id"]
+            isOneToOne: false
+            referencedRelation: "valorant_maps"
             referencedColumns: ["id"]
           },
         ]
@@ -832,10 +1067,15 @@ export type Database = {
           gold: number | null
           hero_name: string | null
           id: string
+          is_mvp: boolean | null
           kills: number | null
+          lord_slain: number | null
           player_id: string
+          rating: number | null
           team_id: string | null
+          teamfight: number | null
           turret_damage: number | null
+          turtle_slain: number | null
         }
         Insert: {
           assists?: number | null
@@ -847,10 +1087,15 @@ export type Database = {
           gold?: number | null
           hero_name?: string | null
           id?: string
+          is_mvp?: boolean | null
           kills?: number | null
+          lord_slain?: number | null
           player_id: string
+          rating?: number | null
           team_id?: string | null
+          teamfight?: number | null
           turret_damage?: number | null
+          turtle_slain?: number | null
         }
         Update: {
           assists?: number | null
@@ -862,10 +1107,15 @@ export type Database = {
           gold?: number | null
           hero_name?: string | null
           id?: string
+          is_mvp?: boolean | null
           kills?: number | null
+          lord_slain?: number | null
           player_id?: string
+          rating?: number | null
           team_id?: string | null
+          teamfight?: number | null
           turret_damage?: number | null
+          turtle_slain?: number | null
         }
         Relationships: [
           {
@@ -898,10 +1148,14 @@ export type Database = {
           assists: number | null
           created_at: string
           deaths: number | null
+          defuses: number | null
+          econ_rating: number | null
           first_bloods: number | null
           game_id: number
           id: string
+          is_mvp: boolean | null
           kills: number | null
+          plants: number | null
           player_id: string
           team_id: string | null
         }
@@ -911,10 +1165,14 @@ export type Database = {
           assists?: number | null
           created_at?: string
           deaths?: number | null
+          defuses?: number | null
+          econ_rating?: number | null
           first_bloods?: number | null
           game_id: number
           id?: string
+          is_mvp?: boolean | null
           kills?: number | null
+          plants?: number | null
           player_id: string
           team_id?: string | null
         }
@@ -924,10 +1182,14 @@ export type Database = {
           assists?: number | null
           created_at?: string
           deaths?: number | null
+          defuses?: number | null
+          econ_rating?: number | null
           first_bloods?: number | null
           game_id?: number
           id?: string
+          is_mvp?: boolean | null
           kills?: number | null
+          plants?: number | null
           player_id?: string
           team_id?: string | null
         }
@@ -1080,6 +1342,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_stage_id: {
+        Args: { old_league_schedule_id: string; old_platform_id: string }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
       is_head_writer: { Args: never; Returns: boolean }
       is_league_operator: { Args: never; Returns: boolean }

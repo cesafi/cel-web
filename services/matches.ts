@@ -7,7 +7,7 @@ export class MatchesService extends BaseService {
    */
   private static readonly MATCH_SELECT = `
     *,
-    esports_seasons_stages!inner (
+    esports_seasons_stages (
       id,
       competition_stage,
       season_id,
@@ -341,6 +341,127 @@ export class MatchesService extends BaseService {
    */
   static async getScheduleMatchesWithCategories(options: SchedulePaginationOptions = {}) {
     return this.getScheduleMatches(options);
+  }
+
+  /**
+   * Get schedule matches centered around the current date
+   * Fetches both past and future matches, distributing the limit intelligently
+   */
+  static async getScheduleMatchesAroundDate(options: {
+    totalLimit?: number;
+    referenceDate?: string;
+    filters?: ScheduleFilters;
+  } = {}) {
+    try {
+      const supabase = await this.getClient();
+      const { totalLimit = 20, filters = {} } = options;
+      const referenceDate = options.referenceDate || new Date().toISOString();
+      
+      console.log('[MatchesService] getScheduleMatchesAroundDate called');
+      console.log('[MatchesService] Reference date:', referenceDate);
+      console.log('[MatchesService] Total limit:', totalLimit);
+      console.log('[MatchesService] Filters:', JSON.stringify(filters));
+      
+      // Calculate initial split - try to get half from each direction
+      const halfLimit = Math.ceil(totalLimit / 2);
+      
+      // Build base query conditions
+      const buildQuery = (direction: 'future' | 'past', limit: number) => {
+        let query = supabase
+          .from('matches')
+          .select(this.MATCH_SELECT, { count: 'exact' });
+
+        // Direction filter
+        if (direction === 'future') {
+          query = query.gte('scheduled_at', referenceDate);
+          query = query.order('scheduled_at', { ascending: true });
+        } else {
+          query = query.lt('scheduled_at', referenceDate);
+          query = query.order('scheduled_at', { ascending: false });
+        }
+
+        // Apply filters
+        if (filters.season_id) {
+          query = query.eq('esports_seasons_stages.season_id', filters.season_id);
+        }
+        if (filters.stage_id) {
+          query = query.eq('stage_id', filters.stage_id);
+        }
+        if (filters.sport_id) {
+          query = query.eq('esports_seasons_stages.esports_categories.esports.id', filters.sport_id);
+        }
+        if (filters.category_id) {
+          query = query.eq('esports_seasons_stages.esports_categories.id', filters.category_id);
+        }
+        if (filters.division) {
+          query = query.eq('esports_seasons_stages.esports_categories.division', filters.division);
+        }
+        if (filters.status) {
+          query = query.eq('status', filters.status as 'upcoming' | 'live' | 'finished' | 'completed' | 'rescheduled' | 'canceled');
+        }
+
+        // Limit + 1 to check if there are more
+        query = query.limit(limit + 1);
+        
+        return query;
+      };
+
+      // Fetch future matches first
+      const futureQuery = buildQuery('future', halfLimit);
+      const { data: futureData, error: futureError, count: futureCount } = await futureQuery;
+      console.log('[MatchesService] Future query result - count:', futureCount, 'data length:', futureData?.length, 'error:', futureError);
+      if (futureError) throw futureError;
+
+      const futureMatches = (futureData || []).slice(0, halfLimit);
+      const hasMoreFuture = (futureData?.length || 0) > halfLimit;
+      
+      // Calculate how many past matches we need
+      // If we got fewer future matches than half, allocate more to past
+      const remainingSlots = totalLimit - futureMatches.length;
+      console.log('[MatchesService] Future matches found:', futureMatches.length, 'Remaining slots for past:', remainingSlots);
+      
+      // Fetch past matches
+      const pastQuery = buildQuery('past', remainingSlots);
+      const { data: pastData, error: pastError, count: pastCount } = await pastQuery;
+      console.log('[MatchesService] Past query result - count:', pastCount, 'data length:', pastData?.length, 'error:', pastError);
+      if (pastError) throw pastError;
+
+      const pastMatches = (pastData || []).slice(0, remainingSlots);
+      const hasMorePast = (pastData?.length || 0) > remainingSlots;
+      console.log('[MatchesService] Past matches found:', pastMatches.length, 'Has more past:', hasMorePast);
+
+      // Combine: past (reversed to chronological) + future
+      const pastMatchesChronological = [...pastMatches].reverse();
+      const allMatches = [...pastMatchesChronological, ...futureMatches];
+      console.log('[MatchesService] Total matches combined:', allMatches.length);
+      
+      // Enrich all matches
+      const enrichedMatches = allMatches.map(m => this.enrichMatchWithScheduleFields(m));
+
+      // Generate cursors
+      const oldestMatch = pastMatches[pastMatches.length - 1]; // In desc order, this is the oldest
+      const newestFutureMatch = futureMatches[futureMatches.length - 1];
+      
+      const response = {
+        matches: enrichedMatches as ScheduleMatch[],
+        pastCursor: hasMorePast && oldestMatch?.scheduled_at ? oldestMatch.scheduled_at : null,
+        futureCursor: hasMoreFuture && newestFutureMatch?.scheduled_at ? newestFutureMatch.scheduled_at : null,
+        hasMorePast,
+        hasMoreFuture,
+        totalCount: (futureCount || 0) + (pastCount || 0)
+      };
+
+      return { success: true as const, data: response };
+    } catch (error) {
+      return this.formatError<{
+        matches: ScheduleMatch[];
+        pastCursor: string | null;
+        futureCursor: string | null;
+        hasMorePast: boolean;
+        hasMoreFuture: boolean;
+        totalCount: number;
+      }>(error, 'Failed to fetch schedule matches around date');
+    }
   }
 
   /**

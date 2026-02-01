@@ -87,6 +87,43 @@ export default function InfiniteSchedule({
     setDateGroups(grouped);
   }, [filteredMatches]);
 
+  // Scroll to today (or nearest date) on initial mount
+  const hasScrolledRef = useRef(false);
+  useEffect(() => {
+    if (dateGroups.length === 0 || hasScrolledRef.current) return;
+    
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
+    // Find today's group or the nearest future date
+    let targetGroup = dateGroups.find(g => g.date === todayString);
+    
+    if (!targetGroup) {
+      // Find nearest date (closest to today)
+      let closestIndex = 0;
+      let minDiff = Infinity;
+      dateGroups.forEach((group, index) => {
+        const diff = Math.abs(new Date(group.date).getTime() - today.getTime());
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIndex = index;
+        }
+      });
+      targetGroup = dateGroups[closestIndex];
+    }
+    
+    if (targetGroup) {
+      // Delay slightly to ensure DOM is ready
+      setTimeout(() => {
+        const element = document.getElementById(`date-group-${targetGroup!.date}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'auto', block: 'start' });
+          hasScrolledRef.current = true;
+        }
+      }, 100);
+    }
+  }, [dateGroups]);
+
   // Handle scroll detection for floating button and displayed date
   useEffect(() => {
     const handleScroll = () => {
