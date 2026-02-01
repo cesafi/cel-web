@@ -10,6 +10,14 @@ import { Season } from '@/lib/types/seasons';
 import { EsportsSeasonStageWithDetails } from '@/lib/types/esports-seasons-stages';
 import type { RichSportCategory } from './schedule-content';
 
+// Helper function to safely get ISO date string from a Date object
+function safeGetDateString(date: Date | null | undefined): string | null {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString().split('T')[0];
+}
+
 interface InfiniteScheduleProps {
   readonly matches: ScheduleMatch[];
   readonly onLoadMore?: (direction: 'future' | 'past') => void;
@@ -51,9 +59,16 @@ export default function InfiniteSchedule({
   selectedStage,
   onStageChange
 }: InfiniteScheduleProps) {
+  // Helper to ensure we always have a valid Date
+  const getValidDate = (date: Date | string | null | undefined): Date => {
+    if (!date) return new Date();
+    const d = date instanceof Date ? date : new Date(date);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
   const [dateGroups, setDateGroups] = useState<ScheduleDateGroup[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [displayedDate, setDisplayedDate] = useState(new Date()); // Date shown on left side
+  const [currentDate, setCurrentDate] = useState(() => getValidDate(new Date()));
+  const [displayedDate, setDisplayedDate] = useState(() => getValidDate(new Date())); // Date shown on left side
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [floatingButtonDirection, setFloatingButtonDirection] = useState<'up' | 'down'>('up');
   const topObserverRef = useRef<IntersectionObserver | null>(null);
@@ -103,7 +118,8 @@ export default function InfiniteSchedule({
       let closestIndex = 0;
       let minDiff = Infinity;
       dateGroups.forEach((group, index) => {
-        const diff = Math.abs(new Date(group.date).getTime() - today.getTime());
+        const groupDate = getValidDate(group.date);
+        const diff = Math.abs(groupDate.getTime() - today.getTime());
         if (diff < minDiff) {
           minDiff = diff;
           closestIndex = index;
@@ -113,6 +129,9 @@ export default function InfiniteSchedule({
     }
     
     if (targetGroup) {
+      // Update the displayed date to the target group's date
+      setDisplayedDate(getValidDate(targetGroup.date));
+      
       // Delay slightly to ensure DOM is ready
       setTimeout(() => {
         const element = document.getElementById(`date-group-${targetGroup!.date}`);
@@ -153,7 +172,7 @@ export default function InfiniteSchedule({
 
       // Update displayed date if we found a visible group
       if (visibleDateGroup) {
-        setDisplayedDate(new Date(visibleDateGroup.date));
+        setDisplayedDate(getValidDate(visibleDateGroup.date));
       }
 
       // Floating button logic - only show when scrolled away from today
@@ -293,9 +312,11 @@ export default function InfiniteSchedule({
       <DateNavigation
         currentDate={displayedDate}
         onDateChange={setCurrentDate}
-        _hasMatches={dateGroups.some(
-          (group) => group.date === displayedDate.toISOString().split('T')[0]
-        )}
+        _hasMatches={(() => {
+          const displayedDateStr = safeGetDateString(displayedDate);
+          if (!displayedDateStr) return false;
+          return dateGroups.some((group) => group.date === displayedDateStr);
+        })()}
         onPreviousDay={() => handleDateNavigation('previous')}
         onNextDay={() => handleDateNavigation('next')}
         selectedEsportId={selectedEsportId}
@@ -304,7 +325,7 @@ export default function InfiniteSchedule({
         onDivisionChange={onDivisionChange}
         availableSports={availableSports}
         availableRichSports={availableRichSports} // Pass rich data
-        availableDates={dateGroups.map((group) => new Date(group.date))}
+        availableDates={dateGroups.map((group) => getValidDate(group.date))}
         hasMorePast={hasMorePast}
         hasMoreFuture={hasMoreFuture}
         availableSeasons={availableSeasons}

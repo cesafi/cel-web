@@ -17,7 +17,9 @@ export class MatchesService extends BaseService {
         levels,
         esports (
           id,
-          name
+          name,
+          logo_url,
+          abbreviation
         )
       ),
       seasons (
@@ -266,6 +268,68 @@ export class MatchesService extends BaseService {
       const { limit = 20, direction = 'future', filters = {}, cursor } = options;
       const now = new Date().toISOString();
 
+      // If filtering by season_id, sport_id, division, category_id, OR stage_name, we need to get the matching stage_ids first
+      // because Supabase doesn't support filtering on embedded relations directly
+      let stageIdsToFilter: number[] | null = null;
+      
+      if (filters.season_id || filters.sport_id || filters.division || filters.category_id || filters.stage_name) {
+        let stageQuery = supabase
+          .from('esports_seasons_stages')
+          .select(`
+            id,
+            season_id,
+            competition_stage,
+            esports_categories!inner (
+              id,
+              division,
+              esports!inner (
+                id
+              )
+            )
+          `);
+        
+        if (filters.season_id) {
+          stageQuery = stageQuery.eq('season_id', filters.season_id);
+        }
+        
+        if (filters.stage_name) {
+          stageQuery = stageQuery.eq('competition_stage', filters.stage_name);
+        }
+        
+        if (filters.sport_id) {
+          stageQuery = stageQuery.eq('esports_categories.esports.id', filters.sport_id);
+        }
+        
+        if (filters.division) {
+          stageQuery = stageQuery.eq('esports_categories.division', filters.division);
+        }
+        
+        if (filters.category_id) {
+          stageQuery = stageQuery.eq('esports_categories.id', filters.category_id);
+        }
+        
+        const { data: stageData, error: stageError } = await stageQuery;
+        
+        if (stageError) {
+          console.error('Error fetching stages for filter:', stageError);
+          // Fall through to return all matches if stage query fails
+        } else {
+          stageIdsToFilter = stageData?.map(s => s.id) || [];
+          
+          // If no stages match the filter, return empty results
+          if (stageIdsToFilter.length === 0) {
+            const response: ScheduleResponse = {
+              matches: [],
+              nextCursor: null,
+              prevCursor: cursor || null,
+              hasMore: false,
+              totalCount: 0
+            };
+            return { success: true as const, data: response };
+          }
+        }
+      }
+
       let query = supabase
         .from('matches')
         .select(this.MATCH_SELECT, { count: 'exact' });
@@ -278,26 +342,15 @@ export class MatchesService extends BaseService {
         query = query.lte('scheduled_at', cursor || now);
         query = query.order('scheduled_at', { ascending: false });
       }
-      
-      // Temporary fallback: showing all matches ordered by date desc
-      // query = query.order('scheduled_at', { ascending: false });
 
-      // Apply filters
-      if (filters.season_id) {
-        query = query.eq('esports_seasons_stages.season_id', filters.season_id);
-      }
-      if (filters.stage_id) {
+      // Apply stage filter (from pre-calculated stage IDs or direct stage_id filter)
+      if (stageIdsToFilter && stageIdsToFilter.length > 0) {
+        query = query.in('stage_id', stageIdsToFilter);
+      } else if (filters.stage_id) {
         query = query.eq('stage_id', filters.stage_id);
       }
-      if (filters.sport_id) {
-        query = query.eq('esports_seasons_stages.esports_categories.esports.id', filters.sport_id);
-      }
-      if (filters.category_id) {
-        query = query.eq('esports_seasons_stages.esports_categories.id', filters.category_id);
-      }
-      if (filters.division) {
-        query = query.eq('esports_seasons_stages.esports_categories.division', filters.division);
-      }
+
+      // Apply other direct filters
       if (filters.status) {
         query = query.eq('status', filters.status as 'upcoming' | 'live' | 'finished' | 'completed' | 'rescheduled' | 'canceled');
       }
@@ -362,6 +415,70 @@ export class MatchesService extends BaseService {
       console.log('[MatchesService] Total limit:', totalLimit);
       console.log('[MatchesService] Filters:', JSON.stringify(filters));
       
+      // If filtering by season_id, sport_id, division, category_id, OR stage_name, we need to get the matching stage_ids first
+      let stageIdsToFilter: number[] | null = null;
+      
+      if (filters.season_id || filters.sport_id || filters.division || filters.category_id || filters.stage_name) {
+        let stageQuery = supabase
+          .from('esports_seasons_stages')
+          .select(`
+            id,
+            season_id,
+            competition_stage,
+            esports_categories!inner (
+              id,
+              division,
+              esports!inner (
+                id
+              )
+            )
+          `);
+        
+        if (filters.season_id) {
+          stageQuery = stageQuery.eq('season_id', filters.season_id);
+        }
+        
+        if (filters.stage_name) {
+          stageQuery = stageQuery.eq('competition_stage', filters.stage_name);
+        }
+        
+        if (filters.sport_id) {
+          stageQuery = stageQuery.eq('esports_categories.esports.id', filters.sport_id);
+        }
+        
+        if (filters.division) {
+          stageQuery = stageQuery.eq('esports_categories.division', filters.division);
+        }
+        
+        if (filters.category_id) {
+          stageQuery = stageQuery.eq('esports_categories.id', filters.category_id);
+        }
+        
+        const { data: stageData, error: stageError } = await stageQuery;
+        
+        if (stageError) {
+          console.error('Error fetching stages for filter:', stageError);
+        } else {
+          stageIdsToFilter = stageData?.map(s => s.id) || [];
+          console.log('[MatchesService] Stage IDs to filter:', stageIdsToFilter);
+          
+          // If no stages match the filter, return empty results
+          if (stageIdsToFilter.length === 0) {
+            return { 
+              success: true as const, 
+              data: {
+                matches: [] as ScheduleMatch[],
+                pastCursor: null,
+                futureCursor: null,
+                hasMorePast: false,
+                hasMoreFuture: false,
+                totalCount: 0
+              }
+            };
+          }
+        }
+      }
+      
       // Calculate initial split - try to get half from each direction
       const halfLimit = Math.ceil(totalLimit / 2);
       
@@ -380,22 +497,14 @@ export class MatchesService extends BaseService {
           query = query.order('scheduled_at', { ascending: false });
         }
 
-        // Apply filters
-        if (filters.season_id) {
-          query = query.eq('esports_seasons_stages.season_id', filters.season_id);
-        }
-        if (filters.stage_id) {
+        // Apply stage filter (from pre-calculated stage IDs or direct stage_id filter)
+        if (stageIdsToFilter && stageIdsToFilter.length > 0) {
+          query = query.in('stage_id', stageIdsToFilter);
+        } else if (filters.stage_id) {
           query = query.eq('stage_id', filters.stage_id);
         }
-        if (filters.sport_id) {
-          query = query.eq('esports_seasons_stages.esports_categories.esports.id', filters.sport_id);
-        }
-        if (filters.category_id) {
-          query = query.eq('esports_seasons_stages.esports_categories.id', filters.category_id);
-        }
-        if (filters.division) {
-          query = query.eq('esports_seasons_stages.esports_categories.division', filters.division);
-        }
+
+        // Apply other direct filters
         if (filters.status) {
           query = query.eq('status', filters.status as 'upcoming' | 'live' | 'finished' | 'completed' | 'rescheduled' | 'canceled');
         }

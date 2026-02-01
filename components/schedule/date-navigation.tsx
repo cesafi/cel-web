@@ -22,6 +22,14 @@ import { Season } from '@/lib/types/seasons';
 import { EsportsSeasonStageWithDetails } from '@/lib/types/esports-seasons-stages';
 import { FilterTabs } from './filter-tabs';
 
+// Helper function to safely get ISO date string from a Date object
+function safeGetDateString(date: Date | null | undefined): string | null {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString().split('T')[0];
+}
+
 // Define RichSportCategory locally to match schedule-content or import if preferred
 interface RichSportCategory {
   id: number;
@@ -88,8 +96,10 @@ export default function DateNavigation({
     if (onPreviousDay) {
       onPreviousDay();
     } else if (availableDates.length > 0) {
+      const currentDateStr = safeGetDateString(currentDate);
+      if (!currentDateStr) return;
       const currentIndex = availableDates.findIndex(
-        (date) => date.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
+        (date) => safeGetDateString(date) === currentDateStr
       );
       if (currentIndex > 0) {
         onDateChange(availableDates[currentIndex - 1]);
@@ -101,8 +111,10 @@ export default function DateNavigation({
     if (onNextDay) {
       onNextDay();
     } else if (availableDates.length > 0) {
+      const currentDateStr = safeGetDateString(currentDate);
+      if (!currentDateStr) return;
       const currentIndex = availableDates.findIndex(
-        (date) => date.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
+        (date) => safeGetDateString(date) === currentDateStr
       );
       if (currentIndex < availableDates.length - 1) {
         onDateChange(availableDates[currentIndex + 1]);
@@ -115,11 +127,43 @@ export default function DateNavigation({
     onDateChange(today);
   };
 
-  // Filter stages based on selected season if applicable
-  const filteredStages = availableStages.filter(stage => {
-    if (selectedSeason === 'all') return true;
-    return stage.season_id === parseInt(selectedSeason);
-  });
+  // Filter stages based on all filters and deduplicate by name
+  const uniqueFilteredStages = useMemo(() => {
+    const filtered = availableStages.filter(stage => {
+      // Season filter
+      if (selectedSeason !== 'all' && stage.season_id !== parseInt(selectedSeason)) {
+        return false;
+      }
+      
+      // Esport filter
+      if (selectedEsportId !== 'all') {
+        // Need to check if stage belongs to selected esport
+        // The type has esports_categories relation
+        if (!stage.esports_categories || stage.esports_categories.esport_id.toString() !== selectedEsportId) {
+          return false;
+        }
+      }
+      
+      // Division filter
+      if (selectedDivision !== 'all') {
+         if (!stage.esports_categories || stage.esports_categories.division !== selectedDivision) {
+           return false;
+         }
+      }
+      
+      return true;
+    });
+
+    // Deduplicate by competition_stage name
+    const uniqueMap = new Map();
+    filtered.forEach(stage => {
+      if (!uniqueMap.has(stage.competition_stage)) {
+        uniqueMap.set(stage.competition_stage, stage);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  }, [availableStages, selectedSeason, selectedEsportId, selectedDivision]);
 
   // Extract Unique Esports
   const uniqueEsports = useMemo(() => {
@@ -177,10 +221,13 @@ export default function DateNavigation({
                 disabled={
                   !hasMorePast &&
                   availableDates.length > 0 &&
-                  availableDates.findIndex(
-                    (date) =>
-                      date.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
-                  ) <= 0
+                  (() => {
+                    const currentDateStr = safeGetDateString(currentDate);
+                    if (!currentDateStr) return true;
+                    return availableDates.findIndex(
+                      (date) => safeGetDateString(date) === currentDateStr
+                    ) <= 0;
+                  })()
                 }
                 className="h-8 w-8 rounded-md hover:bg-background hover:shadow-sm"
               >
@@ -203,11 +250,13 @@ export default function DateNavigation({
                 disabled={
                   !hasMoreFuture &&
                   availableDates.length > 0 &&
-                  availableDates.findIndex(
-                    (date) =>
-                      date.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0]
-                  ) >=
-                    availableDates.length - 1
+                  (() => {
+                    const currentDateStr = safeGetDateString(currentDate);
+                    if (!currentDateStr) return true;
+                    return availableDates.findIndex(
+                      (date) => safeGetDateString(date) === currentDateStr
+                    ) >= availableDates.length - 1;
+                  })()
                 }
                 className="h-8 w-8 rounded-md hover:bg-background hover:shadow-sm"
               >
@@ -292,15 +341,19 @@ export default function DateNavigation({
                     <span>League Stage</span>
                     {selectedStage !== 'all' && (
                        <span className="ml-auto text-xs text-primary font-bold truncate max-w-[80px]">
-                         {filteredStages.find(s => s.id.toString() === selectedStage)?.competition_stage || 'Selected'}
+                         {selectedStage}
                        </span>
                     )}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-56">
                     <DropdownMenuRadioGroup value={selectedStage} onValueChange={onStageChange}>
-                      <DropdownMenuRadioItem value="all" className="py-2">All Stages</DropdownMenuRadioItem>
-                      {filteredStages.map((stage) => (
-                        <DropdownMenuRadioItem key={stage.id} value={stage.id.toString()} className="py-2">
+                      <DropdownMenuRadioItem value="all" className="py-2">
+                        {selectedSeason !== 'all' 
+                          ? `All Stages (Season ${selectedSeason})` 
+                          : 'All Stages'}
+                      </DropdownMenuRadioItem>
+                      {uniqueFilteredStages.map((stage) => (
+                        <DropdownMenuRadioItem key={stage.id} value={stage.competition_stage} className="py-2">
                           {stage.competition_stage}
                         </DropdownMenuRadioItem>
                       ))}

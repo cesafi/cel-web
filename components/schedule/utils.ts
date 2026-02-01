@@ -95,7 +95,10 @@ export const determineWinner = (
 };
 
 // Additional utility functions for date navigation
-export const isToday = (date: Date): boolean => {
+export const isToday = (date: Date | null | undefined): boolean => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return false;
+  }
   const today = new Date();
   return date.toDateString() === today.toDateString();
 };
@@ -109,7 +112,19 @@ export const formatDateShort = (date: Date): string => {
 };
 
 // Format date for header display - two lines like "SUNDAY" and "Sep 14"
-export const formatDateHeader = (date: Date): { weekday: string; date: string } => {
+export const formatDateHeader = (date: Date | null | undefined): { weekday: string; date: string } => {
+  // Handle invalid or null dates
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    // Return today's date as fallback
+    const today = new Date();
+    const weekday = today.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+    const dateStr = today.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+    return { weekday, date: dateStr };
+  }
+
   const weekday = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
   const dateStr = date.toLocaleDateString('en-US', {
     month: 'short',

@@ -64,8 +64,8 @@ export default function ScheduleContent({
     return selectedSeason === 'all' ? undefined : parseInt(selectedSeason);
   }, [selectedSeason]);
 
-  const stageIdFilter = useMemo(() => {
-    return selectedStage === 'all' ? undefined : parseInt(selectedStage);
+  const stageNameFilter = useMemo(() => {
+    return selectedStage === 'all' ? undefined : selectedStage;
   }, [selectedStage]);
 
   // Use the infinite schedule hook for client-side data fetching
@@ -86,7 +86,7 @@ export default function ScheduleContent({
       sport_id: esportIdFilter,
       division: divisionFilter,
       season_id: seasonIdFilter,
-      stage_id: stageIdFilter
+      stage_name: stageNameFilter
     }
   });
 
@@ -110,8 +110,60 @@ export default function ScheduleContent({
     setSelectedDivision(division);
   }, []);
 
+  // Check if any filters are applied
+  const isFiltersApplied = selectedEsport !== 'all' || selectedDivision !== 'all' || selectedSeason !== 'all' || selectedStage !== 'all';
+
   // Use server-side initial data if client-side data is not ready yet
-  const displayMatches = matches.length > 0 ? matches : initialMatches;
+  // BUT: Don't fall back to initialMatches if filters are applied (they would be unfiltered)
+  const displayMatches = useMemo(() => {
+    // If we have client-side data from the query, use it
+    if (matches.length > 0) {
+      return matches;
+    }
+    
+    // If filters are applied but no query data yet, show empty while loading
+    if (isFiltersApplied) {
+      // Apply client-side filtering to initial matches as a fallback
+      return initialMatches.filter((match) => {
+        // Season filter
+        if (selectedSeason !== 'all') {
+          const matchSeasonId = match.esports_seasons_stages?.season_id;
+          if (!matchSeasonId || matchSeasonId.toString() !== selectedSeason) {
+            return false;
+          }
+        }
+        
+        // Esport filter
+        if (selectedEsport !== 'all') {
+          const matchEsportId = match.esports_seasons_stages?.esports_categories?.esports?.id;
+          if (!matchEsportId || matchEsportId.toString() !== selectedEsport) {
+            return false;
+          }
+        }
+        
+        // Division filter
+        if (selectedDivision !== 'all') {
+          const matchDivision = match.esports_seasons_stages?.esports_categories?.division;
+          if (!matchDivision || matchDivision !== selectedDivision) {
+            return false;
+          }
+        }
+        
+        // Stage filter
+        if (selectedStage !== 'all') {
+          const matchStageName = match.esports_seasons_stages?.competition_stage;
+          if (!matchStageName || matchStageName !== selectedStage) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+    }
+    
+    // No filters applied, use initial matches
+    return initialMatches;
+  }, [matches, initialMatches, isFiltersApplied, selectedSeason, selectedEsport, selectedDivision, selectedStage]);
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col">

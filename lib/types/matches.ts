@@ -33,6 +33,8 @@ export interface MatchWithFullDetails extends Match {
       esports: {
         id: number;
         name: string;
+        logo_url: string | null;
+        abbreviation: string | null;
       } | null;
     } | null;
     seasons: {
@@ -61,6 +63,7 @@ export interface ScheduleFilters {
   status?: string;
   season_id?: number;
   stage_id?: number;
+  stage_name?: string;
   search?: string;
   date_from?: string;
   date_to?: string;
@@ -83,6 +86,8 @@ export interface MatchWithStageDetails extends Match {
       esports: {
         id: number;
         name: string;
+        logo_url: string | null;
+        abbreviation: string | null;
       } | null;
     } | null;
   } | null;
