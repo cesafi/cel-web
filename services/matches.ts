@@ -7,7 +7,7 @@ export class MatchesService extends BaseService {
    */
   private static readonly MATCH_SELECT = `
     *,
-    esports_seasons_stages (
+    esports_seasons_stages!inner (
       id,
       competition_stage,
       season_id,
@@ -253,6 +253,11 @@ export class MatchesService extends BaseService {
   }
 
   /**
+   * Get available sport categories with logo and details
+   */
+
+
+  /**
    * Get schedule matches with pagination and filters
    */
   static async getScheduleMatches(options: SchedulePaginationOptions = {}) {
@@ -273,16 +278,25 @@ export class MatchesService extends BaseService {
         query = query.lte('scheduled_at', cursor || now);
         query = query.order('scheduled_at', { ascending: false });
       }
+      
+      // Temporary fallback: showing all matches ordered by date desc
+      // query = query.order('scheduled_at', { ascending: false });
 
       // Apply filters
       if (filters.season_id) {
         query = query.eq('esports_seasons_stages.season_id', filters.season_id);
+      }
+      if (filters.stage_id) {
+        query = query.eq('stage_id', filters.stage_id);
       }
       if (filters.sport_id) {
         query = query.eq('esports_seasons_stages.esports_categories.esports.id', filters.sport_id);
       }
       if (filters.category_id) {
         query = query.eq('esports_seasons_stages.esports_categories.id', filters.category_id);
+      }
+      if (filters.division) {
+        query = query.eq('esports_seasons_stages.esports_categories.division', filters.division);
       }
       if (filters.status) {
         query = query.eq('status', filters.status as 'upcoming' | 'live' | 'finished' | 'completed' | 'rescheduled' | 'canceled');
@@ -344,20 +358,28 @@ export class MatchesService extends BaseService {
           levels,
           esports (
             id,
-            name
+            name,
+            logo_url,
+            abbreviation
           )
         `)
         .order('id');
 
       if (error) throw error;
 
+      // Map to consistent format
       const categories = (data || []).map((cat: any) => ({
         id: cat.id,
         division: cat.division,
         levels: cat.levels,
-        sport_name: cat.esports?.name || 'Unknown',
-        formatted_name: `${cat.esports?.name || 'Unknown'} - ${cat.division} ${cat.levels}`.replace('_', ' ')
-      }));
+        esport: cat.esports ? {
+            id: cat.esports.id,
+            name: cat.esports.name,
+            logo_url: cat.esports.logo_url,
+            abbreviation: cat.esports.abbreviation
+        } : null,
+        full_name: cat.esports ? `${cat.esports.name} - ${cat.division}` : `Category ${cat.id}`
+      })).filter((c: any) => c.esport !== null);
 
       return { success: true as const, data: categories };
     } catch (error) {

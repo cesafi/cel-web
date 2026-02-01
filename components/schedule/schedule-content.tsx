@@ -6,26 +6,59 @@ import { Button } from '@/components/ui/button';
 import { InfiniteSchedule } from '@/components/schedule';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { useInfiniteSchedule } from '@/hooks/use-schedule';
+import { Season } from '@/lib/types/seasons';
+import { EsportsSeasonStageWithDetails } from '@/lib/types/esports-seasons-stages';
+
+
+// Define the rich category type
+export interface RichSportCategory {
+  id: number;
+  division: string;
+  levels: string;
+  full_name: string;
+  formatted_name?: string; // Optional for backward compatibility if needed
+  esport: {
+    id: number;
+    name: string;
+    logo_url: string | null;
+    abbreviation: string | null;
+  } | null;
+}
 
 interface ScheduleContentProps {
   initialMatches: ScheduleMatch[];
-  availableCategories: Array<{
-    id: number;
-    division: string;
-    levels: string;
-    sport_name: string;
-    formatted_name: string;
-  }>;
+  availableCategories: RichSportCategory[];
+  availableSeasons: Season[];
+  availableStages: EsportsSeasonStageWithDetails[];
 }
 
-export default function ScheduleContent({ initialMatches, availableCategories }: ScheduleContentProps) {
-  const [selectedSport, setSelectedSport] = useState<string>('all');
+export default function ScheduleContent({ 
+  initialMatches, 
+  availableCategories,
+  availableSeasons,
+  availableStages
+}: ScheduleContentProps) {
+  const [selectedEsport, setSelectedEsport] = useState<string>('all');
+  const [selectedDivision, setSelectedDivision] = useState<string>('all');
+  const [selectedSeason, setSelectedSeason] = useState<string>('all');
+  const [selectedStage, setSelectedStage] = useState<string>('all');
 
-  // Memoize the sport filter to prevent unnecessary re-renders
-  const sportFilter = useMemo(() => {
-    return selectedSport === 'all' ? undefined : 
-      availableCategories.find(cat => cat.formatted_name === selectedSport)?.id;
-  }, [selectedSport, availableCategories]);
+  // Derive IDs for API
+  const esportIdFilter = useMemo(() => {
+    return selectedEsport === 'all' ? undefined : parseInt(selectedEsport);
+  }, [selectedEsport]);
+
+  const divisionFilter = useMemo(() => {
+    return selectedDivision === 'all' ? undefined : selectedDivision;
+  }, [selectedDivision]);
+
+  const seasonIdFilter = useMemo(() => {
+    return selectedSeason === 'all' ? undefined : parseInt(selectedSeason);
+  }, [selectedSeason]);
+
+  const stageIdFilter = useMemo(() => {
+    return selectedStage === 'all' ? undefined : parseInt(selectedStage);
+  }, [selectedStage]);
 
   // Use the infinite schedule hook for client-side data fetching
   const {
@@ -42,13 +75,14 @@ export default function ScheduleContent({ initialMatches, availableCategories }:
     limit: 20,
     direction: 'future',
     filters: {
-      sport_id: sportFilter
+      sport_id: esportIdFilter,
+      division: divisionFilter,
+      season_id: seasonIdFilter,
+      stage_id: stageIdFilter
     }
   });
 
   const matches = data?.matches || [];
-
-
 
   const handleLoadMore = useCallback((direction: 'future' | 'past') => {
     if (direction === 'future' && hasNextPage && !isFetchingNextPage) {
@@ -58,22 +92,15 @@ export default function ScheduleContent({ initialMatches, availableCategories }:
     }
   }, [hasNextPage, hasPreviousPage, isFetchingNextPage, isFetchingPreviousPage, fetchNextPage, fetchPreviousPage]);
 
-  const handleSportChange = useCallback((sport: string) => {
-    setSelectedSport(sport);
+  const handleEsportChange = useCallback((esportId: string) => {
+    setSelectedEsport(esportId);
+    // Optional: Reset division if needed, or keep it if valid
+    // For now, let's keep it simple.
   }, []);
 
-  // Memoize sport options to prevent unnecessary re-renders
-  const sportOptions = useMemo(() => 
-    availableCategories.map(category => ({
-      value: category.formatted_name,
-      label: category.formatted_name
-    })), [availableCategories]
-  );
-
-  // Memoize available sports array
-  const availableSports = useMemo(() => 
-    sportOptions.map(option => option.value), [sportOptions]
-  );
+  const handleDivisionChange = useCallback((division: string) => {
+    setSelectedDivision(division);
+  }, []);
 
   // Use server-side initial data if client-side data is not ready yet
   const displayMatches = matches.length > 0 ? matches : initialMatches;
@@ -88,9 +115,17 @@ export default function ScheduleContent({ initialMatches, availableCategories }:
           hasMoreFuture={hasNextPage}
           hasMorePast={hasPreviousPage}
           isLoading={isFetching || isFetchingNextPage || isFetchingPreviousPage}
-          selectedSport={selectedSport}
-          onSportChange={handleSportChange}
-          availableSports={availableSports}
+          selectedEsportId={selectedEsport}
+          onEsportChange={handleEsportChange}
+          selectedDivision={selectedDivision}
+          onDivisionChange={handleDivisionChange}
+          availableRichSports={availableCategories}
+          availableSeasons={availableSeasons}
+          selectedSeason={selectedSeason}
+          onSeasonChange={setSelectedSeason}
+          availableStages={availableStages}
+          selectedStage={selectedStage}
+          onStageChange={setSelectedStage}
         />
       </div>
     </div>

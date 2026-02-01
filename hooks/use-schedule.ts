@@ -33,8 +33,8 @@ export function useInfiniteSchedule(
   // Merge season filter with provided filters - memoized to prevent unnecessary re-renders
   const mergedFilters: ScheduleFilters = useMemo(() => ({
     ...filters,
-    season_id: filters.season_id || currentSeason?.id
-  }), [filters, currentSeason?.id]);
+    season_id: filters.season_id
+  }), [filters]);
 
   return useInfiniteQuery({
     queryKey: scheduleKeys.infinite({ limit, direction, filters: mergedFilters }),
@@ -67,8 +67,7 @@ export function useInfiniteSchedule(
         : false,
       hasPreviousPage: data.pages[0]?.success ? (data.pages[0] as { success: true; data: ScheduleResponse }).data?.hasMore ?? false : false,
       totalCount: data.pages[0]?.success ? (data.pages[0] as { success: true; data: ScheduleResponse }).data?.totalCount ?? 0 : 0
-    }),
-    enabled: !!currentSeason
+    })
   });
 }
 

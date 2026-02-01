@@ -55,6 +55,31 @@ export default function MatchDetailPage() {
     enabled: !!matchId,
   });
 
+  // Get participants (safe access)
+  const team1 = match?.match_participants?.[0];
+  const team2 = match?.match_participants?.[1];
+
+  // Fetch players for stats mapping
+  const { data: team1Players = [] } = useQuery({
+    queryKey: ['players', team1?.schools_teams?.id],
+    queryFn: async () => {
+      if (!team1?.schools_teams?.id) return [];
+      const result = await getPlayersByTeamId(team1.schools_teams.id);
+      return result.success && result.data ? (result.data as Player[]) : [];
+    },
+    enabled: !!team1?.schools_teams?.id,
+  });
+
+  const { data: team2Players = [] } = useQuery({
+    queryKey: ['players', team2?.schools_teams?.id],
+    queryFn: async () => {
+      if (!team2?.schools_teams?.id) return [];
+      const result = await getPlayersByTeamId(team2.schools_teams.id);
+      return result.success && result.data ? (result.data as Player[]) : [];
+    },
+    enabled: !!team2?.schools_teams?.id,
+  });
+
   if (isLoading) {
     return <MatchDetailSkeleton />;
   }
@@ -79,31 +104,6 @@ export default function MatchDetailPage() {
   const esportName = match.esports_seasons_stages?.esports_categories?.esports?.name?.toLowerCase() || '';
   const isMlbb = esportName.includes('mobile legends') || esportName.includes('mlbb');
   const isValorant = esportName.includes('valorant');
-
-  // Get participants
-  const team1 = match.match_participants?.[0];
-  const team2 = match.match_participants?.[1];
-
-  // Fetch players for stats mapping
-  const { data: team1Players = [] } = useQuery({
-    queryKey: ['players', team1?.schools_teams?.id],
-    queryFn: async () => {
-      if (!team1?.schools_teams?.id) return [];
-      const result = await getPlayersByTeamId(team1.schools_teams.id);
-      return result.success && result.data ? (result.data as Player[]) : [];
-    },
-    enabled: !!team1?.schools_teams?.id,
-  });
-
-  const { data: team2Players = [] } = useQuery({
-    queryKey: ['players', team2?.schools_teams?.id],
-    queryFn: async () => {
-      if (!team2?.schools_teams?.id) return [];
-      const result = await getPlayersByTeamId(team2.schools_teams.id);
-      return result.success && result.data ? (result.data as Player[]) : [];
-    },
-    enabled: !!team2?.schools_teams?.id,
-  });
 
   return (
     <div className="w-full space-y-6">
@@ -159,8 +159,8 @@ export default function MatchDetailPage() {
                 <p className="text-sm font-medium truncate max-w-[80px]">
                   {team1?.schools_teams?.school?.abbreviation || 'TBD'}
                 </p>
-                {team1?.match_score !== null && (
-                  <p className="text-2xl font-bold">{team1.match_score}</p>
+                {team1?.match_score !== null && team1?.match_score !== undefined && (
+                  <p className="text-2xl font-bold">{team1?.match_score}</p>
                 )}
               </div>
 
@@ -174,8 +174,8 @@ export default function MatchDetailPage() {
                 <p className="text-sm font-medium truncate max-w-[80px]">
                   {team2?.schools_teams?.school?.abbreviation || 'TBD'}
                 </p>
-                {team2?.match_score !== null && (
-                  <p className="text-2xl font-bold">{team2.match_score}</p>
+                {team2?.match_score !== null && team2?.match_score !== undefined && (
+                  <p className="text-2xl font-bold">{team2?.match_score}</p>
                 )}
               </div>
             </div>

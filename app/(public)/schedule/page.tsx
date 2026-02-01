@@ -1,24 +1,27 @@
 import { Calendar, TrendingUp, Clock } from 'lucide-react';
 import { SeasonProvider } from '@/components/contexts/season-provider';
 import { ScheduleContent } from '@/components/schedule';
-import { getScheduleMatchesWithCategories, getAvailableSportCategories } from '@/actions/matches';
+import { getScheduleMatchesWithCategories, getAvailableSportCategories, getAvailableSeasons, getAvailableStages } from '@/actions/matches';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { moderniz, roboto } from '@/lib/fonts';
 
 export default async function SchedulePage() {
   // Fetch initial data server-side
-  const [matchesResult, categoriesResult] = await Promise.all([
+  const [matchesResult, categoriesResult, seasonsResult, stagesResult] = await Promise.all([
     getScheduleMatchesWithCategories({
       limit: 50,
       direction: 'future',
       filters: {}
     }),
-    getAvailableSportCategories()
+    getAvailableSportCategories(),
+    getAvailableSeasons(),
+    getAvailableStages()
   ]);
 
-  const matches: ScheduleMatch[] =
-    matchesResult.success && matchesResult.data ? matchesResult.data.matches : [];
+  const matches = matchesResult.success && matchesResult.data ? matchesResult.data.matches : [];
   const categories = categoriesResult.success && categoriesResult.data ? categoriesResult.data : [];
+  const seasons = seasonsResult.success && seasonsResult.data ? seasonsResult.data : [];
+  const stages = stagesResult.success && stagesResult.data ? stagesResult.data : [];
 
   // Calculate stats
   const liveMatches = matches.filter((m) => m.status === 'live').length;
@@ -99,7 +102,12 @@ export default async function SchedulePage() {
 
         {/* Main Content */}
         <div className="container mx-auto max-w-[1000px] px-4 py-6 sm:py-8">
-          <ScheduleContent initialMatches={matches} availableCategories={categories} />
+          <ScheduleContent 
+            initialMatches={matches} 
+            availableCategories={categories}
+            availableSeasons={seasons}
+            availableStages={stages}
+          />
         </div>
       </div>
     </SeasonProvider>

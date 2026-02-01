@@ -56,9 +56,11 @@ export interface ScheduleFilters {
   sport_id?: number;
   category?: string;
   category_id?: number;
+  division?: string; // New filter for category division
   date?: string;
   status?: string;
   season_id?: number;
+  stage_id?: number;
   search?: string;
   date_from?: string;
   date_to?: string;

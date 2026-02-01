@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { MatchesService } from '@/services/matches';
+import { SeasonService } from '@/services/seasons';
+import { EsportsSeasonsStagesService } from '@/services/esports-seasons-stages';
 import { SchedulePaginationOptions, ScheduleFilters, MatchInsert } from '@/lib/types/matches';
 
 export async function getMatchById(id: number) {
@@ -57,4 +59,12 @@ export async function deleteMatchById(id: number) {
   const result = await MatchesService.deleteMatchById(id);
   if (result.success) revalidatePath('/admin/matches');
   return result;
+}
+
+export async function getAvailableSeasons() {
+  return SeasonService.getAll();
+}
+
+export async function getAvailableStages() {
+  return EsportsSeasonsStagesService.getAll();
 }

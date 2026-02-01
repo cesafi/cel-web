@@ -28,7 +28,15 @@ export const isUpcoming = (date: Date): boolean => {
 export const groupMatchesByDate = (matches: ScheduleMatch[]): ScheduleDateGroup[] => {
   const grouped = matches.reduce(
     (acc, match) => {
-      const matchDate = new Date(match.scheduled_at ?? new Date());
+      let matchDate = new Date(match.scheduled_at ?? new Date());
+      // Handle invalid date
+      if (isNaN(matchDate.getTime())) {
+        console.warn('Invalid match date:', match.scheduled_at, match);
+        // Fallback to today to avoid crash, or skip?
+        // Let's fallback to today so it appears somewhere
+        matchDate = new Date();
+      }
+
       const date = match.displayDate ?? matchDate.toISOString().split('T')[0];
       if (!acc[date]) {
         acc[date] = {

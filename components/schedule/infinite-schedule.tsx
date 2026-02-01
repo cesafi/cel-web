@@ -6,6 +6,9 @@ import { ScheduleDateGroup, groupMatchesByDate } from './utils';
 import DateGroup from './date-group';
 import DateNavigation from './date-navigation';
 import FloatingNavButton from './floating-nav-button';
+import { Season } from '@/lib/types/seasons';
+import { EsportsSeasonStageWithDetails } from '@/lib/types/esports-seasons-stages';
+import type { RichSportCategory } from './schedule-content';
 
 interface InfiniteScheduleProps {
   readonly matches: ScheduleMatch[];
@@ -13,9 +16,20 @@ interface InfiniteScheduleProps {
   readonly hasMoreFuture?: boolean;
   readonly hasMorePast?: boolean;
   readonly isLoading?: boolean;
-  readonly selectedSport?: string;
-  readonly onSportChange?: (sport: string) => void;
-  readonly availableSports?: string[];
+  // New Filters
+  readonly selectedEsportId?: string;
+  readonly onEsportChange?: (id: string) => void;
+  readonly selectedDivision?: string; // "Category"
+  readonly onDivisionChange?: (division: string) => void;
+  // Legacy
+  readonly availableRichSports?: RichSportCategory[];
+  readonly availableSeasons?: Season[];
+  readonly selectedSeason?: string;
+  readonly onSeasonChange?: (seasonId: string) => void;
+  readonly availableStages?: EsportsSeasonStageWithDetails[];
+  readonly selectedStage?: string;
+  readonly onStageChange?: (stageId: string) => void;
+  readonly availableSports?: string[]; // Deprecated but kept for type compat if needed temporarily
 }
 
 export default function InfiniteSchedule({
@@ -24,17 +38,18 @@ export default function InfiniteSchedule({
   hasMoreFuture = false,
   hasMorePast = false,
   isLoading = false,
-  selectedSport = 'all',
-  onSportChange,
-  availableSports = [
-    'Basketball',
-    'Volleyball',
-    'Football',
-    'Tennis',
-    'Badminton',
-    'Track and Field',
-    'Swimming'
-  ]
+  selectedEsportId = 'all',
+  onEsportChange,
+  selectedDivision = 'all',
+  onDivisionChange,
+  availableSports = [],
+  availableRichSports = [],
+  availableSeasons = [],
+  selectedSeason,
+  onSeasonChange,
+  availableStages = [],
+  selectedStage,
+  onStageChange
 }: InfiniteScheduleProps) {
   const [dateGroups, setDateGroups] = useState<ScheduleDateGroup[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -46,13 +61,25 @@ export default function InfiniteSchedule({
   const topLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const bottomLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Filter matches by sport - memoized to prevent unnecessary re-renders
+  // Filter matches by sport/division - memoized to prevent unnecessary re-renders
   const filteredMatches = useMemo(() => {
     return matches.filter((match) => {
-      if (selectedSport === 'all') return true;
-      return match.esports_seasons_stages?.esports_categories?.esports?.name === selectedSport;
+      let matchEsport = true;
+      let matchDivision = true;
+
+      // Filter by Esport ID
+      if (selectedEsportId !== 'all') {
+        matchEsport = match.esports_seasons_stages?.esports_categories?.esports?.id.toString() === selectedEsportId;
+      }
+
+      // Filter by Division ("Category")
+      if (selectedDivision !== 'all') {
+        matchDivision = match.esports_seasons_stages?.esports_categories?.division === selectedDivision;
+      }
+
+      return matchEsport && matchDivision;
     });
-  }, [matches, selectedSport]);
+  }, [matches, selectedEsportId, selectedDivision]);
 
   // Group filtered matches by date
   useEffect(() => {
@@ -234,12 +261,21 @@ export default function InfiniteSchedule({
         )}
         onPreviousDay={() => handleDateNavigation('previous')}
         onNextDay={() => handleDateNavigation('next')}
-        selectedSport={selectedSport}
-        onSportChange={onSportChange}
+        selectedEsportId={selectedEsportId}
+        onEsportChange={onEsportChange}
+        selectedDivision={selectedDivision}
+        onDivisionChange={onDivisionChange}
         availableSports={availableSports}
+        availableRichSports={availableRichSports} // Pass rich data
         availableDates={dateGroups.map((group) => new Date(group.date))}
         hasMorePast={hasMorePast}
         hasMoreFuture={hasMoreFuture}
+        availableSeasons={availableSeasons}
+        selectedSeason={selectedSeason}
+        onSeasonChange={onSeasonChange}
+        availableStages={availableStages}
+        selectedStage={selectedStage}
+        onStageChange={onStageChange}
       />
 
       {/* Load More Past Trigger */}
