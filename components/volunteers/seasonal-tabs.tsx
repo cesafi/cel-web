@@ -77,7 +77,7 @@ export default function SeasonalTabs({
                 }`}
               >
                 <span className={moderniz.className}>
-                  Season {season.id}
+                  {season.name || `Season ${season.id}`}
                 </span>
               </button>
             ))}
@@ -93,7 +93,7 @@ export default function SeasonalTabs({
             className="text-center mb-12"
           >
             <h2 className={`${moderniz.className} text-3xl md:text-4xl font-bold text-foreground mb-4`}>
-              Season {selectedSeason.id}
+              {selectedSeason.name || `Season ${selectedSeason.id}`}
             </h2>
             <div className="flex items-center justify-center gap-6 text-muted-foreground">
               <div className="flex items-center gap-2">

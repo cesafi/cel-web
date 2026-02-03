@@ -7,7 +7,7 @@ import { format, parseISO } from 'date-fns';
 
 type SeasonWithDates = {
   id: number;
-  name: string;
+  name?: string | null;
   start_at: string;
   end_at: string;
 };
@@ -76,7 +76,7 @@ export default function SeasonSidebar({ currentSeasonId, onSeasonChange }: Seaso
               {isSelected && <div className="bg-primary absolute top-0 right-0 bottom-0 w-1" />}
 
               <div className="space-y-1">
-                <div className="text-sm font-medium">Season {season.id}</div>
+                <div className="text-sm font-medium">{season.name || `Season ${season.id}`}</div>
                 <div className="text-muted-foreground text-xs">
                   {(season as SeasonWithDates).start_at && (season as SeasonWithDates).end_at
                     ? formatSeasonDates(

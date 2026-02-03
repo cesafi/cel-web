@@ -41,6 +41,10 @@ export interface SchoolsTeamWithSportDetails {
       name: string;
     } | null;
   } | null;
+  seasons: {
+    id: number;
+    name?: string | null;
+  } | null;
   [key: string]: unknown; // Index signature for BaseEntity compatibility
 }
 

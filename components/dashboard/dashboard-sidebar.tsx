@@ -287,7 +287,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
         {needsSeasonContext && (
           <div className="space-y-2">
             <h3 className="text-sidebar-foreground/70 text-xs font-semibold tracking-wider uppercase">
-              {currentSeason ? `Season ${currentSeason.id}` : 'Season'}
+              {currentSeason ? (currentSeason.name || `Season ${currentSeason.id}`) : 'Season'}
             </h3>
             <div className="space-y-1">
               {seasonalItems.map((item) => {

@@ -61,7 +61,12 @@ export function StatisticsContent() {
     async function fetchFilters() {
       const seasonsResult = await getAvailableSeasons();
       if (seasonsResult.success && seasonsResult.data) {
-        setSeasons(seasonsResult.data as FilterOption[]);
+        const mappedSeasons = seasonsResult.data.map((s: any) => ({
+          id: s.id,
+          label: s.name || `Season ${s.id}`,
+          value: s.id.toString()
+        }));
+        setSeasons(mappedSeasons);
       }
     }
     fetchFilters();
@@ -73,7 +78,12 @@ export function StatisticsContent() {
       if (selectedSeason) {
         const stagesResult = await getStagesBySeason(selectedSeason);
         if (stagesResult.success && stagesResult.data) {
-          setStages(stagesResult.data as FilterOption[]);
+          const mappedStages = stagesResult.data.map((s: any) => ({
+            id: s.id,
+            label: s.competition_stage.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+            value: s.id.toString()
+          }));
+          setStages(mappedStages);
         }
       } else {
         setStages([]);

@@ -310,7 +310,7 @@ export function SchoolTeamModal({
                 <SelectContent>
                   {availableSeasons?.map((season) => (
                     <SelectItem key={season.id} value={season.id.toString()}>
-                      Season {season.id} {season.id === currentSeason?.id ? '(Current)' : ''}
+                      {season.name || `Season ${season.id}`} {season.id === currentSeason?.id ? '(Current)' : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

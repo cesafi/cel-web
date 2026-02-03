@@ -9,7 +9,6 @@ import SeasonSidebar from './season-sidebar';
 import StandingsNavbar from './standings-navbar';
 import GroupStageTable from './group-stage-table';
 import BracketVisualization from './bracket-visualization';
-import PlayinsList from './playins-list';
 import StandingsLoading from './standings-loading';
 import {
   useStandings,
@@ -188,34 +187,13 @@ export default function StandingsContent({ searchParams: _ }: StandingsContentPr
 
   // Find current stage data
   const currentStage = standingsData.navigation.stages.find((s) => s.id === selectedStage);
-  const isGroupStage = currentStage?.competition_stage === 'group_stage';
-  const isPlayins = currentStage?.competition_stage === 'playins';
+  const isGroupStage = currentStage?.stage_type === 'round_robin';
 
   return (
     <div className="bg-background min-h-screen">
-      {/* Hero Section */}
-      <section className="from-primary/10 via-background to-secondary/10 relative bg-gradient-to-br pt-20 pb-12 sm:pt-24 sm:pb-16">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzM2YzYxIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] bg-repeat" />
-        </div>
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1
-              className={`${moderniz.className} text-foreground mb-4 text-3xl font-bold sm:mb-6 sm:text-4xl md:text-6xl lg:text-7xl`}
-            >
-              Tournament <span className="text-gradient-cel">Standings</span>
-            </h1>
-            <p className="text-muted-foreground mx-auto mb-6 max-w-3xl text-base sm:mb-8 sm:text-lg md:text-xl">
-              Follow the latest standings, scores, and tournament progress for all CESAFI sports
-              events and competitions.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Main Content */}
-      <div className="mt-8 mb-8 flex flex-col lg:flex-row min-h-[calc(100vh-20rem)]">
+       <div className="mt-8 mb-8 flex flex-col lg:flex-row min-h-[calc(100vh-20rem)]">
         {/* Mobile Season Selector */}
         <div className="lg:hidden px-4 mb-4">
           <div className="relative">
@@ -226,7 +204,7 @@ export default function StandingsContent({ searchParams: _ }: StandingsContentPr
             >
               {seasons?.map((season) => (
                 <option key={season.id} value={season.id}>
-                  Season {season.id} - {season.name}
+                  {season.name || `Season ${season.id}`}
                 </option>
               ))}
             </select>
@@ -272,14 +250,7 @@ export default function StandingsContent({ searchParams: _ }: StandingsContentPr
                     />
                   );
                 }
-                if (isPlayins) {
-                  return (
-                    <PlayinsList
-                      standings={standingsData.standings as PlayinsStandings}
-                      loading={isLoading}
-                    />
-                  );
-                }
+                // Default to Bracket for single/double elimination
                 return (
                   <BracketVisualization
                     standings={standingsData.standings as BracketStandings}

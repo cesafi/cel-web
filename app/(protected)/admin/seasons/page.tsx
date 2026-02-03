@@ -108,8 +108,8 @@ export default function SeasonsManagementPage() {
         }}
         className=""
         emptyMessage="No seasons found"
-        initialSortBy="id"
-        initialSortOrder="asc"
+        initialSortBy="start_at"
+        initialSortOrder="desc"
         refetch={refetch}
       />
 

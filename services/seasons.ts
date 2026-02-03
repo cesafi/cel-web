@@ -43,7 +43,7 @@ export class SeasonService extends BaseService {
       const { data, error } = await supabase
         .from(TABLE_NAME)
         .select()
-        .order('start_at', { ascending: true });
+        .order('start_at', { ascending: false });
 
       if (error) {
         throw error;
@@ -305,7 +305,7 @@ export class SeasonService extends BaseService {
         .or(
           `and(start_at.gte.${startOfYear},start_at.lte.${endOfYear}),and(end_at.gte.${startOfYear},end_at.lte.${endOfYear})`
         )
-        .order('start_at', { ascending: true });
+        .order('start_at', { ascending: false });
 
       if (error) {
         throw error;

@@ -71,7 +71,7 @@ export function StatisticsFilters({
             <SelectItem value="all">All Seasons</SelectItem>
             {seasons.map((season) => (
               <SelectItem key={season.id} value={season.id.toString()}>
-                {season.name}
+                {season.name || `Season ${season.id}`}
               </SelectItem>
             ))}
           </SelectContent>

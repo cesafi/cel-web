@@ -39,6 +39,7 @@ export interface MatchWithFullDetails extends Match {
     } | null;
     seasons: {
       id: number;
+      name?: string | null;
       start_at: string;
       end_at: string;
     } | null;

@@ -32,10 +32,10 @@ export default function StandingsPage({ searchParams }: StandingsPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-4 sm:space-y-6">
             <h1 className={`${moderniz.className} uppercase text-foreground mb-4 text-3xl font-bold sm:mb-6 sm:text-4xl md:text-6xl lg:text-7xl`}>
-              League <span className="text-gradient-cel">Standings</span>
+              Esports <span className="text-gradient-cel">Standings</span>
             </h1>
             <p className={`${roboto.className} text-base text-muted-foreground max-w-2xl mx-auto sm:text-lg`}>
-              View current standings and tournament brackets for all CESAFI sports competitions.
+              View current standings and tournament brackets for all CESAFI esports competitions.
             </p>
           </div>
         </div>

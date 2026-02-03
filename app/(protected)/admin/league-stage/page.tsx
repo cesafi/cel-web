@@ -87,7 +87,7 @@ export default function LeagueStagesManagementPage() {
   const getSeasonName = (seasonId: number | null) => {
     if (!seasonId) return '—';
     const season = seasons.find(s => s.id === seasonId);
-    return season ? `Season ${season.id}` : `Season ${seasonId}`;
+    return season?.name || `Season ${seasonId}`;
   };
 
   // Calculate pagination using filtered data
@@ -180,7 +180,7 @@ export default function LeagueStagesManagementPage() {
         onSearchChange={() => {}}
         onFiltersChange={() => {}}
         title="League Stages Management"
-        subtitle={currentSeason ? `Managing stages for Season ${currentSeason.id}` : 'Manage competition stages for each esport category and season.'}
+        subtitle={currentSeason ? `Managing stages for ${currentSeason.name || `Season ${currentSeason.id}`}` : 'Manage competition stages for each esport category and season.'}
         searchPlaceholder="Search stages..."
         showSearch={true}
         showFilters={false}
@@ -192,7 +192,7 @@ export default function LeagueStagesManagementPage() {
             setIsModalOpen(true);
           }
         }}
-        emptyMessage={currentSeason ? `No league stages found for Season ${currentSeason.id}` : 'No league stages found'}
+        emptyMessage={currentSeason ? `No league stages found for ${currentSeason.name || `Season ${currentSeason.id}`}` : 'No league stages found'}
         refetch={refetch}
       />
 
@@ -204,6 +204,7 @@ export default function LeagueStagesManagementPage() {
         stage={editingStage}
         onSubmit={handleSubmit}
         isSubmitting={isCreating || isUpdating}
+        defaultSeasonId={currentSeason?.id}
       />
 
       {/* Confirmation Modal */}

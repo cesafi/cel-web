@@ -31,7 +31,7 @@ export function SeasonModal({
   isSubmitting
 }: SeasonModalProps) {
   const [formData, setFormData] = useState<SeasonInsert | SeasonUpdate>({
-    id: 1,
+    // id is auto-generated for new seasons
     start_at: new Date().toISOString().split('T')[0],
     end_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   } as SeasonInsert | SeasonUpdate);
@@ -81,6 +81,7 @@ export function SeasonModal({
          const endDate = season.end_at ? season.end_at.split('T')[0] : '';
          const editData = {
            id: season.id,
+           name: season.name,
            start_at: startDate,
            end_at: endDate
          };
@@ -89,7 +90,8 @@ export function SeasonModal({
          const now = new Date();
          const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
          const addData = {
-           id: 1,
+           // id will be auto-generated
+           name: '',
            start_at: now.toISOString().split('T')[0],
            end_at: tomorrow.toISOString().split('T')[0]
          };
@@ -210,22 +212,20 @@ export function SeasonModal({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-                         <div className="space-y-2">
-               <label className="text-sm font-medium">Season Number *</label>
+
+
+             <div className="space-y-2">
+               <label className="text-sm font-medium">Season Name (Optional)</label>
                <Input
-                 type="number"
-                 min="1"
-                 value={formData.id}
+                 type="text"
+                 value={formData.name || ''}
                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                   setFormData((prev) => ({ ...prev, id: parseInt(e.target.value) || 1 }))
+                   setFormData((prev) => ({ ...prev, name: e.target.value }))
                  }
-                 placeholder="Enter season number (must be unique)"
-                 className={errors.id ? 'border-red-500' : ''}
+                 placeholder="e.g. Preseason 1 (defaults to Season {Number})"
+                 className={errors.name ? 'border-red-500' : ''}
                />
-               {errors.id && <p className="text-sm text-red-500">{errors.id}</p>}
-               <p className="text-muted-foreground text-xs">
-                 Each season number must be unique across all seasons.
-               </p>
+               {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
              </div>
           </CardContent>
         </Card>

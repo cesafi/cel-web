@@ -13,8 +13,17 @@ export function MatchDetailsHeader({ match }: MatchDetailsHeaderProps) {
   const team2 = match.match_participants[1];
   
   const stageName = match.esports_seasons_stages?.competition_stage?.replace(/_/g, ' ') || 'Unknown Stage';
-  const seasonStart = match.esports_seasons_stages?.seasons?.start_at;
-  const seasonName = seasonStart ? `Season ${new Date(seasonStart).getFullYear()}` : '';
+  const season = match.esports_seasons_stages?.seasons;
+  
+  // Use explicit season name if available, otherwise fall back to year
+  let seasonName = '';
+  if (season) {
+     if (season.name) {
+       seasonName = season.name;
+     } else if (season.start_at) {
+       seasonName = `Season ${new Date(season.start_at).getFullYear()}`;
+     }
+  }
   const matchDate = match.scheduled_at ? new Date(match.scheduled_at) : null;
 
   return (

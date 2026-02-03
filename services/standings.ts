@@ -20,15 +20,15 @@ export class StandingsService extends BaseService {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from('seasons')
-        .select('id, start_at, end_at')
+        .select('id, name, start_at, end_at')
         .order('start_at', { ascending: false });
 
       if (error) throw error;
 
-      // Format season names from dates
+      // Format season names (use DB name if available, else default to "Season X")
       const seasons = (data || []).map(s => ({
         ...s,
-        name: `Season ${s.id}`
+        name: s.name || `Season ${s.id}`
       }));
 
       return { success: true, data: seasons };
@@ -40,7 +40,7 @@ export class StandingsService extends BaseService {
   /**
    * Get available esports for a season
    */
-  static async getAvailableSports(seasonId: number): Promise<ServiceResponse<Array<{ id: number; name: string }>>> {
+  static async getAvailableSports(seasonId: number): Promise<ServiceResponse<Array<{ id: number; name: string; logo_url: string | null; abbreviation: string | null }>>> {
     try {
       const supabase = await this.getClient();
       
@@ -50,6 +50,8 @@ export class StandingsService extends BaseService {
         .select(`
           id,
           name,
+          logo_url,
+          abbreviation,
           esports_categories!inner (
             esports_seasons_stages!inner (
               season_id
@@ -61,10 +63,20 @@ export class StandingsService extends BaseService {
       if (error) throw error;
 
       // Deduplicate and format
-      const uniquesports = (data || []).map(e => ({
-        id: e.id,
-        name: e.name
-      }));
+      const uniqueIds = new Set();
+      const uniquesports = [];
+      
+      for (const e of (data || [])) {
+        if (!uniqueIds.has(e.id)) {
+          uniqueIds.add(e.id);
+          uniquesports.push({
+            id: e.id,
+            name: e.name,
+            logo_url: e.logo_url,
+            abbreviation: e.abbreviation
+          });
+        }
+      }
 
       return { success: true, data: uniquesports };
     } catch (err) {
@@ -120,7 +132,7 @@ export class StandingsService extends BaseService {
       // Get season info
       const { data: season, error: seasonError } = await supabase
         .from('seasons')
-        .select('id, start_at, end_at')
+        .select('id, name, start_at, end_at')
         .eq('id', filters.season_id!)
         .single();
 
@@ -147,7 +159,7 @@ export class StandingsService extends BaseService {
       // Get stages for this category and season
       const { data: stages, error: stagesError } = await supabase
         .from('esports_seasons_stages')
-        .select('id, competition_stage')
+        .select('id, competition_stage, stage_type')
         .eq('season_id', filters.season_id!)
         .eq('esport_category_id', filters.esport_category_id!);
 
@@ -156,7 +168,7 @@ export class StandingsService extends BaseService {
       const navigation: StandingsNavigation = {
         season: {
           id: season.id,
-          name: `Season ${season.id}`,
+          name: season.name || `Season ${season.id}`,
           start_at: season.start_at,
           end_at: season.end_at
         },
@@ -170,11 +182,12 @@ export class StandingsService extends BaseService {
           levels: category.levels,
           display_name: `${category.division} ${category.levels}`.replace('_', ' ')
         },
-        stages: (stages || []).map((s: { id: number; competition_stage: string }) => ({
+        stages: (stages || []).map((s: any) => ({
           id: s.id,
-          name: s.competition_stage, // Use competition_stage as name since name column doesn't exist
+          name: s.competition_stage, 
           competition_stage: s.competition_stage,
-          order: 0 // order column doesn't exist
+          stage_type: s.stage_type as 'round_robin' | 'single_elimination' | 'double_elimination',
+          order: 0
         }))
       };
 
@@ -206,6 +219,7 @@ export class StandingsService extends BaseService {
         .select(`
           id,
           status,
+          group_name,
           match_participants (
             team_id,
             match_score,
@@ -220,13 +234,15 @@ export class StandingsService extends BaseService {
             )
           )
         `)
-        .eq('stage_id', stageId)
-        .in('status', ['finished', 'completed']);
+        .eq('stage_id', stageId);
+        // We fetch ALL matches (upcoming and finished) to populate the teams list and groups
+        // .in('status', ['finished', 'completed']);
 
       if (matchesError) throw matchesError;
 
-      // Calculate standings from match results
-      const teamStats: Record<string, {
+      // Calculate standings from match results, grouped by group_name
+      // Structure: group_name -> team_id -> stats
+      const groupStats: Record<string, Record<string, {
         team_id: string;
         team_name: string;
         school_name: string;
@@ -239,12 +255,18 @@ export class StandingsService extends BaseService {
         games_won: number;
         games_lost: number;
         points: number;
-      }> = {};
+      }>> = {};
 
       // Process each match
       for (const match of matches || []) {
         const participants = match.match_participants || [];
         if (participants.length < 2) continue;
+
+        const groupName = match.group_name || 'Group Stage';
+        
+        if (!groupStats[groupName]) {
+          groupStats[groupName] = {};
+        }
 
         // Get both participants
         const p1 = participants[0] as any;
@@ -253,11 +275,11 @@ export class StandingsService extends BaseService {
         const score1 = p1.match_score ?? 0;
         const score2 = p2.match_score ?? 0;
 
-        // Initialize team stats if not exists
+        // Initialize team stats if not exists in this group
         for (const p of [p1, p2]) {
           const teamId = p.team_id;
-          if (!teamStats[teamId]) {
-            teamStats[teamId] = {
+          if (!groupStats[groupName][teamId]) {
+            groupStats[groupName][teamId] = {
               team_id: teamId,
               team_name: p.schools_teams?.name || 'TBD',
               school_name: p.schools_teams?.schools?.name || 'TBD',
@@ -274,66 +296,82 @@ export class StandingsService extends BaseService {
           }
         }
 
-        // Update match counts
-        teamStats[p1.team_id].matches_played++;
-        teamStats[p2.team_id].matches_played++;
+        const stats = groupStats[groupName];
 
-        // Update game scores
-        teamStats[p1.team_id].games_won += score1;
-        teamStats[p1.team_id].games_lost += score2;
-        teamStats[p2.team_id].games_won += score2;
-        teamStats[p2.team_id].games_lost += score1;
+        // Update match counts only if match is finished? 
+        // Usually "Matches Played" only counts finished. 
+        // But we want to show the team exists.
+        
+        const isFinished = match.status === 'finished' || match.status === 'completed';
 
-        // Determine winner/loser
-        if (score1 > score2) {
-          teamStats[p1.team_id].wins++;
-          teamStats[p1.team_id].points += 3;
-          teamStats[p2.team_id].losses++;
-        } else if (score2 > score1) {
-          teamStats[p2.team_id].wins++;
-          teamStats[p2.team_id].points += 3;
-          teamStats[p1.team_id].losses++;
-        } else {
-          // Draw
-          teamStats[p1.team_id].draws++;
-          teamStats[p1.team_id].points += 1;
-          teamStats[p2.team_id].draws++;
-          teamStats[p2.team_id].points += 1;
+        if (isFinished) {
+          stats[p1.team_id].matches_played++;
+          stats[p2.team_id].matches_played++;
+
+          // Update game scores
+          stats[p1.team_id].games_won += score1;
+          stats[p1.team_id].games_lost += score2;
+          stats[p2.team_id].games_won += score2;
+          stats[p2.team_id].games_lost += score1;
+
+          // Determine winner/loser
+          if (score1 > score2) {
+            stats[p1.team_id].wins++;
+            stats[p1.team_id].points += 3;
+            stats[p2.team_id].losses++;
+          } else if (score2 > score1) {
+            stats[p2.team_id].wins++;
+            stats[p2.team_id].points += 3;
+            stats[p1.team_id].losses++;
+          } else {
+            // Draw
+            stats[p1.team_id].draws++;
+            stats[p1.team_id].points += 1;
+            stats[p2.team_id].draws++;
+            stats[p2.team_id].points += 1;
+          }
         }
       }
 
-      // Convert to array and sort by points, then game difference
-      const standingsArray = Object.values(teamStats)
-        .sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          const aDiff = a.games_won - a.games_lost;
-          const bDiff = b.games_won - b.games_lost;
-          return bDiff - aDiff;
-        })
-        .map((team, index) => ({
-          team_id: team.team_id,
-          team_name: team.team_name,
-          school_name: team.school_name,
-          school_abbreviation: team.school_abbreviation,
-          school_logo_url: team.school_logo_url,
-          matches_played: team.matches_played,
-          wins: team.wins,
-          losses: team.losses,
-          draws: team.draws,
-          goals_for: team.games_won,
-          goals_against: team.games_lost,
-          goal_difference: team.games_won - team.games_lost,
-          points: team.points,
-          position: index + 1
-        }));
+      // Format groups array
+      const standingGroups = Object.entries(groupStats).map(([groupName, teamsMap]) => {
+        const teams = Object.values(teamsMap)
+          .sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            const aDiff = a.games_won - a.games_lost;
+            const bDiff = b.games_won - b.games_lost;
+            return bDiff - aDiff;
+          })
+          .map((team, index) => ({
+            ...team,
+            goals_for: team.games_won,
+            goals_against: team.games_lost,
+            goal_difference: team.games_won - team.games_lost,
+            position: index + 1
+          }));
+
+        return {
+          name: groupName,
+          teams
+        };
+      });
+      
+      // If we have no groups (no matches), return one empty group
+      if (standingGroups.length === 0) {
+        standingGroups.push({
+          name: 'Group Stage',
+          teams: []
+        });
+      }
+      
+      // Sort groups by name (e.g. Group A, Group B)
+      standingGroups.sort((a, b) => a.name.localeCompare(b.name));
 
       const groupStandings: GroupStageStandings = {
         stage_id: stage.id,
         stage_name: stage.competition_stage,
         competition_stage: 'group_stage',
-        groups: [{
-          teams: standingsArray
-        }]
+        groups: standingGroups
       };
 
       return { success: true, data: groupStandings };
@@ -376,7 +414,7 @@ export class StandingsService extends BaseService {
             )
           )
         `)
-        .eq('esports_season_stage_id', stageId)
+        .eq('stage_id', stageId)
         .order('round')
         .order('match_order');
 
@@ -423,7 +461,8 @@ export class StandingsService extends BaseService {
             } : null,
             match_status: m.status || 'upcoming',
             scheduled_at: m.scheduled_at || new Date().toISOString(),
-            venue: m.venue || 'TBD'
+            venue: m.venue || 'TBD',
+            group_name: m.group_name
           };
         })
       };
@@ -465,30 +504,21 @@ export class StandingsService extends BaseService {
         };
       }
 
-      // Get the stage type
+      // Get the stage type from the passed navigation or re-fetch if needed
+      // Actually, navigation.stages should include stage_type now.
       const currentStage = navigation.stages.find(s => s.id === stageId);
-      const stageType = currentStage?.competition_stage || 'group_stage';
+      const stageType = currentStage?.stage_type || 'round_robin';
 
       let standings: StandingsData;
 
-      if (stageType === 'playoffs' || stageType === 'elimination') {
+      if (stageType === 'single_elimination' || stageType === 'double_elimination') {
         const result = await this.getBracketStandings(stageId);
         if (!result.success || !result.data) {
           return { success: false, error: result.error || 'Failed to get bracket standings' };
         }
         standings = result.data;
-      } else if (stageType === 'playins') {
-        // For playins, use bracket format but with different competition_stage
-        const result = await this.getBracketStandings(stageId);
-        if (!result.success || !result.data) {
-          return { success: false, error: result.error || 'Failed to get playins standings' };
-        }
-        standings = {
-          ...result.data,
-          competition_stage: 'playins',
-          matches: result.data.bracket
-        } as unknown as PlayinsStandings;
       } else {
+        // Default to round_robin
         const result = await this.getGroupStageStandings(stageId);
         if (!result.success || !result.data) {
           return { success: false, error: result.error || 'Failed to get group standings' };

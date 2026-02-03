@@ -240,7 +240,7 @@ export function VolunteerModal({
                 <SelectContent>
                   {seasons.map((season) => (
                     <SelectItem key={season.id} value={season.id.toString()}>
-                      Season {season.id}
+                      {season.name || `Season ${season.id}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

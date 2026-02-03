@@ -45,7 +45,7 @@ export const getSchoolsTeamsTableColumns = (): TableColumn<SchoolsTeamWithSportD
     sortable: false,
     width: '15%',
     render: (team: SchoolsTeamWithSportDetails) => (
-      <div className="text-sm">Season {team.season_id}</div>
+      <div className="text-sm">{team.seasons?.name || `Season ${team.season_id}`}</div>
     )
   },
   {

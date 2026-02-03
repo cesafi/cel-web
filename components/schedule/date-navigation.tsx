@@ -349,7 +349,7 @@ export default function DateNavigation({
                     <DropdownMenuRadioGroup value={selectedStage} onValueChange={onStageChange}>
                       <DropdownMenuRadioItem value="all" className="py-2">
                         {selectedSeason !== 'all' 
-                          ? `All Stages (Season ${selectedSeason})` 
+                          ? `All Stages (${availableSeasons.find(s => s.id.toString() === selectedSeason)?.name || `Season ${selectedSeason}`})` 
                           : 'All Stages'}
                       </DropdownMenuRadioItem>
                       {uniqueFilteredStages.map((stage) => (
@@ -372,7 +372,7 @@ export default function DateNavigation({
               { value: 'all', label: 'All' },
               ...availableSeasons.map(season => ({
                 value: season.id.toString(),
-                label: `Season ${season.id}`
+                label: season.name || `Season ${season.id}`
               }))
             ]}
             value={selectedSeason || 'all'}

@@ -44,7 +44,7 @@ export function SeasonSwitcher() {
             return (
               <SelectItem key={season.id} value={season.id.toString()}>
                 <div className="flex items-center space-x-2 font-medium">
-                  <span>Season {season.id}</span>
+                  <span>{season.name || `Season ${season.id}`}</span>
                 </div>
               </SelectItem>
             );

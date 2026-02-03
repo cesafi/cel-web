@@ -26,6 +26,7 @@ interface LeagueStageModalProps {
   stage?: EsportsSeasonStageWithDetails;
   onSubmit: (data: EsportsSeasonStageInsert | EsportsSeasonStageUpdate) => void;
   isSubmitting: boolean;
+  defaultSeasonId?: number | null;
 }
 
 export function LeagueStageModal({
@@ -34,12 +35,14 @@ export function LeagueStageModal({
   mode,
   stage,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  defaultSeasonId
 }: LeagueStageModalProps) {
   const [formData, setFormData] = useState<EsportsSeasonStageInsert | EsportsSeasonStageUpdate>({
     competition_stage: '',
     esport_category_id: null,
-    season_id: null
+    season_id: null,
+    stage_type: 'round_robin'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedCreating = useRef(false);
@@ -60,13 +63,15 @@ export function LeagueStageModal({
           id: stage.id,
           competition_stage: stage.competition_stage,
           esport_category_id: stage.esport_category_id,
-          season_id: stage.season_id
+          season_id: stage.season_id,
+          stage_type: stage.stage_type as "round_robin" | "single_elimination" | "double_elimination"
         });
       } else {
         setFormData({
           competition_stage: '',
           esport_category_id: null,
-          season_id: null
+          season_id: defaultSeasonId || null,
+          stage_type: 'round_robin'
         });
       }
       setErrors({});
@@ -183,12 +188,35 @@ export function LeagueStageModal({
               {errors.competition_stage && <p className="text-sm text-red-500">{errors.competition_stage}</p>}
             </div>
 
+            {/* Stage Type Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="stage_type">Stage Type *</Label>
+              <Select
+                value={formData.stage_type || 'round_robin'}
+                onValueChange={(value) => handleInputChange('stage_type', value)}
+              >
+                <SelectTrigger className={errors.stage_type ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Select stage type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="round_robin">Round Robin (Standings Table)</SelectItem>
+                  <SelectItem value="single_elimination">Single Elimination (Bracket)</SelectItem>
+                  <SelectItem value="double_elimination">Double Elimination (Bracket)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Determines how the standings are calculated and displayed.
+              </p>
+              {errors.stage_type && <p className="text-sm text-red-500">{errors.stage_type}</p>}
+            </div>
+
             {/* Season Selector */}
             <div className="space-y-2">
               <Label htmlFor="season_id">Season</Label>
               <Select
                 value={formData.season_id?.toString() || ''}
                 onValueChange={(value) => handleInputChange('season_id', value ? parseInt(value) : null)}
+                disabled={!!defaultSeasonId}
               >
                 <SelectTrigger className={errors.season_id ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Select season" />
@@ -196,7 +224,7 @@ export function LeagueStageModal({
                 <SelectContent>
                   {seasons.map((season) => (
                     <SelectItem key={season.id} value={season.id.toString()}>
-                      Season {season.id}
+                      {season.name || `Season ${season.id}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

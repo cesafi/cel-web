@@ -19,10 +19,11 @@ export const getSeasonsTableColumns = (): TableColumn<Season>[] => [
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-foreground truncate">
-            Season {season.id}
+            {season.name || `Season ${season.id}`}
           </div>
           <div className="text-xs text-muted-foreground">
-            {formatTableDate(season.start_at)} - {formatTableDate(season.end_at)}
+             {/* {season.name && <span className="mr-2">Season {season.id} •</span>} */}
+             {formatTableDate(season.start_at)} - {formatTableDate(season.end_at)}
           </div>
         </div>
       </div>

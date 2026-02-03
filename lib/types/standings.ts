@@ -28,6 +28,7 @@ export interface StandingsNavigation {
     id: number;
     name: string;
     competition_stage: string;
+    stage_type?: 'round_robin' | 'single_elimination' | 'double_elimination';
     order: number;
   }>;
 }
@@ -79,6 +80,7 @@ export interface BracketMatch {
   match_status: 'upcoming' | 'live' | 'finished' | 'canceled';
   scheduled_at: string;
   venue: string;
+  group_name?: string | null;
 }
 
 export interface BracketStandings {

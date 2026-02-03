@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const createSeasonSchema = z
   .object({
-    id: z.number().int().positive('Season number must be a positive integer'),
+    id: z.number().int().positive('Season number must be a positive integer').optional(),
+    name: z.string().optional().nullable(),
     start_at: z.string().min(1, 'Start date is required'),
     end_at: z.string().min(1, 'End date is required')
   })
@@ -22,6 +23,7 @@ export const createSeasonSchema = z
 export const updateSeasonSchema = z
   .object({
     id: z.number({ message: 'ID is required for updating a season.' }),
+    name: z.string().optional().nullable(),
     start_at: z.string().min(1, 'Start date is required').optional(),
     end_at: z.string().min(1, 'End date is required').optional()
   })

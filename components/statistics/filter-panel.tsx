@@ -63,7 +63,7 @@ export function FilterPanel({
                         {seasons.map((season) => (
                             <SelectItem key={season.id} value={season.id.toString()}>
                                 {season.label}
-                            </SelectItem>
+                      </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
