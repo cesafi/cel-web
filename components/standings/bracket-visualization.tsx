@@ -68,14 +68,14 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
         className={cn(
           'relative flex items-center gap-2 overflow-hidden border p-3 transition-colors duration-200',
           isWinner
-            ? 'bg-primary/10 border-primary/30 text-primary'
+            ? 'bg-cel-yale/10 border-cel-yale/30 text-cel-yale'
             : isLoser
-              ? 'bg-muted/10 border-border/50 text-muted-foreground opacity-70 grayscale'
+              ? 'bg-muted/5 border-border/30 text-muted-foreground opacity-80 grayscale'
               : 'bg-background border-border hover:bg-muted/30'
         )}
       >
-        {isWinner && <div className="bg-primary absolute top-0 bottom-0 left-0 w-1" />}
-        <div className={cn("relative h-6 w-6 flex-shrink-0 overflow-hidden rounded", isLoser && "opacity-50")}>
+        {isWinner && <div className="bg-cel-yale absolute top-0 bottom-0 left-0 w-1" />}
+        <div className={cn("relative h-6 w-6 flex-shrink-0 overflow-hidden rounded", isLoser && "opacity-80")}>
           <Image
             src={getSchoolLogo(team.school_abbreviation)}
             alt={team.school_name}
@@ -84,13 +84,13 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
           />
         </div>
         <div className="min-w-0 flex-1">
-          <div className={cn('truncate text-xs font-medium', isWinner && 'font-semibold', isLoser && 'line-through decoration-border/50')}>
+          <div className={cn('truncate text-xs font-medium', isWinner && 'font-semibold', isLoser && 'decoration-border/80')}>
             {team.team_name}
           </div>
           <div className="text-muted-foreground truncate text-xs">{team.school_name}</div>
         </div>
         {team.score !== null && team.score !== undefined && (
-          <div className={cn('ml-auto text-lg font-bold', isWinner && 'text-primary', isLoser && 'text-muted-foreground/50')}>
+          <div className={cn('ml-auto text-lg font-bold', isWinner && 'text-cel-yale', isLoser && 'text-muted-foreground/80')}>
             {team.score}
           </div>
         )}
@@ -99,19 +99,27 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
   };
 
   const MatchCard = ({ match }: { match: BracketMatch }) => {
-    const isFinished = match.match_status === 'finished';
-    const winner = match.winner;
+    const isFinished = match.match_status === 'finished' || match.match_status === 'completed';
+    
+    // Determine winner ID: Prioritize Score Comparison as requested
+    // Fallback to explicit winner object if scores are missing or equal
+    let winnerId = match.winner?.team_id;
+
+    if (isFinished && match.team1?.score != null && match.team2?.score != null) {
+        if (match.team1.score > match.team2.score) winnerId = match.team1.team_id;
+        else if (match.team2.score > match.team1.score) winnerId = match.team2.team_id;
+    }
 
     return (
       <div>
         <TeamCard
           team={match.team1}
-          isWinner={isFinished && winner?.team_id === match.team1?.team_id}
+          isWinner={isFinished && winnerId === match.team1?.team_id}
           isFinished={isFinished}
         />
         <TeamCard
           team={match.team2}
-          isWinner={isFinished && winner?.team_id === match.team2?.team_id}
+          isWinner={isFinished && winnerId === match.team2?.team_id}
           isFinished={isFinished}
         />
       </div>
@@ -133,7 +141,7 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
     );
   }
 
-  const SingleBracketTree = ({ matches, title }: { matches: BracketMatch[], title?: string }) => {
+  const SingleBracketTree = ({ matches, title, hideRoundHeaders = false }: { matches: BracketMatch[], title?: string, hideRoundHeaders?: boolean }) => {
     // Group matches by rounds for better organization
     const matchesByRound = matches.reduce(
       (acc, match) => {
@@ -192,9 +200,9 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
     // Calculate positioning for tournament bracket alignment
     const calculateBracketPositions = () => {
       const baseSpacing = 2; // rem
-      const matchHeight = 6; // rem
+      const matchHeight = 6; // rem - Synced with CARD_HEIGHT
 
-      const roundPositions: Record<number, { positions: number[]; spacing: number }> = {};
+      const roundPositions: Record<number, { positions: number[]; flow: 'straight' | 'converge' }> = {};
 
       rounds.forEach((roundNumber, index) => {
         const roundMatches = matchesByRound[roundNumber];
@@ -209,39 +217,54 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
 
           roundPositions[roundNumber] = {
             positions,
-            spacing: baseSpacing
+            flow: 'converge' // Default for first round
           };
         } else {
-          // Subsequent rounds - positioned relative to previous round
-          // Simplification: Midpoint of every pair from previous round
-          // This assumes standard powers of 2 (8 -> 4 -> 2 -> 1)
-          // If structure is irregular, this naive layout needs more complex tree traversal
+          // Check flow from previous round
           const prevRound = rounds[index - 1];
+          const prevMatchesCount = matchesByRound[prevRound].length;
+          
+          // Heuristic: If counts are equal, it's straight flow (1->1). If prev is double, it's converge (2->1).
+          // Ideally we check match IDs but we lack explicit next_match_id data here.
+          // Note: Standard double elim LB has R1(4)->R2(4)->R3(2)... wait.
+          // Correct structure:
+          // LB R1 (Losers of UB R1): 4 matches.
+          // LB R2 (Winners of LB R1 vs Losers UB R2): 4 matches.  <-- Parallel Flow (1->1)
+          // LB R3 (Winners of LB R2): 2 matches.                 <-- Converging Flow (2->1)
+          
+          const isStraightFlow = prevMatchesCount === matchCount;
           const prevPositions = roundPositions[prevRound].positions;
           
           const positions: number[] = [];
           
           for (let i = 0; i < matchCount; i++) {
-            // Find inputs from previous round. 
-            // In a perfect tree, match i in this round connects to match 2i and 2i+1 in previous round
-            const input1Index = i * 2;
-            const input2Index = i * 2 + 1;
-            
-            if (input1Index < prevPositions.length && input2Index < prevPositions.length) {
-              const mid = (prevPositions[input1Index] + prevPositions[input2Index] + matchHeight) / 2;
-              positions.push(mid - (matchHeight/2));
-            } else if (input1Index < prevPositions.length) {
-                // Odd number carry over?
-                positions.push(prevPositions[input1Index]);
+            if (isStraightFlow) {
+                 // Align with the corresponding match in previous round
+                 // Assuming strict ordering 0->0, 1->1
+                 if (i < prevPositions.length) {
+                     positions.push(prevPositions[i]);
+                 } else {
+                     positions.push(i * (baseSpacing + matchHeight));
+                 }
             } else {
-                // Fallback
-                positions.push(i * (baseSpacing + matchHeight) * Math.pow(2, index));
+                 // Converge: Match i connects to 2i and 2i+1 in prev round
+                const input1Index = i * 2;
+                const input2Index = i * 2 + 1;
+                
+                if (input1Index < prevPositions.length && input2Index < prevPositions.length) {
+                  const mid = (prevPositions[input1Index] + prevPositions[input2Index] + matchHeight) / 2;
+                  positions.push(mid - (matchHeight/2));
+                } else if (input1Index < prevPositions.length) {
+                    positions.push(prevPositions[input1Index]);
+                } else {
+                    positions.push(i * (baseSpacing + matchHeight) * Math.pow(2, index));
+                }
             }
           }
           
           roundPositions[roundNumber] = {
             positions,
-            spacing: 0
+            flow: isStraightFlow ? 'straight' : 'converge'
           };
         }
       });
@@ -253,57 +276,124 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
 
     // Calculate lines
     // Assumes standard single-elimination logic where Round N Match i -> Round N+1 Match floor(i/2)
+    // Dedicated Connector Component for "Stepped" lines
+    const ConnectorLine = ({ 
+        startX, 
+        startY, 
+        endX, 
+        endY, 
+        type 
+    }: { 
+        startX: number; 
+        startY: number; 
+        endX: number; 
+        endY: number; 
+        type: 'straight' | 'converge' 
+    }) => {
+        // Lolesports Style: Right -> Up/Down -> Right
+        // Midpoint X for the vertical segment
+        const midX = (startX + endX) / 2;
+        
+        // Colors - use muted-foreground for better visibility on dark backgrounds
+        const lineColor = "bg-muted-foreground/50"; 
+
+        return (
+            <>
+                {/* Horizontal Out */}
+                <div 
+                    className={`absolute ${lineColor}`}
+                    style={{
+                        left: `${startX}rem`,
+                        top: `${startY}rem`,
+                        width: `${midX - startX}rem`,
+                        height: '1px'
+                    }}
+                />
+                
+                {/* Vertical Bridge */}
+                <div 
+                    className={`absolute ${lineColor}`}
+                    style={{
+                        left: `${midX}rem`,
+                        top: `${Math.min(startY, endY)}rem`,
+                        width: '1px',
+                        height: `${Math.abs(endY - startY)}rem`
+                    }}
+                />
+                
+                {/* Horizontal In */}
+                <div 
+                    className={`absolute ${lineColor}`}
+                    style={{
+                        left: `${midX}rem`,
+                        top: `${endY}rem`,
+                        width: `${endX - midX}rem`,
+                        height: '1px'
+                    }}
+                />
+            </>
+        );
+    };
+
+    // Constants matching layout
+    const CARD_WIDTH = 18; // rem (w-72)
+    const GAP_WIDTH = 2.6; // rem (gap-8)
+    const CARD_HEIGHT = 5; // rem
+    const HALF_CARD_HEIGHT = CARD_HEIGHT / 2;
+    const COLUMN_WIDTH = CARD_WIDTH + GAP_WIDTH;
+    const VERTICAL_OFFSET = 3.4; // Target middle of bottom row (2.5 + 1.25 = 3.75)
+
     const renderConnectors = () => {
          const connectors = [];
-         const cardWidth = 288; // w-72 = 18rem = 288px (approx, using 16px root) -> actually explicit in SVG matches
-         // Let's use Rem for SVG coordinates to match marginTop? Or easier to use pixels if we know the constants.
-         // margin-top is in rem. 1rem = 16px usually.
-         // w-72 is 18rem.
-         // gap-8 is 2rem.
-         
-         const w_card = 18; 
-         const w_gap = 2;
-         const h_card = 6; // TeamCard * 2 ~ 6rem approx? TeamCard is p-3 + h-6 + p-3...
-         // Actually CardHeight is set to 6 in calculateBracketPositions.
 
          for (let rIndex = 0; rIndex < rounds.length - 1; rIndex++) {
              const roundFrom = rounds[rIndex];
              const roundTo = rounds[rIndex + 1];
              
              const matchesFrom = matchesByRound[roundFrom] || [];
-             // const matchesTo = matchesByRound[roundTo] || [];
-             
              const positionsFrom = roundPositions[roundFrom];
              const positionsTo = roundPositions[roundTo];
              
              if (!positionsFrom || !positionsTo) continue;
+             
+             // Detect flow type for THIS round transition
+             const flowType = positionsTo.flow; 
 
              for (let i = 0; i < matchesFrom.length; i++) {
-                 // Determine target match index in next round
-                 // Default: i -> floor(i/2)
-                 const targetIndex = Math.floor(i / 2);
+                 // Determine Target
+                 let targetIndex = -1;
                  
-                 // If the next round has enough matches
-                 // (This check avoids drawing lines to nowhere if data is incomplete)
-                 if (targetIndex < (matchesByRound[roundTo]?.length || 0)) {
-                      const startY = positionsFrom.positions[i] + (h_card / 2);
-                      const endY = positionsTo.positions[targetIndex] + (h_card / 2);
+                 if (flowType === 'straight') {
+                     // 1-to-1 mapping
+                     if (i < (matchesByRound[roundTo]?.length || 0)) targetIndex = i;
+                 } else {
+                     // 2-to-1 mapping (Standard Converge)
+                     targetIndex = Math.floor(i / 2);
+                 }
+                 
+                 if (targetIndex !== -1 && targetIndex < (matchesByRound[roundTo]?.length || 0)) {
+                      // Coordinates in REM
+                      // Start X: Right edge of current card relative to column start.
+                      // Relative to the connector container (which starts at first column),
+                      // the first match is at X=0, so its right edge is CARD_WIDTH.
+                      const startX = (rIndex * COLUMN_WIDTH) + CARD_WIDTH; 
+                      const endX = ((rIndex + 1) * COLUMN_WIDTH);
                       
-                      const startX = (rIndex * (w_card + w_gap)) + w_card;
-                      const endX = ((rIndex + 1) * (w_card + w_gap));
-                      
-                      // Handle "carry over" lines (if odd number of teams)
-                      // If we just draw straight lines, bezier is distinct.
+                      const isBottomMatch = i % 2 !== 0;
+                      // Additional offset for bottom matches in a pair as requested
+                      const adjustment = isBottomMatch ? 2.2 : 0; 
+
+                      const startY = positionsFrom.positions[i] + HALF_CARD_HEIGHT + VERTICAL_OFFSET + adjustment;
+                      const endY = positionsTo.positions[targetIndex] + HALF_CARD_HEIGHT + VERTICAL_OFFSET;
                       
                       connectors.push(
-                          <path
-                            key={`${roundFrom}-${i}-${roundTo}-${targetIndex}`}
-                            d={`M ${startX} ${startY} C ${(startX + endX)/2} ${startY}, ${(startX + endX)/2} ${endY}, ${endX} ${endY}`}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-border"
-                            style={{ vectorEffect: 'non-scaling-stroke' }} // Kept simple
+                          <ConnectorLine 
+                            key={`conn-${roundFrom}-${i}`}
+                            startX={startX} 
+                            startY={startY} 
+                            endX={endX} 
+                            endY={endY}
+                            type={flowType}
                           />
                       );
                  }
@@ -315,26 +405,21 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
     return (
       <div className="mb-8 relative">
         {title && <h3 className="text-lg font-semibold mb-4 px-4">{title}</h3>}
-        <div className="overflow-x-auto relative">
-           {/* SVG Overlay */}
-           <svg className="absolute top-[2.2rem] left-4 h-full pointer-events-none" style={{ width: '100%', minHeight: '500px', zIndex: 0 }}>
-               {/* Note: top offset accounts for header height roughly */}
-               {/* 1rem = 16px. We used Rem coordinates. We need to scale SVG or use styling. 
-                   Actually simpler to not include lines for now if specific pixel-perfect SVG is risky without testing.
-                   Let's iterate: put connectors in a simplified way.
-               */}
-           </svg>
-           {/* Wait, the user WANTS lines. I must implement them. 
-               The Rem-based positioning makes absolute SVG hard unless SVG viewBox matches.
-               Alternative: Render individual SVGs between columns?
-               Yes.
-           */}
-          <div className="flex min-w-max gap-8 pb-4 px-4 relative z-10">
-            {rounds.map((roundNumber, index) => {
-              const roundMatches = matchesByRound[roundNumber];
-              
-              // Smart Round Naming (omitted for brevity in thinking, but existing in code)
-              let baseRoundName = `Round ${roundNumber}`;
+        <div className="overflow-x-auto lg:overflow-visible relative min-h-0">
+           
+           <div className="flex min-w-max gap-10 pb-4 px-4 relative z-10">
+             {/* Render Connectors Layer */}
+             <div className="absolute top-0 left-4 w-full h-full pointer-events-none z-0">
+                  <div className="relative w-full h-full"> 
+                      {renderConnectors()}
+                  </div>
+             </div>
+
+             {rounds.map((roundNumber, index) => {
+               const roundMatches = matchesByRound[roundNumber];
+               
+               // Smart Round Naming (omitted for brevity in thinking, but existing in code)
+               let baseRoundName = `Round ${roundNumber}`;
               const totalRounds = rounds.length;
               if (roundNumber === totalRounds) baseRoundName = 'Finals';
               else if (roundNumber === totalRounds - 1) baseRoundName = 'Semifinals';
@@ -353,56 +438,29 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
 
               return (
                 <div key={roundNumber} className="flex flex-col items-center group relative">
-                  <div className="mb-4 text-center">
-                    <h3 className="text-foreground text-sm font-semibold">{roundName}</h3>
-                  </div>
+                  {!hideRoundHeaders && (
+                    <div className="mb-4 text-center">
+                      <h3 className="text-foreground text-sm font-semibold">{roundName}</h3>
+                    </div>
+                  )}
 
                   <div className="flex flex-col relative">
                     {roundMatches.map((match, matchIndex) => {
                       const position = roundPositions[roundNumber]?.positions[matchIndex] ?? 0;
                       
-                      // Draw line to right?
-                      // Instead of one big SVG, we can use pseudo-elements or small SVGs on each card?
-                      // "Elbow" connectors are classic CSS.
-                      // ::after { content: ''; position: absolute; right: -1rem; width: 1rem; ... }
-                      
-                      return (
-                         <div
-                          key={match.match_id}
-                          className="relative w-72"
-                          style={{
-                            marginTop: matchIndex === 0 ? `${position}rem` : `${position - (roundPositions[roundNumber]?.positions[matchIndex-1] ?? 0) - 6}rem`
-                          }}
-                        >
-                          <MatchCard match={match} />
-                          
-                           {/* Connector Lines Logic using CSS borders */}
-                           {index < rounds.length - 1 && (
-                               <div className="absolute top-1/2 -right-4 w-4 h-[1px] bg-border" />
-                           )}
-                           {index > 0 && (
-                               <div className="absolute top-1/2 -left-4 w-4 h-[1px] bg-border" />
-                           )}
-                           
-                           {/* Vertical Connectors? 
-                               If we are the top of a pair (even index), we need a line DOWN to midpoint.
-                               If we are bottom of a pair (odd index), we need a line UP to midpoint.
-                           */}
-                           {index < rounds.length - 1 && matchIndex % 2 === 0 && roundMatches.length > 1 && (
-                               // Top of pair: Line extending right then down
-                               // Height needs to reach halfway to next match matchIndex+1
-                               // Distance = (nextPos - currentPos) / 2
-                               <div 
-                                 className="absolute right-[-1rem] border-r border-border"
-                                 style={{ 
-                                     top: '50%', 
-                                     height: `${(roundPositions[roundNumber].positions[matchIndex+1] - position)/2 * 16 + 2}px`, // *16 for rem->px conversion roughly, +gap
-                                     // Actually this is brittle.
-                                 }} 
-                               />
-                           )}
-                        </div>
-                      );
+
+ 
+                       return (
+                          <div
+                           key={match.match_id}
+                           className="relative w-72"
+                           style={{
+                             marginTop: matchIndex === 0 ? `${position}rem` : `${position - (roundPositions[roundNumber]?.positions[matchIndex-1] ?? 0) - CARD_HEIGHT}rem`
+                           }}
+                         >
+                           <MatchCard match={match} />
+                         </div>
+                       );
                     })}
                   </div>
                 </div>
@@ -428,8 +486,8 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <Card className="border-0 shadow-none bg-transparent">
+        <CardHeader className="px-0">
           <CardTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5" />
             {formatCompetitionStage(standings.competition_stage)} - {standings.stage_name}
@@ -440,25 +498,25 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
           </CardTitle>
         </CardHeader>
         
-        <CardContent className="p-0 pt-6">
+        <CardContent className="p-0 pt-6 bg-background">
            {hasGroups && groups['Upper Bracket'] && groups['Lower Bracket'] && groups['Grand Finals'] ? (
               // Double Elimination "Converging" Layout
               // Left Col: Upper + Lower
               // Right Col: Grand Finals (Centered)
               <div className="flex flex-col lg:flex-row">
                   {/* Brackets Column */}
-                  <div className="flex-1 flex flex-col gap-8 border-b lg:border-b-0 lg:border-r border-border pb-8 lg:pb-0 lg:pr-8">
+                  <div className="flex-1 flex flex-col gap-8 border-b lg:border-b-0 pb-8 lg:pb-0">
                       <div>
                           <SingleBracketTree matches={groups['Upper Bracket']} title="Upper Bracket" />
                       </div>
-                      <div className="border-t pt-8">
+                      <div className="pt-8">
                           <SingleBracketTree matches={groups['Lower Bracket']} title="Lower Bracket" />
                       </div>
                   </div>
 
                   {/* Finals Column - Vertically Centered */}
-                  <div className="flex-shrink-0 flex flex-col justify-center items-center p-8 bg-muted/5 min-w-[300px]">
-                      <SingleBracketTree matches={groups['Grand Finals']} title="Grand Finals" />
+                  <div className="flex-shrink-0 flex flex-col justify-center items-center p-8 min-w-[300px]">
+                      <SingleBracketTree matches={groups['Grand Finals']} title="Grand Finals" hideRoundHeaders={true} />
                   </div>
               </div>
            ) : hasGroups ? (

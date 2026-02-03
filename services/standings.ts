@@ -412,6 +412,14 @@ export class StandingsService extends BaseService {
                 logo_url
               )
             )
+          ),
+          games (
+            id,
+            game_number,
+            game_scores (
+              match_participant_id,
+              score
+            )
           )
         `)
         .eq('stage_id', stageId)
@@ -428,20 +436,50 @@ export class StandingsService extends BaseService {
           const participants = m.match_participants || [];
           const team1 = participants[0];
           const team2 = participants[1];
-          const winner = participants.find((p: any) => p.is_winner);
+          // Calculate scores based on games won
+          let team1Score = 0;
+          let team2Score = 0;
+
+          if (m.games && m.games.length > 0) {
+              m.games.forEach((g: any) => {
+                  if (g.game_scores && g.game_scores.length >= 2) {
+                      const s1 = g.game_scores.find((gs: any) => gs.match_participant_id === team1?.id)?.score || 0;
+                      const s2 = g.game_scores.find((gs: any) => gs.match_participant_id === team2?.id)?.score || 0;
+                      if (s1 > s2) team1Score++;
+                      if (s2 > s1) team2Score++;
+                  }
+              });
+          } else {
+             // Fallback to match_score if no games (or manual override)
+             team1Score = team1?.match_score || 0;
+             team2Score = team2?.match_score || 0;
+          }
+          
+          // Determine winner dynamically if not explicitly set
+          // (Though explicit is_winner overrides if we had it, but we calculate it now)
+          // Determine winner based on scores if not explicit
+          // Since we don't have is_winner, we rely on calculated scores if match is finished
+          let winnerTeam = null;
+          if (m.status === 'finished') {
+              if (team1Score > team2Score) winnerTeam = team1;
+              else if (team2Score > team1Score) winnerTeam = team2;
+          }
+          // Also try to find explicit winner if we had that column, but we don't.
 
           return {
             match_id: m.id,
             match_name: m.title || `Round ${m.round} Match`,
             round: m.round || 1,
             position: m.match_order || 1,
+            group_name: m.group_name,
+            match_status: m.status,
             team1: team1 ? {
               team_id: team1.schools_teams?.id || '',
               team_name: team1.schools_teams?.name || 'TBD',
               school_name: team1.schools_teams?.schools?.name || 'TBD',
               school_abbreviation: team1.schools_teams?.schools?.abbreviation || 'TBD',
               school_logo_url: team1.schools_teams?.schools?.logo_url || null,
-              score: team1.score
+              score: team1Score
             } : null,
             team2: team2 ? {
               team_id: team2.schools_teams?.id || '',
@@ -449,20 +487,18 @@ export class StandingsService extends BaseService {
               school_name: team2.schools_teams?.schools?.name || 'TBD',
               school_abbreviation: team2.schools_teams?.schools?.abbreviation || 'TBD',
               school_logo_url: team2.schools_teams?.schools?.logo_url || null,
-              score: team2.score
+              score: team2Score
             } : null,
-            winner: winner ? {
-              team_id: winner.schools_teams?.id || '',
-              team_name: winner.schools_teams?.name || 'TBD',
-              school_name: winner.schools_teams?.schools?.name || 'TBD',
-              school_abbreviation: winner.schools_teams?.schools?.abbreviation || 'TBD',
-              school_logo_url: winner.schools_teams?.schools?.logo_url || null,
-              score: winner.score
+            winner: winnerTeam ? {
+              team_id: winnerTeam.schools_teams?.id || '',
+              team_name: winnerTeam.schools_teams?.name || 'TBD',
+              school_name: winnerTeam.schools_teams?.schools?.name || 'TBD',
+              school_abbreviation: winnerTeam.schools_teams?.schools?.abbreviation || 'TBD',
+              school_logo_url: winnerTeam.schools_teams?.schools?.logo_url || null,
+              score: winnerTeam === team1 ? team1Score : team2Score
             } : null,
-            match_status: m.status || 'upcoming',
             scheduled_at: m.scheduled_at || new Date().toISOString(),
-            venue: m.venue || 'TBD',
-            group_name: m.group_name
+            venue: m.venue || 'TBD'
           };
         })
       };

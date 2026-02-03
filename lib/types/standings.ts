@@ -77,7 +77,7 @@ export interface BracketMatch {
   team1: BracketTeam | null;
   team2: BracketTeam | null;
   winner: BracketTeam | null;
-  match_status: 'upcoming' | 'live' | 'finished' | 'canceled';
+  match_status: 'upcoming' | 'live' | 'finished' | 'canceled' | 'completed';
   scheduled_at: string;
   venue: string;
   group_name?: string | null;
@@ -96,7 +96,7 @@ export interface PlayinsMatch {
   team1: BracketTeam | null;
   team2: BracketTeam | null;
   winner: BracketTeam | null;
-  match_status: 'upcoming' | 'live' | 'finished' | 'canceled';
+  match_status: 'upcoming' | 'live' | 'finished' | 'canceled' | 'completed';
   scheduled_at: string;
   venue: string;
 }
