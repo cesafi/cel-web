@@ -1,50 +1,43 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Trophy, ChevronUp, ChevronDown, Crosshair, Zap } from 'lucide-react';
-import { TeamStats } from '@/lib/types/stats-enhanced';
+import { Swords, ChevronUp, ChevronDown, Crosshair, Zap } from 'lucide-react';
+import { HeroStats, AgentStats } from '@/lib/types/stats-enhanced';
+import Image from 'next/image';
 import { moderniz } from '@/lib/fonts';
 
-interface TeamRankingsProps {
-    game: 'mlbb' | 'valorant';
-    data: TeamStats[];
-    sortColumn: string;
-    sortOrder: 'asc' | 'desc';
-    onSort: (column: string) => void;
-    isLoading?: boolean;
-    className?: string; // Kept for compatibility but not strictly needed based on PlayerLeaderboard
+interface CharacterStatsTableProps {
+  game: 'mlbb' | 'valorant';
+  data: (HeroStats | AgentStats)[];
+  sortColumn: string;
+  sortOrder: 'asc' | 'desc';
+  onSort: (column: string) => void;
 }
 
-// Columns definition matching PlayerLeaderboard style
 const mlbbColumns = [
-    { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'w-[50px]' },
-    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate', sortable: true, width: 'w-[60px]' },
-    { key: 'total_wins', label: 'W', tooltip: 'Wins', sortable: true, width: 'w-[50px]' },
-    { key: 'total_losses', label: 'L', tooltip: 'Losses', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', sortable: true, width: 'w-[60px]' },
-    { key: 'avg_kills_per_game', label: 'KPG', tooltip: 'Kills Per Game', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_deaths_per_game', label: 'DPG', tooltip: 'Deaths Per Game', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_gold_per_game', label: 'GPG', tooltip: 'Avg Gold Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'total_turret_damage', label: 'TUR', tooltip: 'Turret Damage', sortable: true, width: 'w-[80px]' },
-    { key: 'total_lord_slain', label: 'LRD', tooltip: 'Lords Slain', sortable: true, width: 'w-[50px]' },
-    { key: 'total_turtle_slain', label: 'TRT', tooltip: 'Turtles Slain', sortable: true, width: 'w-[50px]' },
+    { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'w-[80px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'w-[80px]' },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'w-[80px]' },
+    { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'w-[70px]' },
+    { key: 'avg_deaths', label: 'DPG', tooltip: 'Average Deaths Per Game', sortable: true, width: 'w-[70px]' },
+    { key: 'avg_assists', label: 'APG', tooltip: 'Average Assists Per Game', sortable: true, width: 'w-[70px]' },
+    { key: 'avg_gold', label: 'GPM', tooltip: 'Gold Per Minute', sortable: true, width: 'w-[90px]' },
+    { key: 'avg_damage_dealt', label: 'DMG', tooltip: 'Damage Per Game', sortable: true, width: 'w-[90px]' },
 ];
 
 const valorantColumns = [
-    { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'w-[50px]' },
-    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate', sortable: true, width: 'w-[60px]' },
-    { key: 'total_wins', label: 'W', tooltip: 'Wins', sortable: true, width: 'w-[50px]' },
-    { key: 'total_losses', label: 'L', tooltip: 'Losses', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', sortable: true, width: 'w-[60px]' },
-    { key: 'avg_kills_per_game', label: 'KPG', tooltip: 'Kills Per Game', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_deaths_per_game', label: 'DPG', tooltip: 'Deaths Per Game', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'w-[60px]' },
-    { key: 'total_first_bloods', label: 'FB', tooltip: 'First Bloods', sortable: true, width: 'w-[50px]' },
-    { key: 'total_plants', label: 'PL', tooltip: 'Plants', sortable: true, width: 'w-[50px]' },
-    { key: 'total_defuses', label: 'DF', tooltip: 'Defuses', sortable: true, width: 'w-[50px]' },
+    { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'w-[80px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'w-[80px]' },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'w-[80px]' },
+    { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'w-[70px]' },
+    { key: 'avg_deaths', label: 'DPG', tooltip: 'Average Deaths Per Game', sortable: true, width: 'w-[70px]' },
+    { key: 'avg_assists', label: 'APG', tooltip: 'Average Assists Per Game', sortable: true, width: 'w-[70px]' },
+    { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'w-[80px]' },
+    { key: 'avg_first_bloods', label: 'FB', tooltip: 'First Bloods per Game', sortable: true, width: 'w-[80px]' },
 ];
 
 const podiumColors = [
@@ -53,15 +46,13 @@ const podiumColors = [
     'bg-gradient-to-br from-amber-600 to-amber-800', // Bronze
 ];
 
-export function TeamRankings({ 
-    game, 
-    data, 
-    sortColumn,
-    sortOrder,
-    onSort,
-    isLoading = false, 
-    className 
-}: TeamRankingsProps) {
+export function CharacterStatsTable({
+  game,
+  data,
+  sortColumn,
+  sortOrder,
+  onSort
+}: CharacterStatsTableProps) {
     const columns = game === 'mlbb' ? mlbbColumns : valorantColumns;
     const top3 = data.slice(0, 3);
 
@@ -70,11 +61,13 @@ export function TeamRankings({
         const max: Record<string, number> = {};
         columns.forEach(col => {
             if (col.key === 'win_rate' || col.key === 'avg_kda') {
+                 // Derived are already pre-calculated in this data source usually?
+                 // Checking data source: generic-stats-table passed raw data. 
+                 // Here data is HeroStats/AgentStats which has direct properties.
+                 // We can just iterate.
                 max[col.key] = 0; 
                 data.forEach(d => {
-                    let val = 0;
-                    if (col.key === 'win_rate') val = d.win_rate; 
-                    else if (col.key === 'avg_kda') val = (d.total_kills + d.total_assists) / (d.total_deaths || 1);
+                    const val = Number((d as any)[col.key]) || 0;
                     if (val > max[col.key]) max[col.key] = val;
                 });
             } else {
@@ -90,8 +83,8 @@ export function TeamRankings({
 
         const ratio = value / max;
         
-        // Handling for "Lower is Better" stats (Deaths/Losses)
-        if (key.includes('death') || key.includes('losses')) {
+        // Handling for "Lower is Better" stats
+        if (key.includes('death')) {
              if (ratio > 0.8) return { backgroundColor: 'rgba(239, 68, 68, 0.15)' }; // Red tint
              return {};
         }
@@ -104,33 +97,29 @@ export function TeamRankings({
         return {};
     };
 
-    const formatValue = (row: TeamStats, key: string): string => {
-        let value = (row as any)[key];
+    const formatValue = (row: any, key: string): string => {
+        let value = row[key];
         
-        if (key === 'avg_kda') {
-             return ((row.total_kills + row.total_assists) / (row.total_deaths || 1)).toFixed(2);
-        }
-
         if (value === null || value === undefined) return '-';
         if (typeof value === 'number') {
             if (key.includes('win_rate')) {
-                return value.toFixed(0) + '%';
+                return value.toFixed(1) + '%';
             }
             if (key.includes('per_game') || key.includes('avg_') || key.includes('kda')) {
-                return value.toFixed(1);
+                return value.toFixed(1); // Characters usually show 1 decimal
             }
-            // Large numbers (Damage, Gold)
-            if (key.includes('damage') || key.includes('gold') && value > 1000) {
-                 return (value / 1000).toFixed(1) + 'k';
+            // Large numbers
+            if (value > 1000) {
+                 // return (value / 1000).toFixed(1) + 'k'; // Characters stats usually smaller per game avg
+                 return Math.round(value).toLocaleString();
             }
-            return Math.round(value).toLocaleString();
+             return Math.round(value).toLocaleString();
         }
         return String(value);
     };
 
-    const getRawValue = (row: TeamStats, key: string): number => {
-         if (key === 'avg_kda') return (row.total_kills + row.total_assists) / (row.total_deaths || 1);
-         return Number((row as any)[key]) || 0;
+    const getRawValue = (row: any, key: string): number => {
+         return Number(row[key]) || 0;
     };
 
     const SortIcon = ({ column }: { column: string }) => {
@@ -142,25 +131,25 @@ export function TeamRankings({
         );
     };
 
-    if (data.length === 0) {
+     if (data.length === 0) {
         return (
             <Card>
                 <CardContent className="py-12 text-center">
                     <div className="text-muted-foreground">
-                        No team statistics available yet.
+                        No character statistics available yet.
                     </div>
                 </CardContent>
             </Card>
         );
     }
 
-    return (
-        <div className={cn('space-y-8', className)}>
-            {/* Top 3 Podium Cards */}
+  return (
+    <div className="space-y-8">
+         {/* Top 3 Podium Cards */}
             <div className="hidden lg:grid grid-cols-3 gap-6 mb-12 px-4">
-                {top3.map((team, index) => (
+                {top3.map((char, index) => (
                     <Card
-                        key={`team-podium-${team.team_id}-${index}`}
+                        key={`char-podium-${index}`}
                         className={cn(
                             'relative overflow-hidden transition-all hover:scale-[1.02] duration-300 border-border/50 bg-card/40 backdrop-blur-md shadow-xl group',
                             index === 0 && 'lg:order-2 border-yellow-500/30 shadow-yellow-500/10 h-[380px] z-10', 
@@ -181,37 +170,40 @@ export function TeamRankings({
                         <CardContent className="pt-10 pb-6 flex flex-col items-center text-center relative z-10 h-full">
                             <div className="relative mb-6">
                                 <div className={cn("absolute -inset-4 rounded-full blur-xl opacity-30 animate-pulse", podiumColors[index])} />
-                                <Avatar className="w-24 h-24 border-4 border-background shadow-2xl relative z-10">
-                                    <AvatarImage src={team.school_logo_url || team.team_logo_url || ''} className="object-cover" />
-                                    <AvatarFallback className="text-2xl font-black bg-muted">
-                                        {team.school_abbreviation?.substring(0, 2) || team.team_name.substring(0, 2)}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <div className="w-24 h-24 rounded-lg overflow-hidden border-4 border-background shadow-2xl relative z-10 bg-muted">
+                                     {char.icon_url ? (
+                                        <Image src={char.icon_url} alt={char.hero_name || (char as any).agent_name} fill className="object-cover" />
+                                     ) : (
+                                         <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                                             <Swords className="w-8 h-8"/>
+                                         </div>
+                                     )}
+                                </div>
                             </div>
 
                             <div className="mt-2 space-y-1">
                                 <h3 className={cn(moderniz.className, "text-2xl font-bold tracking-wide uppercase truncate max-w-[200px]")}>
-                                    {team.school_abbreviation}
+                                    {char.hero_name || (char as any).agent_name}
                                 </h3>
                                 <p className="text-sm text-muted-foreground font-medium truncate max-w-[200px] mx-auto">
-                                    {team.team_name}
+                                    {(char as any).agent_role || (game === 'mlbb' ? 'Hero' : 'Agent')}
                                 </p>
                             </div>
                             
-                           <div className="grid grid-cols-2 gap-3 w-full mt-auto">
+                            <div className="grid grid-cols-2 gap-3 w-full mt-auto">
                                 <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
                                     <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                                         <Crosshair className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">KPG</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">PICKS</span>
                                     </div>
-                                    <p className="text-xl font-black">{team.avg_kills_per_game.toFixed(1)}</p>
+                                    <p className="text-xl font-black">{char.games_played}</p>
                                 </div>
                                 <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
                                     <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                                         <Zap className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">WR%</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">WIN%</span>
                                     </div>
-                                    <p className="text-xl font-black">{team.win_rate.toFixed(0)}%</p>
+                                    <p className="text-xl font-black">{char.win_rate.toFixed(1)}%</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -224,12 +216,14 @@ export function TeamRankings({
                 <div className="p-4 border-b border-border/30 flex items-center justify-between bg-muted/5">
                     <div className="flex items-center gap-3">
                          <div className={cn("p-2 rounded-lg bg-primary/10", game === 'mlbb' ? "text-blue-400" : "text-red-400")}>
-                             <Trophy className="h-5 w-5" />
+                             <Swords className="h-5 w-5" />
                          </div>
                          <div>
-                            <h3 className={cn(moderniz.className, "text-xl font-bold tracking-wide")}>Team Statistics</h3>
+                            <h3 className={cn(moderniz.className, "text-xl font-bold tracking-wide")}>
+                                {game === 'mlbb' ? 'Hero Statistics' : 'Agent Statistics'}
+                            </h3>
                             <p className="text-xs text-muted-foreground font-medium">
-                                Showing all {data.length} teams • Sorted by {columns.find(c => c.key === sortColumn)?.label || sortColumn}
+                                Showing all {data.length} {game === 'mlbb' ? 'heroes' : 'agents'} • Sorted by {columns.find(c => c.key === sortColumn)?.label || sortColumn}
                             </p>
                          </div>
                     </div>
@@ -240,7 +234,7 @@ export function TeamRankings({
                         <TableHeader>
                             <TableRow className="bg-muted/30 border-b border-border/50 hover:bg-muted/30">
                                 <TableHead className="w-[300px] pl-6 text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10">
-                                    Team Identity
+                                    {game === 'mlbb' ? 'Hero Identity' : 'Agent Identity'}
                                 </TableHead>
                                 {columns.map((col) => (
                                     <TableHead
@@ -282,7 +276,7 @@ export function TeamRankings({
                         <TableBody>
                             {data.map((row, idx) => (
                                 <TableRow 
-                                    key={`${row.team_id}-${idx}`}
+                                    key={`${row.character_id || idx}`}
                                     className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[60px]"
                                 >
                                     <TableCell className="pl-6 py-2">
@@ -294,25 +288,32 @@ export function TeamRankings({
                                                 {idx + 1}
                                             </div>
 
-                                            <Avatar className={cn(
-                                                "w-10 h-10 border border-border bg-muted",
-                                                idx < 3 && "ring-2 ring-amber-500/20"
-                                            )}>
-                                                <AvatarImage src={row.school_logo_url || row.team_logo_url || ''} className="object-cover" />
-                                                <AvatarFallback className="text-xs font-bold">
-                                                    {row.school_abbreviation?.substring(0, 2)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border/50 shadow-sm">
+                                                {row.icon_url ? (
+                                                    <Image 
+                                                        src={row.icon_url} 
+                                                        alt={row.hero_name || (row as any).agent_name} 
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Swords className="w-4 h-4 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             <div className="flex flex-col min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-bold text-sm text-foreground truncate max-w-[140px] group-hover:text-primary transition-colors">
-                                                        {row.school_abbreviation}
-                                                    </span>
-                                                    <span className="font-bold text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded-full">
-                                                        {row.team_name}
+                                                        {row.hero_name || (row as any).agent_name}
                                                     </span>
                                                 </div>
+                                                 {game === 'valorant' && (row as any).agent_role && (
+                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                                        {(row as any).agent_role}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </TableCell>
@@ -347,10 +348,10 @@ export function TeamRankings({
                     </Table>
                 </div>
             </div>
-
+            
             <div className="text-center text-xs text-muted-foreground pb-8">
-                Showing all teams • Stats aggregated across all selected stages
+                Showing all {game === 'mlbb' ? 'heroes' : 'agents'} • Stats aggregated across all selected stages
             </div>
-        </div>
-    );
+    </div>
+  );
 }

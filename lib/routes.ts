@@ -107,7 +107,7 @@ export const ROUTE_PATTERNS = {
     /^\/news$/,
     /^\/news\/[^\/]+$/, // /news/[slug]
     /^\/schedule$/,
-    /^\/standings$/,
+    /^\/standings(\/.*)?$/,
     /^\/statistics$/,
     /^\/schools$/,
     /^\/schools\/[^\/]+$/, // /schools/[slug]

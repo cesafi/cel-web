@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { ReadonlyURLSearchParams } from 'next/navigation';
 import { StandingsFilters, StandingsResponse } from '@/lib/types/standings';
 import {
@@ -40,7 +40,8 @@ export function useStandings(filters: StandingsFilters) {
       }
       return result.data;
     },
-    enabled: !!(filters.season_id && filters.sport_id && filters.esport_category_id)
+    enabled: !!(filters.season_id && filters.sport_id),
+    placeholderData: keepPreviousData
   });
 }
 

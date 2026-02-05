@@ -178,6 +178,9 @@ export type Database = {
           created_at: string
           esport_category_id: number | null
           id: number
+          points_draw: number | null
+          points_loss: number | null
+          points_win: number | null
           season_id: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           updated_at: string
@@ -187,6 +190,9 @@ export type Database = {
           created_at?: string
           esport_category_id?: number | null
           id?: number
+          points_draw?: number | null
+          points_loss?: number | null
+          points_win?: number | null
           season_id?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           updated_at?: string
@@ -196,6 +202,9 @@ export type Database = {
           created_at?: string
           esport_category_id?: number | null
           id?: number
+          points_draw?: number | null
+          points_loss?: number | null
+          points_win?: number | null
           season_id?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           updated_at?: string
@@ -552,6 +561,48 @@ export type Database = {
             referencedRelation: "esports_seasons_stages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_hero_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_player_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_team_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_agent_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_player_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_team_stats"
+            referencedColumns: ["stage_id"]
+          },
         ]
       }
       mlbb_items: {
@@ -850,9 +901,9 @@ export type Database = {
           damage_dealt: number | null
           damage_taken: number | null
           deaths: number | null
+          game_character_id: number | null
           game_id: number
           gold: number | null
-          hero_name: string | null
           id: string
           is_mvp: boolean | null
           kills: number | null
@@ -870,9 +921,9 @@ export type Database = {
           damage_dealt?: number | null
           damage_taken?: number | null
           deaths?: number | null
+          game_character_id?: number | null
           game_id: number
           gold?: number | null
-          hero_name?: string | null
           id?: string
           is_mvp?: boolean | null
           kills?: number | null
@@ -890,9 +941,9 @@ export type Database = {
           damage_dealt?: number | null
           damage_taken?: number | null
           deaths?: number | null
+          game_character_id?: number | null
           game_id?: number
           gold?: number | null
-          hero_name?: string | null
           id?: string
           is_mvp?: boolean | null
           kills?: number | null
@@ -905,6 +956,27 @@ export type Database = {
           turtle_slain?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stats_mlbb_game_player_game_character_id_fkey"
+            columns: ["game_character_id"]
+            isOneToOne: false
+            referencedRelation: "game_characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_mlbb_game_player_game_character_id_fkey"
+            columns: ["game_character_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_hero_stats"
+            referencedColumns: ["hero_id"]
+          },
+          {
+            foreignKeyName: "stats_mlbb_game_player_game_character_id_fkey"
+            columns: ["game_character_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_agent_stats"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "stats_mlbb_game_player_game_id_fkey"
             columns: ["game_id"]
@@ -931,13 +1003,13 @@ export type Database = {
       stats_valorant_game_player: {
         Row: {
           acs: number | null
-          agent_name: string | null
           assists: number | null
           created_at: string
           deaths: number | null
           defuses: number | null
           econ_rating: number | null
           first_bloods: number | null
+          game_character_id: number | null
           game_id: number
           id: string
           is_mvp: boolean | null
@@ -948,13 +1020,13 @@ export type Database = {
         }
         Insert: {
           acs?: number | null
-          agent_name?: string | null
           assists?: number | null
           created_at?: string
           deaths?: number | null
           defuses?: number | null
           econ_rating?: number | null
           first_bloods?: number | null
+          game_character_id?: number | null
           game_id: number
           id?: string
           is_mvp?: boolean | null
@@ -965,13 +1037,13 @@ export type Database = {
         }
         Update: {
           acs?: number | null
-          agent_name?: string | null
           assists?: number | null
           created_at?: string
           deaths?: number | null
           defuses?: number | null
           econ_rating?: number | null
           first_bloods?: number | null
+          game_character_id?: number | null
           game_id?: number
           id?: string
           is_mvp?: boolean | null
@@ -981,6 +1053,27 @@ export type Database = {
           team_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stats_valorant_game_player_game_character_id_fkey"
+            columns: ["game_character_id"]
+            isOneToOne: false
+            referencedRelation: "game_characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_valorant_game_player_game_character_id_fkey"
+            columns: ["game_character_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_hero_stats"
+            referencedColumns: ["hero_id"]
+          },
+          {
+            foreignKeyName: "stats_valorant_game_player_game_character_id_fkey"
+            columns: ["game_character_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_agent_stats"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "stats_valorant_game_player_game_id_fkey"
             columns: ["game_id"]
@@ -1126,7 +1219,308 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_mlbb_hero_stats: {
+        Row: {
+          avg_damage: number | null
+          avg_gold: number | null
+          category_id: number | null
+          hero_id: number | null
+          hero_name: string | null
+          icon_url: string | null
+          season_id: number | null
+          stage_id: number | null
+          total_assists: number | null
+          total_deaths: number | null
+          total_kills: number | null
+          total_picks: number | null
+          total_wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_esport_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "esports_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_mlbb_player_stats: {
+        Row: {
+          avg_assists: number | null
+          avg_deaths: number | null
+          avg_gpm: number | null
+          avg_kills: number | null
+          avg_rating: number | null
+          avg_teamfight_percent: number | null
+          games_played: number | null
+          mvp_count: number | null
+          player_id: string | null
+          player_ign: string | null
+          player_photo_url: string | null
+          season_id: number | null
+          stage_id: number | null
+          team_id: string | null
+          team_logo_url: string | null
+          team_name: string | null
+          total_assists: number | null
+          total_damage_dealt: number | null
+          total_damage_taken: number | null
+          total_deaths: number | null
+          total_gold: number | null
+          total_kills: number | null
+          total_lord_slain: number | null
+          total_turret_damage: number | null
+          total_turtle_slain: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_mlbb_game_player_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_mlbb_game_player_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_mlbb_team_stats: {
+        Row: {
+          avg_assists: number | null
+          avg_deaths: number | null
+          avg_kills: number | null
+          category_id: number | null
+          games_played: number | null
+          school_abbreviation: string | null
+          school_id: string | null
+          school_logo_url: string | null
+          school_name: string | null
+          season_id: number | null
+          stage_id: number | null
+          team_id: string | null
+          team_name: string | null
+          total_assists: number | null
+          total_damage_dealt: number | null
+          total_deaths: number | null
+          total_gold: number | null
+          total_kills: number | null
+          total_lord_slain: number | null
+          total_turret_damage: number | null
+          total_turtle_slain: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_esport_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "esports_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schools_teams_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_mlbb_game_player_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_valorant_agent_stats: {
+        Row: {
+          agent_id: number | null
+          agent_name: string | null
+          agent_role: string | null
+          avg_acs: number | null
+          category_id: number | null
+          icon_url: string | null
+          season_id: number | null
+          stage_id: number | null
+          total_assists: number | null
+          total_deaths: number | null
+          total_first_bloods: number | null
+          total_kills: number | null
+          total_picks: number | null
+          total_wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_esport_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "esports_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_valorant_player_stats: {
+        Row: {
+          avg_acs: number | null
+          avg_assists: number | null
+          avg_deaths: number | null
+          avg_econ_rating: number | null
+          avg_kills: number | null
+          games_played: number | null
+          mvp_count: number | null
+          player_id: string | null
+          player_ign: string | null
+          player_photo_url: string | null
+          season_id: number | null
+          stage_id: number | null
+          team_id: string | null
+          team_logo_url: string | null
+          team_name: string | null
+          total_assists: number | null
+          total_deaths: number | null
+          total_defuses: number | null
+          total_first_bloods: number | null
+          total_kills: number | null
+          total_plants: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_valorant_game_player_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_valorant_game_player_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_valorant_team_stats: {
+        Row: {
+          avg_acs: number | null
+          avg_assists: number | null
+          avg_deaths: number | null
+          avg_kills: number | null
+          category_id: number | null
+          games_played: number | null
+          school_abbreviation: string | null
+          school_id: string | null
+          school_logo_url: string | null
+          school_name: string | null
+          season_id: number | null
+          stage_id: number | null
+          team_id: string | null
+          team_name: string | null
+          total_assists: number | null
+          total_deaths: number | null
+          total_defuses: number | null
+          total_first_bloods: number | null
+          total_kills: number | null
+          total_plants: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_esport_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "esports_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schools_teams_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stats_valorant_game_player_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_game_winners: {
+        Row: {
+          game_id: number | null
+          winner_team_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_scores_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_participants_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }

@@ -1,8 +1,8 @@
 'use client';
 
 import { MlbbPlayerStats, ValorantPlayerStats } from '@/services/statistics';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { GenericStatsTable, StatsColumn } from './generic-stats-table';
+import { Trophy } from 'lucide-react';
 import Image from 'next/image';
 
 interface PlayerStatsTableProps {
@@ -13,35 +13,6 @@ interface PlayerStatsTableProps {
   onSort: (column: string) => void;
 }
 
-const mlbbColumns = [
-  { key: 'player_ign', label: 'Player', sortable: true },
-  { key: 'team_name', label: 'Team', sortable: true },
-  { key: 'hero_name', label: 'Hero', sortable: true },
-  { key: 'games_played', label: 'GMS', sortable: true },
-  { key: 'mvp_count', label: 'MVP', sortable: true },
-  { key: 'kills_per_game', label: 'KPG', sortable: true },
-  { key: 'deaths_per_game', label: 'DPG', sortable: true },
-  { key: 'assists_per_game', label: 'APG', sortable: true },
-  { key: 'avg_gpm', label: 'GPM', sortable: true },
-  { key: 'total_damage_dealt', label: 'HDMG', sortable: true },
-  { key: 'total_turret_damage', label: 'TDMG', sortable: true },
-];
-
-const valorantColumns = [
-  { key: 'player_ign', label: 'Player', sortable: true },
-  { key: 'team_name', label: 'Team', sortable: true },
-  { key: 'agent_name', label: 'Agent', sortable: true },
-  { key: 'games_played', label: 'GMS', sortable: true },
-  { key: 'mvp_count', label: 'MVP', sortable: true },
-  { key: 'avg_acs', label: 'ACS', sortable: true },
-  { key: 'kills_per_game', label: 'KPG', sortable: true },
-  { key: 'deaths_per_game', label: 'DPG', sortable: true },
-  { key: 'assists_per_game', label: 'APG', sortable: true },
-  { key: 'avg_adr', label: 'ADR', sortable: true },
-  { key: 'avg_hs_percent', label: 'HS%', sortable: true },
-  { key: 'total_first_bloods', label: 'FB', sortable: true },
-];
-
 export function PlayerStatsTable({
   game,
   data,
@@ -49,93 +20,125 @@ export function PlayerStatsTable({
   sortOrder,
   onSort
 }: PlayerStatsTableProps) {
-  const columns = game === 'mlbb' ? mlbbColumns : valorantColumns;
 
-  const formatValue = (value: any, key: string): string => {
-    if (value === null || value === undefined) return '-';
-    if (typeof value === 'number') {
-      if (key.includes('per_game') || key.includes('avg_') || key.includes('percent')) {
-        return value.toFixed(2);
-      }
-      return Math.round(value).toLocaleString();
-    }
-    return String(value);
+  const formatStats = (val: number, isPercent = false) => {
+    if (val === undefined || val === null) return '-';
+    // Small check for values that are logically integers (like MVP count) vs averages
+    return isPercent ? val.toFixed(1) + '%' : val % 1 === 0 ? val.toLocaleString() : val.toFixed(1);
+  };
+  const formatLarge = (val: number) => {
+    if (val > 1000) return (val / 1000).toFixed(1) + 'k';
+    return Math.round(val).toLocaleString();
   };
 
-  const SortIcon = ({ column }: { column: string }) => {
-    if (sortColumn !== column) return null;
-    return sortOrder === 'asc' 
-      ? <ChevronUp className="h-4 w-4 inline-block ml-1" />
-      : <ChevronDown className="h-4 w-4 inline-block ml-1" />;
-  };
-
-  if (data.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        No statistics available for {game === 'mlbb' ? 'Mobile Legends' : 'Valorant'} yet.
+  const identityColumn: StatsColumn<any> = {
+    key: 'player_ign',
+    label: 'Player Identity',
+    width: 'w-[280px]',
+    sortable: true,
+    render: (row) => (
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 relative rounded-full overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+          {row.player_photo_url ? (
+            <Image 
+                src={row.player_photo_url} 
+                alt={row.player_ign} 
+                fill
+                className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center font-bold text-muted-foreground text-xs">
+                {row.player_ign.substring(0, 2).toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col min-w-0">
+             <div className="font-bold text-sm tracking-tight text-foreground">{row.player_ign}</div>
+             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                 {row.team_logo_url && <img src={row.team_logo_url} className="w-3 h-3 rounded-full opacity-70" alt="" />}
+                 <span className="truncate max-w-[150px]">{row.team_name}</span>
+             </div>
+        </div>
       </div>
-    );
-  }
+    )
+  };
+
+  // Helper to get hero/agent icon
+  const characterColumn: StatsColumn<any> = {
+    key: game === 'mlbb' ? 'hero_name' : 'agent_name',
+    label: game === 'mlbb' ? 'Hero' : 'Agent',
+    width: 'w-[100px]',
+    align: 'center',
+    sortable: true,
+    // We assume backend might eventually return hero icon url in player stats or we deduce it
+    // For now just text or if URL exists
+    render: (row) => (
+         <div className="flex justify-center flex-col items-center">
+             <span className="text-xs font-medium">{game === 'mlbb' ? row.hero_name : row.agent_name || '-'}</span>
+         </div>
+    )
+  };
+
+  const mlbbColumns: StatsColumn<MlbbPlayerStats>[] = [
+    identityColumn,
+    // characterColumn, // Optional, maybe clutter
+    { key: 'games_played', label: 'G', tooltip: 'Games Played', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v, r) => {
+        // Calculate dynamic win rate if not present or just trust backend
+        const wr = r.games_played > 0 ? (r.wins / r.games_played) * 100 : 0;
+        return <span className={wr >= 50 ? "text-emerald-500 font-bold" : "text-red-400"}>{wr.toFixed(0)}%</span>
+    } },
+    { key: 'avg_rating', label: 'RTG', tooltip: 'Average Rating', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => v.toFixed(1) },
+    { key: 'mvp_count', label: 'MVP', tooltip: 'Total MVPs', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'kills_per_game', label: 'K', tooltip: 'Kills per Game', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => <span className="font-bold">{v.toFixed(1)}</span> },
+    { key: 'deaths_per_game', label: 'D', tooltip: 'Deaths per Game', useHeatmap: true, invertHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => v.toFixed(1) },
+    { key: 'assists_per_game', label: 'A', tooltip: 'Assists per Game', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => v.toFixed(1) },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', useHeatmap: true, align: 'center', width: 'w-[70px]', render: (r) => {
+        const kda = (r.total_kills + r.total_assists) / (r.total_deaths || 1);
+        return kda.toFixed(2);
+    }},
+    { key: 'avg_gpm', label: 'GPM', tooltip: 'Gold per Minute', useHeatmap: true, align: 'center', width: 'w-[80px]', formatter: (v: number) => Math.round(v).toLocaleString() },
+    { key: 'total_damage_dealt', label: 'DMG', tooltip: 'Total Damage (k)', useHeatmap: true, align: 'center', width: 'w-[80px]', formatter: (v: number) => formatLarge(v) },
+    { key: 'total_turret_damage', label: 'TUR', tooltip: 'Turret Damage (k)', useHeatmap: true, align: 'center', width: 'w-[80px]', formatter: (v: number) => formatLarge(v) },
+    { key: 'total_lord_slain', label: 'LRD', tooltip: 'Lords Slain', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'total_turtle_slain', label: 'TRT', tooltip: 'Turtles Slain', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'avg_teamfight_percent', label: 'TF%', tooltip: 'Teamfight Participation', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => (v * 100).toFixed(1) + '%' },
+  ];
+
+  const valorantColumns: StatsColumn<ValorantPlayerStats>[] = [
+    identityColumn,
+    // characterColumn,
+    { key: 'games_played', label: 'G', tooltip: 'Games Played', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v, r) => {
+        const wr = r.games_played > 0 ? (r.wins / r.games_played) * 100 : 0;
+        return <span className={wr >= 50 ? "text-emerald-500 font-bold" : "text-red-400"}>{wr.toFixed(0)}%</span>
+    } },
+    { key: 'mvp_count', label: 'MVP', tooltip: 'Total MVPs', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'avg_acs', label: 'ACS', tooltip: 'Average Combat Score', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => Math.round(v).toLocaleString() },
+    { key: 'kills_per_game', label: 'K', tooltip: 'Kills per Game', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => <span className="font-bold">{v.toFixed(1)}</span> },
+    { key: 'deaths_per_game', label: 'D', tooltip: 'Deaths per Game', useHeatmap: true, invertHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => v.toFixed(1) },
+    { key: 'assists_per_game', label: 'A', tooltip: 'Assists per Game', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => v.toFixed(1) },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', useHeatmap: true, align: 'center', width: 'w-[70px]', render: (r) => {
+        const kda = (r.total_kills + r.total_assists) / (r.total_deaths || 1);
+        return kda.toFixed(2);
+    }},
+    { key: 'avg_adr', label: 'ADR', tooltip: 'Avg Damage per Round', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => Math.round(v) },
+    { key: 'avg_hs_percent', label: 'HS%', tooltip: 'Headshot %', useHeatmap: true, align: 'center', width: 'w-[60px]', formatter: (v: number) => v.toFixed(1) + '%' },
+    { key: 'total_first_bloods', label: 'FB', tooltip: 'First Bloods', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'total_plants', label: 'PL', tooltip: 'Plants', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+    { key: 'total_defuses', label: 'DF', tooltip: 'Defuses', useHeatmap: true, align: 'center', width: 'w-[50px]' },
+  ];
 
   return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((col) => (
-              <TableHead
-                key={col.key}
-                className={col.sortable ? 'cursor-pointer hover:bg-muted/50 select-none' : ''}
-                onClick={() => col.sortable && onSort(col.key)}
-              >
-                {col.label}
-                {col.sortable && <SortIcon column={col.key} />}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((row, idx) => (
-            <TableRow key={row.player_id || idx}>
-              {columns.map((col) => (
-                <TableCell key={col.key}>
-                  {col.key === 'player_ign' ? (
-                    <div className="flex items-center gap-2">
-                      {row.player_photo_url ? (
-                        <Image
-                          src={row.player_photo_url}
-                          alt={row.player_ign}
-                          width={32}
-                          height={32}
-                          className="rounded-full"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-muted" />
-                      )}
-                      <span className="font-medium">{row.player_ign}</span>
-                    </div>
-                  ) : col.key === 'team_name' ? (
-                    <div className="flex items-center gap-2">
-                      {row.team_logo_url && (
-                        <Image
-                          src={row.team_logo_url}
-                          alt={row.team_name || ''}
-                          width={24}
-                          height={24}
-                          className="rounded"
-                        />
-                      )}
-                      <span>{row.team_name || '-'}</span>
-                    </div>
-                  ) : (
-                    formatValue((row as any)[col.key], col.key)
-                  )}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <GenericStatsTable 
+        title="Player Statistics"
+        subtitle={`Showing all ${data.length} players • Sorted by ${sortColumn.replace('_', ' ')}`}
+        icon={<Trophy className="h-5 w-5" />}
+        data={data}
+        columns={game === 'mlbb' ? mlbbColumns as any : valorantColumns as any}
+        sortColumn={sortColumn}
+        sortOrder={sortOrder}
+        onSort={onSort}
+    />
   );
 }

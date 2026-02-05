@@ -156,9 +156,14 @@ export interface TeamStats {
     // MLBB specific
     avg_gold_per_game?: number;
     avg_damage_per_game?: number;
+    total_turret_damage?: number;
+    total_lord_slain?: number;
+    total_turtle_slain?: number;
     // Valorant specific
     avg_acs?: number;
     total_first_bloods?: number;
+    total_plants?: number;
+    total_defuses?: number;
 }
 
 // ============================================

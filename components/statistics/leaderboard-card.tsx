@@ -112,7 +112,7 @@ export function LeaderboardCard({
           ) : (
             data.map((player, index) => (
               <div
-                key={player.player_id}
+                key={`${player.player_id}-${index}`}
                 className={cn(
                   'flex items-center gap-3 p-2 rounded-lg transition-colors',
                   index === 0 && 'bg-yellow-500/5 border border-yellow-500/10',

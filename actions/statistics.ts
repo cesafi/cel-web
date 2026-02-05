@@ -21,12 +21,12 @@ export async function getLeaderboard(
 
 // Hero/Agent/Map/Team Statistics Actions
 
-export async function getHeroStats(seasonId?: number, stageId?: number) {
-  return StatisticsService.getHeroStats(seasonId, stageId);
+export async function getHeroStats(seasonId?: number, stageId?: number, categoryId?: number) {
+  return StatisticsService.getHeroStats(seasonId, stageId, categoryId);
 }
 
-export async function getAgentStats(seasonId?: number, stageId?: number) {
-  return StatisticsService.getAgentStats(seasonId, stageId);
+export async function getAgentStats(seasonId?: number, stageId?: number, categoryId?: number) {
+  return StatisticsService.getAgentStats(seasonId, stageId, categoryId);
 }
 
 export async function getMapStats(seasonId?: number, stageId?: number) {
@@ -36,15 +36,20 @@ export async function getMapStats(seasonId?: number, stageId?: number) {
 export async function getTeamStats(
   game: 'mlbb' | 'valorant',
   seasonId?: number,
-  stageId?: number
+  stageId?: number,
+  categoryId?: number
 ) {
-  return StatisticsService.getTeamStats(game, seasonId, stageId);
+  return StatisticsService.getTeamStats(game, seasonId, stageId, categoryId);
 }
 
 // Filter Data Actions
 
 export async function getAvailableSeasons() {
   return StatisticsService.getAvailableSeasons();
+}
+
+export async function getAvailableCategories() {
+  return StatisticsService.getAvailableCategories();
 }
 
 export async function getStagesBySeason(seasonId: number) {

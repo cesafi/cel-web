@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import { moderniz } from '@/lib/fonts';
 
-export default function StandingsLoading() {
+export default function StandingsLoading({ className }: { className?: string }) {
   return (
-    <div className="bg-background flex min-h-screen flex-col items-center justify-center">
+    <div className={`bg-background flex flex-col items-center justify-center ${className || 'min-h-screen'}`}>
       <div className="space-y-8 text-center">
         {/* CESAFI Logo with Animation */}
         <div className="relative">

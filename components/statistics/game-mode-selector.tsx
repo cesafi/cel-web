@@ -112,10 +112,10 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                             onClick={() => onGameChange(g.id)}
                             className={cn(
                                 'relative group overflow-hidden rounded-xl p-4 transition-all duration-300',
-                                'border-2 hover:scale-[1.02]',
+                                'border hover:scale-[1.02] shadow-sm',
                                 isActive
-                                    ? `${g.bgActive} border-current ${g.textActive} shadow-lg`
-                                    : 'bg-card border-border hover:border-muted-foreground/50'
+                                    ? `${g.bgActive} border-current ${g.textActive} shadow-lg backdrop-blur-md`
+                                    : 'bg-card/40 backdrop-blur-md border-border/50 hover:border-muted-foreground/50 hover:bg-card/60'
                             )}
                         >
                             {/* Background Glow Effect */}
@@ -133,7 +133,7 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                                 <div
                                     className={cn(
                                         'w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden',
-                                        'bg-muted/50 border border-border',
+                                        'bg-muted/50 backdrop-blur-sm border border-border/50',
                                         isActive && 'border-current'
                                     )}
                                 >
@@ -189,10 +189,10 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                             onClick={() => onGameChange(g.id)}
                             className={cn(
                                 'relative w-full overflow-hidden rounded-xl p-4 transition-all duration-200',
-                                'border-2 active:scale-[0.98]',
+                                'border active:scale-[0.98]',
                                 isActive
-                                    ? `${g.bgActive} border-current ${g.textActive} shadow-md`
-                                    : 'bg-card border-border'
+                                    ? `${g.bgActive} border-current ${g.textActive} shadow-md backdrop-blur-md`
+                                    : 'bg-card/40 backdrop-blur-md border-border/50'
                             )}
                         >
                             <div className="flex items-center gap-4">
@@ -200,7 +200,7 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                                 <div
                                     className={cn(
                                         'w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden',
-                                        'bg-muted/50 border border-border',
+                                        'bg-muted/50 backdrop-blur-sm border border-border/50',
                                         isActive && 'border-current'
                                     )}
                                 >

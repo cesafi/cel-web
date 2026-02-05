@@ -9,14 +9,15 @@ import {
   getMapStats,
   getTeamStats,
   getAvailableSeasons,
+  getAvailableCategories,
   getStagesBySeason,
 } from '@/actions/statistics';
+import { getAllSchoolsTeams } from '@/actions/schools-teams';
 import { GameModeSelector } from './game-mode-selector';
 import { StatisticsNavbar } from './statistics-navbar';
 import { FilterPanel } from './filter-panel';
 import { PlayerLeaderboard } from './player-leaderboard';
-import { HeroStatsGrid } from './hero-stats-grid';
-import { AgentStatsGrid } from './agent-stats-grid';
+import { CharacterStatsTable } from './character-stats-table';
 import { MapStatsDisplay } from './map-stats-display';
 import { TeamRankings } from './team-rankings';
 import { StatisticsLoading } from './statistics-loading';
@@ -38,6 +39,13 @@ export function StatisticsContent() {
   const [activeView, setActiveView] = useState<StatisticsViewType>('players');
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(100); // Show more items by default
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Data state
   const [mlbbStats, setMlbbStats] = useState<MlbbPlayerStats[]>([]);
@@ -50,6 +58,8 @@ export function StatisticsContent() {
   // Filter data
   const [seasons, setSeasons] = useState<FilterOption[]>([]);
   const [stages, setStages] = useState<FilterOption[]>([]);
+  const [categories, setCategories] = useState<FilterOption[]>([]);
+  const [teams, setTeams] = useState<FilterOption[]>([]);
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -59,28 +69,63 @@ export function StatisticsContent() {
   // Fetch filter options
   useEffect(() => {
     async function fetchFilters() {
-      const seasonsResult = await getAvailableSeasons();
+      const [seasonsResult, categoriesResult, teamsResult] = await Promise.all([
+        getAvailableSeasons(),
+        getAvailableCategories(),
+        getAllSchoolsTeams()
+      ]);
+
       if (seasonsResult.success && seasonsResult.data) {
         const mappedSeasons = seasonsResult.data.map((s: any) => ({
           id: s.id,
           label: s.name || `Season ${s.id}`,
-          value: s.id.toString()
+          value: s.id.toString(),
+          start_at: s.start_at
         }));
         setSeasons(mappedSeasons);
+      }
+
+      if (categoriesResult.success && categoriesResult.data) {
+         const mappedCategories = categoriesResult.data.map((c: any) => ({
+             id: c.id,
+             label: c.name || `${c.division} - ${c.levels}`,
+             value: c.id.toString()
+         }));
+         setCategories(mappedCategories);
+      }
+
+      if (teamsResult.success && teamsResult.data) {
+         // Teams filtered by season/game will be fetched separately
+        // const mappedTeams = teamsResult.data.map((t: any) => ({
+        //   id: t.id,
+        //   label: t.team_name,
+        //   value: t.id.toString()
+        // }));
+        // setTeams(mappedTeams);
       }
     }
     fetchFilters();
   }, []);
 
-  // Fetch stages when season changes
+  // Fetch stages when season OR game changes
   useEffect(() => {
     async function fetchStages() {
       if (selectedSeason) {
         const stagesResult = await getStagesBySeason(selectedSeason);
         if (stagesResult.success && stagesResult.data) {
-          const mappedStages = stagesResult.data.map((s: any) => ({
+          // Filter stages by current game
+          const filteredStages = stagesResult.data.filter((s: any) => {
+              const stageGame = s.category?.esports?.name?.toLowerCase();
+              if (game === 'mlbb') return stageGame?.includes('mobile legends') || stageGame?.includes('mlbb');
+              if (game === 'valorant') return stageGame?.includes('valorant');
+              return true;
+          });
+
+          const mappedStages = filteredStages.map((s: any) => ({
             id: s.id,
-            label: s.competition_stage.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+            label: s.competition_stage 
+                ? s.competition_stage.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+                : s.label,
             value: s.id.toString()
           }));
           setStages(mappedStages);
@@ -91,7 +136,31 @@ export function StatisticsContent() {
       }
     }
     fetchStages();
-  }, [selectedSeason]);
+  }, [selectedSeason, game]);
+
+  // Fetch teams when season OR game changes
+  useEffect(() => {
+    async function fetchTeams() {
+        if (!selectedSeason) {
+            setTeams([]);
+            return;
+        }
+        
+        // Use getTeamStats to get active teams for this season/game
+        const result = await getTeamStats(game, selectedSeason);
+        if (result.success && result.data) {
+            const mappedTeams = result.data.map((t: any) => ({
+                id: t.team_id,
+                label: t.team_name,
+                value: t.team_id
+            }));
+            // Deduplicate by ID just in case
+            const uniqueTeams = Array.from(new Map(mappedTeams.map((t:any) => [t.value, t])).values());
+            setTeams(uniqueTeams as FilterOption[]);
+        }
+    }
+    fetchTeams();
+  }, [selectedSeason, game]);
 
   // Fetch data based on current game and view
   const fetchData = useCallback(async () => {
@@ -100,23 +169,53 @@ export function StatisticsContent() {
       // Always fetch player stats for the current game
       if (game === 'mlbb') {
         const [playerResult, heroResult, teamResult] = await Promise.all([
-          getMlbbStats(),
+          getMlbbStats({
+            season_id: selectedSeason || undefined,
+            stage_id: selectedStage || undefined,
+            team_id: selectedTeam || undefined,
+            category_id: selectedCategory || undefined,
+            page,
+            limit
+          }),
           getHeroStats(selectedSeason || undefined, selectedStage || undefined),
-          getTeamStats('mlbb', selectedSeason || undefined, selectedStage || undefined),
+          getTeamStats('mlbb', selectedSeason || undefined, selectedStage || undefined, selectedCategory || undefined),
         ]);
 
-        if (playerResult.success && playerResult.data) setMlbbStats(playerResult.data);
+        if (playerResult.success && playerResult.data) {
+          setMlbbStats(playerResult.data);
+          // @ts-ignore - count comes from modified service return
+          const resultWithCount = playerResult as any;
+          if (resultWithCount.count) {
+            setTotalItems(Math.max(resultWithCount.count || 0, 0));
+            setTotalPages(Math.ceil((resultWithCount.count || 0) / limit));
+          }
+        }
         if (heroResult.success && heroResult.data) setHeroStats(heroResult.data as HeroStats[]);
         if (teamResult.success && teamResult.data) setTeamStats(teamResult.data as TeamStats[]);
       } else {
         const [playerResult, agentResult, mapResult, teamResult] = await Promise.all([
-          getValorantStats(),
+          getValorantStats({
+            season_id: selectedSeason || undefined,
+            stage_id: selectedStage || undefined,
+            team_id: selectedTeam || undefined,
+            category_id: selectedCategory || undefined,
+            page,
+            limit
+          }),
           getAgentStats(selectedSeason || undefined, selectedStage || undefined),
           getMapStats(selectedSeason || undefined, selectedStage || undefined),
-          getTeamStats('valorant', selectedSeason || undefined, selectedStage || undefined),
+          getTeamStats('valorant', selectedSeason || undefined, selectedStage || undefined, selectedCategory || undefined),
         ]);
 
-        if (playerResult.success && playerResult.data) setValorantStats(playerResult.data);
+        if (playerResult.success && playerResult.data) {
+          setValorantStats(playerResult.data);
+          // @ts-ignore - count comes from modified service return
+          const resultWithCount = playerResult as any;
+          if (resultWithCount.count) {
+            setTotalItems(Math.max(resultWithCount.count || 0, 0));
+            setTotalPages(Math.ceil((resultWithCount.count || 0) / limit));
+          }
+        }
         if (agentResult.success && agentResult.data) setAgentStats(agentResult.data as AgentStats[]);
         if (mapResult.success && mapResult.data) setMapStats(mapResult.data as MapStats[]);
         if (teamResult.success && teamResult.data) setTeamStats(teamResult.data as TeamStats[]);
@@ -126,7 +225,7 @@ export function StatisticsContent() {
     } finally {
       setLoading(false);
     }
-  }, [game, selectedSeason, selectedStage]);
+  }, [game, selectedSeason, selectedStage, selectedCategory, selectedTeam, page, limit]);
 
   useEffect(() => {
     fetchData();
@@ -156,8 +255,49 @@ export function StatisticsContent() {
   // Sort data helper
   const sortData = <T extends Record<string, any>>(data: T[]): T[] => {
     return [...data].sort((a, b) => {
-      const aVal = a[sortColumn] ?? 0;
-      const bVal = b[sortColumn] ?? 0;
+      let aVal = a[sortColumn] ?? 0;
+      let bVal = b[sortColumn] ?? 0;
+
+      // Handle derived stats
+      // Handle derived stats
+      if (sortColumn === 'avg_kda') {
+        // If avg_kda or kda_ratio is already present, use it
+        if (typeof a.avg_kda === 'number') {
+            aVal = a.avg_kda;
+        } else if (typeof a.kda_ratio === 'number') {
+            aVal = a.kda_ratio;
+        } else {
+            // Derived fallback
+            const aK = Number(a.kills_per_game) || 0;
+            const aA = Number(a.assists_per_game) || 0;
+            const aD = Number(a.deaths_per_game) || 0;
+            aVal = (aK + aA) / (aD || 1);
+        }
+
+        if (typeof b.avg_kda === 'number') {
+            bVal = b.avg_kda;
+        } else if (typeof b.kda_ratio === 'number') {
+            bVal = b.kda_ratio;
+        } else {
+            const bK = Number(b.kills_per_game) || 0;
+            const bA = Number(b.assists_per_game) || 0;
+            const bD = Number(b.deaths_per_game) || 0;
+            bVal = (bK + bA) / (bD || 1);
+        }
+      } else if (sortColumn === 'win_rate') {
+        if (typeof a.win_rate === 'number') {
+            aVal = a.win_rate;
+        } else {
+            aVal = (Number(a.wins) || 0) / (Number(a.games_played) || 1);
+        }
+
+        if (typeof b.win_rate === 'number') {
+            bVal = b.win_rate;
+        } else {
+            bVal = (Number(b.wins) || 0) / (Number(b.games_played) || 1);
+        }
+      }
+
       const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -167,6 +307,8 @@ export function StatisticsContent() {
   const handleClearFilters = () => {
     setSelectedSeason(null);
     setSelectedStage(null);
+    setSelectedCategory(null);
+    setSelectedTeam(null);
   };
 
   // Get current player data based on game
@@ -187,16 +329,46 @@ export function StatisticsContent() {
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onSort={handleSort}
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={limit}
+            onPageChange={setPage}
+            onItemsPerPageChange={setLimit}
           />
         );
       case 'heroes':
-        return <HeroStatsGrid data={heroStats} />;
+        return (
+            <CharacterStatsTable 
+                game="mlbb" 
+                data={sortData(heroStats)} 
+                sortColumn={sortColumn} 
+                sortOrder={sortOrder} 
+                onSort={handleSort} 
+            />
+        );
       case 'agents':
-        return <AgentStatsGrid data={agentStats} />;
+        return (
+            <CharacterStatsTable 
+                game="valorant" 
+                data={sortData(agentStats)} 
+                sortColumn={sortColumn} 
+                sortOrder={sortOrder} 
+                onSort={handleSort} 
+            />
+        );
       case 'maps':
         return <MapStatsDisplay data={mapStats} />;
       case 'teams':
-        return <TeamRankings game={game} data={teamStats} />;
+        return (
+          <TeamRankings
+            game={game}
+            data={sortData(teamStats)}
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
+        );
       default:
         return null;
     }
@@ -218,10 +390,16 @@ export function StatisticsContent() {
       <FilterPanel
         seasons={seasons}
         stages={stages}
+        categories={categories}
+        teams={teams}
         selectedSeason={selectedSeason}
         selectedStage={selectedStage}
+        selectedCategory={selectedCategory}
+        selectedTeam={selectedTeam}
         onSeasonChange={setSelectedSeason}
         onStageChange={setSelectedStage}
+        onCategoryChange={setSelectedCategory}
+        onTeamChange={setSelectedTeam}
         onClearFilters={handleClearFilters}
         isLoading={loading}
       />

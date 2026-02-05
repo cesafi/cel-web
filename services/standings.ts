@@ -182,13 +182,40 @@ export class StandingsService extends BaseService {
           levels: category.levels,
           display_name: `${category.division} ${category.levels}`.replace('_', ' ')
         },
-        stages: (stages || []).map((s: any) => ({
-          id: s.id,
-          name: s.competition_stage, 
-          competition_stage: s.competition_stage,
-          stage_type: s.stage_type as 'round_robin' | 'single_elimination' | 'double_elimination',
-          order: 0
-        }))
+        stages: (stages || [])
+          .sort((a, b) => {
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const order: Record<string, number> = { 
+              'groupstage': 1, 
+              'playins': 2, 
+              'playoffs': 3, 
+              'finals': 4 
+            };
+            
+            const keyA = normalize(a.competition_stage);
+            const keyB = normalize(b.competition_stage);
+            
+            const orderA = order[keyA] || 99;
+            const orderB = order[keyB] || 99;
+            return orderA - orderB;
+          })
+          .map((s: any) => {
+            const key = s.competition_stage.toLowerCase().replace(/[^a-z0-9]/g, '');
+            let displayName = s.competition_stage;
+            
+            if (key === 'groupstage') displayName = 'Group Stage';
+            else if (key === 'playins') displayName = 'Play-ins';
+            else if (key === 'playoffs') displayName = 'Playoffs';
+            else if (key === 'finals') displayName = 'Finals';
+
+            return {
+              id: s.id,
+              name: displayName, 
+              competition_stage: s.competition_stage,
+              stage_type: s.stage_type as 'round_robin' | 'single_elimination' | 'double_elimination',
+              order: 0
+            };
+          })
       };
 
       return { success: true, data: navigation };
@@ -204,14 +231,35 @@ export class StandingsService extends BaseService {
     try {
       const supabase = await this.getClient();
 
-      // Get stage info
+      // Get stage info with scoring rules and esport type
       const { data: stage, error: stageError } = await supabase
         .from('esports_seasons_stages')
-        .select('id, competition_stage')
+        .select(`
+            id, 
+            competition_stage, 
+            points_win, 
+            points_draw, 
+            points_loss,
+            esports_categories!inner (
+                esports!inner (
+                    name
+                )
+            )
+        `)
         .eq('id', stageId)
         .single();
 
       if (stageError) throw stageError;
+
+      // Identify Esport for specific logic
+      const esportName = (stage.esports_categories as any)?.esports?.name || '';
+      const isValorant = esportName.toLowerCase().includes('valorant');
+      const isMLBB = esportName.toLowerCase().includes('mobile legends') || esportName.toLowerCase().includes('mlbb');
+
+      // Default scoring if not set in DB
+      const POINTS_WIN = stage.points_win ?? 3;
+      const POINTS_DRAW = stage.points_draw ?? 1;
+      const POINTS_LOSS = stage.points_loss ?? 0;
 
       // Get all finished matches for this stage with participants and team details
       const { data: matches, error: matchesError } = await supabase
@@ -221,6 +269,7 @@ export class StandingsService extends BaseService {
           status,
           group_name,
           match_participants (
+            id,
             team_id,
             match_score,
             schools_teams (
@@ -232,17 +281,22 @@ export class StandingsService extends BaseService {
                 logo_url
               )
             )
+          ),
+          games (
+             id,
+             duration,
+             game_scores (
+                match_participant_id,
+                score
+             )
           )
         `)
         .eq('stage_id', stageId);
-        // We fetch ALL matches (upcoming and finished) to populate the teams list and groups
-        // .in('status', ['finished', 'completed']);
 
       if (matchesError) throw matchesError;
 
-      // Calculate standings from match results, grouped by group_name
-      // Structure: group_name -> team_id -> stats
-      const groupStats: Record<string, Record<string, {
+      // Stats Structure
+      type TeamStats = {
         team_id: string;
         team_name: string;
         school_name: string;
@@ -255,7 +309,43 @@ export class StandingsService extends BaseService {
         games_won: number;
         games_lost: number;
         points: number;
-      }>> = {};
+        // Advanced
+        rounds_won: number;
+        rounds_lost: number;
+        total_win_duration_seconds: number;
+        win_duration_count: number;
+        head_to_head: Record<string, { wins: number, losses: number, draws: number }>; // vs teamId
+      };
+
+      // Calculate standings from match results, grouped by group_name
+      // Structure: group_name -> team_id -> stats
+      const groupStats: Record<string, Record<string, TeamStats>> = {};
+
+      // Helper to init stats
+      const initStats = (groupName: string, p: any) => {
+           if (!groupStats[groupName]) groupStats[groupName] = {};
+           if (!groupStats[groupName][p.team_id]) {
+                groupStats[groupName][p.team_id] = {
+                  team_id: p.team_id,
+                  team_name: p.schools_teams?.name || 'TBD',
+                  school_name: p.schools_teams?.schools?.name || 'TBD',
+                  school_abbreviation: p.schools_teams?.schools?.abbreviation || 'TBD',
+                  school_logo_url: p.schools_teams?.schools?.logo_url || null,
+                  matches_played: 0,
+                  wins: 0,
+                  losses: 0,
+                  draws: 0,
+                  games_won: 0,
+                  games_lost: 0,
+                  points: 0,
+                  rounds_won: 0,
+                  rounds_lost: 0,
+                  total_win_duration_seconds: 0,
+                  win_duration_count: 0,
+                  head_to_head: {}
+                };
+           }
+      };
 
       // Process each match
       for (const match of matches || []) {
@@ -264,96 +354,196 @@ export class StandingsService extends BaseService {
 
         const groupName = match.group_name || 'Group Stage';
         
-        if (!groupStats[groupName]) {
-          groupStats[groupName] = {};
-        }
-
         // Get both participants
         const p1 = participants[0] as any;
         const p2 = participants[1] as any;
 
+        // Init stats
+        initStats(groupName, p1);
+        initStats(groupName, p2);
+
+        const stats1 = groupStats[groupName][p1.team_id];
+        const stats2 = groupStats[groupName][p2.team_id];
+
         const score1 = p1.match_score ?? 0;
         const score2 = p2.match_score ?? 0;
-
-        // Initialize team stats if not exists in this group
-        for (const p of [p1, p2]) {
-          const teamId = p.team_id;
-          if (!groupStats[groupName][teamId]) {
-            groupStats[groupName][teamId] = {
-              team_id: teamId,
-              team_name: p.schools_teams?.name || 'TBD',
-              school_name: p.schools_teams?.schools?.name || 'TBD',
-              school_abbreviation: p.schools_teams?.schools?.abbreviation || 'TBD',
-              school_logo_url: p.schools_teams?.schools?.logo_url || null,
-              matches_played: 0,
-              wins: 0,
-              losses: 0,
-              draws: 0,
-              games_won: 0,
-              games_lost: 0,
-              points: 0
-            };
-          }
-        }
-
-        const stats = groupStats[groupName];
-
-        // Update match counts only if match is finished? 
-        // Usually "Matches Played" only counts finished. 
-        // But we want to show the team exists.
         
         const isFinished = match.status === 'finished' || match.status === 'completed';
 
         if (isFinished) {
-          stats[p1.team_id].matches_played++;
-          stats[p2.team_id].matches_played++;
+          stats1.matches_played++;
+          stats2.matches_played++;
 
-          // Update game scores
-          stats[p1.team_id].games_won += score1;
-          stats[p1.team_id].games_lost += score2;
-          stats[p2.team_id].games_won += score2;
-          stats[p2.team_id].games_lost += score1;
+          // Update game scores (Game wins/losses)
+          stats1.games_won += score1;
+          stats1.games_lost += score2;
+          stats2.games_won += score2;
+          stats2.games_lost += score1;
+
+          // H2H Initialization
+          if (!stats1.head_to_head[p2.team_id]) stats1.head_to_head[p2.team_id] = { wins: 0, losses: 0, draws: 0 };
+          if (!stats2.head_to_head[p1.team_id]) stats2.head_to_head[p1.team_id] = { wins: 0, losses: 0, draws: 0 };
 
           // Determine winner/loser
           if (score1 > score2) {
-            stats[p1.team_id].wins++;
-            stats[p1.team_id].points += 3;
-            stats[p2.team_id].losses++;
+            stats1.wins++;
+            stats1.points += POINTS_WIN;
+            stats1.head_to_head[p2.team_id].wins++;
+            
+            stats2.losses++;
+            stats2.points += POINTS_LOSS;
+            stats2.head_to_head[p1.team_id].losses++;
           } else if (score2 > score1) {
-            stats[p2.team_id].wins++;
-            stats[p2.team_id].points += 3;
-            stats[p1.team_id].losses++;
+            stats2.wins++;
+            stats2.points += POINTS_WIN;
+            stats2.head_to_head[p1.team_id].wins++;
+
+            stats1.losses++;
+            stats1.points += POINTS_LOSS;
+            stats1.head_to_head[p2.team_id].losses++;
           } else {
             // Draw
-            stats[p1.team_id].draws++;
-            stats[p1.team_id].points += 1;
-            stats[p2.team_id].draws++;
-            stats[p2.team_id].points += 1;
+            stats1.draws++;
+            stats1.points += POINTS_DRAW;
+            stats1.head_to_head[p2.team_id].draws++;
+
+            stats2.draws++;
+            stats2.points += POINTS_DRAW;
+            stats2.head_to_head[p1.team_id].draws++;
+          }
+
+          // --- Advanced Stats Parsing ---
+          if (match.games && match.games.length > 0) {
+              match.games.forEach((game: any) => {
+                  const gs1 = game.game_scores?.find((s: any) => s.match_participant_id === p1.id);
+                  const gs2 = game.game_scores?.find((s: any) => s.match_participant_id === p2.id);
+
+                  const s1 = gs1?.score || 0;
+                  const s2 = gs2?.score || 0;
+
+                  // 1. Rounds Calculation (Valorant mostly, but useful for others if strict score)
+                  if (typeof s1 === 'number' && typeof s2 === 'number') {
+                       stats1.rounds_won += s1;
+                       stats1.rounds_lost += s2;
+                       stats2.rounds_won += s2;
+                       stats2.rounds_lost += s1;
+                  }
+
+                  // 2. Duration Calculation (MLBB)
+                  // Format: "MM:SS" or "HH:MM:SS"
+                  if (game.duration) {
+                      const parts = game.duration.split(':').map(Number);
+                      let seconds = 0;
+                      if (parts.length === 3) {
+                          // DB format is often "MM:SS:00" (e.g. "12:37:00" = 12m 37s)
+                          // Treating part[0] as minutes, part[1] as seconds. 
+                          // part[2] is partial seconds/unused.
+                          seconds = parts[0] * 60 + parts[1];
+                      }
+                      else if (parts.length === 2) {
+                          seconds = parts[0] * 60 + parts[1];
+                      }
+                      
+                      const p1WonGame = s1 > s2; 
+                      const p2WonGame = s2 > s1;
+
+                      if (p1WonGame) {
+                          stats1.total_win_duration_seconds += seconds;
+                          stats1.win_duration_count++;
+                      }
+                      if (p2WonGame) {
+                          stats2.total_win_duration_seconds += seconds;
+                          stats2.win_duration_count++;
+                      }
+                  }
+              });
           }
         }
       }
 
-      // Format groups array
       const standingGroups = Object.entries(groupStats).map(([groupName, teamsMap]) => {
-        const teams = Object.values(teamsMap)
-          .sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            const aDiff = a.games_won - a.games_lost;
-            const bDiff = b.games_won - b.games_lost;
-            return bDiff - aDiff;
-          })
-          .map((team, index) => ({
-            ...team,
-            goals_for: team.games_won,
-            goals_against: team.games_lost,
-            goal_difference: team.games_won - team.games_lost,
-            position: index + 1
-          }));
+          let teamsList = Object.values(teamsMap);
+          
+          // 1. Initial Sort by Points
+          teamsList.sort((a, b) => b.points - a.points);
+          
+          // 2. Resolve Ties (Bucket Sort)
+          const resolvedTeams: any[] = [];
+          let i = 0;
+          while (i < teamsList.length) {
+              const currentPoints = teamsList[i].points;
+              const tiedGroup = [teamsList[i]];
+              let j = i + 1;
+              while (j < teamsList.length && teamsList[j].points === currentPoints) {
+                  tiedGroup.push(teamsList[j]);
+                  j++;
+              }
 
-        return {
-          name: groupName,
-          teams
-        };
+              if (tiedGroup.length > 1) {
+                   tiedGroup.sort((a, b) => {
+                       // 3a. Mini-League Points (Wins vs Tied Teams)
+                       const getMiniPoints = (t: any) => {
+                           return tiedGroup.reduce((acc, other) => {
+                               if (t.team_id === other.team_id) return acc;
+                               const h2h = t.head_to_head[other.team_id];
+                               return h2h ? acc + h2h.wins : acc;
+                           }, 0);
+                       };
+                       const miniA = getMiniPoints(a);
+                       const miniB = getMiniPoints(b);
+                       if (miniA !== miniB) return miniB - miniA;
+
+                       // 3b. Tiebreakers (Time / Diff)
+                       if (isMLBB) {
+                           const avgA = a.win_duration_count > 0 ? a.total_win_duration_seconds / a.win_duration_count : 999999;
+                           const avgB = b.win_duration_count > 0 ? b.total_win_duration_seconds / b.win_duration_count : 999999;
+                           if (Math.abs(avgA - avgB) > 0.001) return avgA - avgB;
+                       }
+                       
+                       if (isValorant) {
+                           const diffA = a.rounds_won - a.rounds_lost;
+                           const diffB = b.rounds_won - b.rounds_lost;
+                           if (diffA !== diffB) return diffB - diffA;
+                           if (a.rounds_won !== b.rounds_won) return b.rounds_won - a.rounds_won;
+                       } else {
+                           const diffA = a.games_won - a.games_lost;
+                           const diffB = b.games_won - b.games_lost;
+                           if (diffA !== diffB) return diffB - diffA;
+                           if (a.games_won !== b.games_won) return b.games_won - a.games_won;
+                       }
+                       return 0;
+                   });
+              }
+              resolvedTeams.push(...tiedGroup);
+              i = j;
+          }
+
+          // 3. Format Teams
+          const finalTeams = resolvedTeams.map((team, index) => {
+              let avgDuration = '-';
+              if (team.win_duration_count > 0) {
+                  const totalSeconds = team.total_win_duration_seconds / team.win_duration_count;
+                  const m = Math.floor(totalSeconds / 60);
+                  const s = Math.floor(totalSeconds % 60);
+                  avgDuration = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+              }
+              return {
+                  ...team,
+                  goals_for: team.games_won,
+                  goals_against: team.games_lost,
+                  goal_difference: team.games_won - team.games_lost,
+                  position: index + 1,
+                  round_difference: team.rounds_won - team.rounds_lost,
+                  rounds_won: team.rounds_won,
+                  rounds_lost: team.rounds_lost,
+                  avg_win_duration: avgDuration
+              };
+          });
+
+          return {
+              name: groupName,
+              teams: finalTeams
+          };
       });
       
       // If we have no groups (no matches), return one empty group
@@ -371,6 +561,7 @@ export class StandingsService extends BaseService {
         stage_id: stage.id,
         stage_name: stage.competition_stage,
         competition_stage: 'group_stage',
+        esport_type: stage.esports_categories?.esports?.name,
         groups: standingGroups
       };
 

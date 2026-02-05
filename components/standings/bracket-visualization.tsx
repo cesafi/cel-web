@@ -7,6 +7,7 @@ import { Trophy, Users } from 'lucide-react';
 import { BracketStandings, BracketMatch, BracketTeam } from '@/lib/types/standings';
 import { cn } from '@/lib/utils';
 import { useSchoolLogoByAbbreviationGetter } from '@/hooks/use-school-logos';
+import { moderniz } from '@/lib/fonts';
 
 interface BracketVisualizationProps {
   readonly standings: BracketStandings;
@@ -295,7 +296,7 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
         const midX = (startX + endX) / 2;
         
         // Colors - use muted-foreground for better visibility on dark backgrounds
-        const lineColor = "bg-muted-foreground/50"; 
+        const lineColor = "bg-muted-foreground/10"; 
 
         return (
             <>
@@ -405,7 +406,7 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
     return (
       <div className="mb-8 relative">
         {title && <h3 className="text-lg font-semibold mb-4 px-4">{title}</h3>}
-        <div className="overflow-x-auto lg:overflow-visible relative min-h-0">
+        <div className="overflow-visible relative min-h-0">
            
            <div className="flex min-w-max gap-10 pb-4 px-4 relative z-10">
              {/* Render Connectors Layer */}
@@ -487,18 +488,28 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
   return (
     <div className="space-y-6">
       <Card className="border-0 shadow-none bg-transparent">
-        <CardHeader className="px-0">
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            {formatCompetitionStage(standings.competition_stage)} - {standings.stage_name}
-            <Badge variant="outline" className="ml-auto">
-              <Users className="mr-1 h-3 w-3" />
-              {standings.bracket?.length || 0} Matches
-            </Badge>
-          </CardTitle>
-        </CardHeader>
+        <div className="flex items-center justify-between px-2 mb-4">
+             <div className="flex items-center gap-3">
+                  <div className="h-8 w-1 bg-primary rounded-full" />
+                  <h3 className={`${moderniz.className} text-xl md:text-2xl font-bold tracking-wide`}>
+                     {(() => {
+                        const stageLabel = formatCompetitionStage(standings.competition_stage);
+                        const stageName = standings.stage_name;
+                        // Avoid redundancy like "Playoffs - Playoffs"
+                        if (stageName.toLowerCase().includes(stageLabel.toLowerCase()) || stageLabel.toLowerCase().includes(stageName.toLowerCase())) {
+                            return stageName;
+                        }
+                        return `${stageLabel} - ${stageName}`;
+                     })()}
+                  </h3>
+             </div>
+             <Badge variant="outline" className="text-xs uppercase tracking-widest bg-background/50 backdrop-blur-md">
+                 <Users className="mr-1 h-3 w-3" />
+                 {standings.bracket?.length || 0} Matches
+             </Badge>
+         </div>
         
-        <CardContent className="p-0 pt-6 bg-background">
+        <CardContent className="p-0 pt-6 bg-background overflow-x-auto">
            {hasGroups && groups['Upper Bracket'] && groups['Lower Bracket'] && groups['Grand Finals'] ? (
               // Double Elimination "Converging" Layout
               // Left Col: Upper + Lower

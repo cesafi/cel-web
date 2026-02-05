@@ -48,12 +48,18 @@ export interface TeamStanding {
   goal_difference: number;
   points: number;
   position: number;
+  // Tiebreaker fields
+  round_difference?: number;
+  rounds_won?: number;
+  rounds_lost?: number;
+  avg_win_duration?: string; // Format "MM:SS"
 }
 
 export interface GroupStageStandings {
   stage_id: number;
   stage_name: string;
   competition_stage: 'group_stage';
+  esport_type?: string;
   groups: Array<{
     group_name?: string;
     teams: TeamStanding[];

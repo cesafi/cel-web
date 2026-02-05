@@ -42,7 +42,10 @@ export function LeagueStageModal({
     competition_stage: '',
     esport_category_id: null,
     season_id: null,
-    stage_type: 'round_robin'
+    stage_type: 'round_robin',
+    points_win: 3,
+    points_draw: 1,
+    points_loss: 0
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedCreating = useRef(false);
@@ -64,14 +67,20 @@ export function LeagueStageModal({
           competition_stage: stage.competition_stage,
           esport_category_id: stage.esport_category_id,
           season_id: stage.season_id,
-          stage_type: stage.stage_type as "round_robin" | "single_elimination" | "double_elimination"
+          stage_type: stage.stage_type as "round_robin" | "single_elimination" | "double_elimination",
+          points_win: stage.points_win ?? 3,
+          points_draw: stage.points_draw ?? 1,
+          points_loss: stage.points_loss ?? 0
         });
       } else {
         setFormData({
           competition_stage: '',
           esport_category_id: null,
           season_id: defaultSeasonId || null,
-          stage_type: 'round_robin'
+          stage_type: 'round_robin',
+          points_win: 3,
+          points_draw: 1,
+          points_loss: 0
         });
       }
       setErrors({});
@@ -209,6 +218,49 @@ export function LeagueStageModal({
               </p>
               {errors.stage_type && <p className="text-sm text-red-500">{errors.stage_type}</p>}
             </div>
+
+            {/* Point Configuration (Only for Round Robin) */}
+            {formData.stage_type === 'round_robin' && (
+              <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
+                <div className="flex items-center gap-2 mb-2">
+                   <h4 className="text-sm font-medium">Point Configuration</h4>
+                   <p className="text-xs text-muted-foreground">(Optional)</p>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="points_win" className="text-xs">Win (3)</Label>
+                    <Input
+                      id="points_win"
+                      type="number"
+                      value={formData.points_win ?? ''}
+                      onChange={(e) => handleInputChange('points_win', parseInt(e.target.value) || 0)}
+                      placeholder="3"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="points_draw" className="text-xs">Draw (1)</Label>
+                    <Input
+                      id="points_draw"
+                      type="number"
+                      value={formData.points_draw ?? ''}
+                      onChange={(e) => handleInputChange('points_draw', parseInt(e.target.value) || 0)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="points_loss" className="text-xs">Loss (0)</Label>
+                    <Input
+                      id="points_loss"
+                      type="number"
+                      value={formData.points_loss ?? ''}
+                      onChange={(e) => handleInputChange('points_loss', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Season Selector */}
             <div className="space-y-2">

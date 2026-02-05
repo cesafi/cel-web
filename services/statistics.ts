@@ -17,6 +17,7 @@ export interface PlayerStatsSummary {
   deaths_per_game: number;
   assists_per_game: number;
   mvp_count: number;
+  wins: number;
 }
 
 export interface MlbbPlayerStats extends PlayerStatsSummary {
@@ -26,6 +27,8 @@ export interface MlbbPlayerStats extends PlayerStatsSummary {
   total_damage_dealt: number;
   total_damage_taken: number;
   total_turret_damage: number;
+  total_lord_slain: number;
+  total_turtle_slain: number;
   teamfight_percent: number;
 }
 
@@ -44,6 +47,9 @@ export interface StatisticsFilters {
   team_id?: string;
   season_id?: number;
   stage_id?: number;
+  category_id?: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface LeaderboardEntry {
@@ -58,6 +64,25 @@ export interface LeaderboardEntry {
 
 export class StatisticsService extends BaseService {
   /**
+   * Get available categories
+   */
+    static async getAvailableCategories() {
+        try {
+          const supabase = await this.getClient();
+    
+          const { data, error } = await supabase
+            .from('esports_categories')
+            .select('id, name, levels, division') // levels/div might be useful for label
+            .order('id');
+    
+          if (error) throw error;
+    
+          return { success: true as const, data: data as any[] };
+        } catch (error) {
+          return this.formatError<any[]>(error, 'Failed to fetch categories');
+        }
+      }
+  /**
    * Get aggregated MLBB player statistics
    */
   static async getMlbbPlayerStats(
@@ -66,84 +91,108 @@ export class StatisticsService extends BaseService {
     try {
       const supabase = await this.getClient();
 
-      // Use RPC or complex query for aggregation
-      // For now, fetch raw stats and aggregate in JS
+      // Query the Materialized View directly
       let query = supabase
-        .from('stats_mlbb_game_player' as any)
-        .select(`
-          *,
-          players!inner(id, ign, photo_url, team_id,
-            schools_teams(id, name, logo_url)
-          ),
-          games!inner(id, match_id,
-            matches(stage_id,
-              esports_seasons_stages(season_id)
-            )
-          )
-        `);
+        .from('mv_mlbb_player_stats' as any)
+        .select('*');
 
+      // Apply Filters
+      if (filters?.season_id) {
+        query = query.eq('season_id', filters.season_id);
+      }
+      if (filters?.stage_id) {
+        query = query.eq('stage_id', filters.stage_id);
+      }
+      if (filters?.team_id) {
+        query = query.eq('team_id', filters.team_id);
+      }
+      if (filters?.category_id) {
+          const { data: stages } = await supabase
+            .from('esports_seasons_stages')
+            .select('id')
+            .eq('esport_category_id', filters.category_id);
+            
+          if (stages && stages.length > 0) {
+              query = query.in('stage_id', stages.map(s => s.id));
+          } else {
+              return { success: true as const, data: [], count: 0 };
+          }
+      }
+
+      // We DON'T use DB pagination here because we need to aggregate rows first.
+      // E.g. A player has 2 rows (Stage 1, Stage 2), we need to combine them.
+      
       const { data, error } = await query;
 
       if (error) throw error;
 
-      // Aggregate by player
-      const playerMap = new Map<string, MlbbPlayerStats>();
-      const rows = (data as any[]) || [];
+      const rawData = data as any[] || [];
+      
+      // Aggregate by player_id
+      const playerMap = new Map<string, any>();
 
-      for (const row of rows) {
-        const playerId = row.player_id;
-        const existing = playerMap.get(playerId);
-
-        if (existing) {
-          existing.games_played++;
-          existing.total_kills += row.kills || 0;
-          existing.total_deaths += row.deaths || 0;
-          existing.total_assists += row.assists || 0;
-          existing.total_gold += row.gold || 0;
-          existing.total_damage_dealt += row.damage_dealt || 0;
-          existing.total_damage_taken += row.damage_taken || 0;
-          existing.total_turret_damage += row.turret_damage || 0;
-          if (row.is_mvp) existing.mvp_count++;
+      rawData.forEach(row => {
+        const existing = playerMap.get(row.player_id);
+        if (!existing) {
+          playerMap.set(row.player_id, { ...row });
         } else {
-          const player = row.players as any;
-          const team = player?.schools_teams as any;
-
-          playerMap.set(playerId, {
-            player_id: playerId,
-            player_ign: player?.ign || 'Unknown',
-            player_photo_url: player?.photo_url,
-            team_id: player?.team_id,
-            team_name: team?.name || null,
-            team_logo_url: team?.logo_url || null,
-            games_played: 1,
-            total_kills: row.kills || 0,
-            total_deaths: row.deaths || 0,
-            total_assists: row.assists || 0,
-            kills_per_game: 0,
-            deaths_per_game: 0,
-            assists_per_game: 0,
-            mvp_count: row.is_mvp ? 1 : 0,
-            hero_name: row.hero_name,
-            total_gold: row.gold || 0,
-            avg_gpm: 0,
-            total_damage_dealt: row.damage_dealt || 0,
-            total_damage_taken: row.damage_taken || 0,
-            total_turret_damage: row.turret_damage || 0,
-            teamfight_percent: 0
-          });
+          // Aggregate
+          existing.games_played += row.games_played;
+          existing.wins += row.wins;
+          existing.mvp_count += row.mvp_count;
+          existing.total_kills += row.total_kills;
+          existing.total_deaths += row.total_deaths;
+          existing.total_assists += row.total_assists;
+          existing.total_gold += row.total_gold;
+          existing.total_damage_dealt += row.total_damage_dealt;
+          existing.total_damage_taken += row.total_damage_taken;
+          existing.total_turret_damage += row.total_turret_damage;
+          existing.total_lord_slain += row.total_lord_slain;
+          existing.total_turtle_slain += row.total_turtle_slain;
+          
+          // Weighted averages for rating/teamfight
+          const totalGames = existing.games_played; // already updated above? No, wait. 
+          // Let's do it carefully.
+          // existing is the accumulator. row is the new chunk.
+          // We need pre-update games for weighting
+          const g1 = existing.games_played - row.games_played; 
+          const g2 = row.games_played;
+          const gTotal = g1 + g2;
+          
+          if (gTotal > 0) {
+              existing.avg_teamfight_percent = ((existing.avg_teamfight_percent * g1) + (row.avg_teamfight_percent * g2)) / gTotal;
+              existing.avg_rating = ((existing.avg_rating * g1) + (row.avg_rating * g2)) / gTotal;
+          }
         }
+      });
+
+      const aggregatedData = Array.from(playerMap.values());
+
+      // Recalculate derived averages based on final totals
+      aggregatedData.forEach(p => {
+        const g = p.games_played || 1;
+        p.kills_per_game = p.total_kills / g;
+        p.deaths_per_game = p.total_deaths / g;
+        p.assists_per_game = p.total_assists / g;
+        p.avg_gpm = p.total_gold / g;
+        // Ensure formatting if needed, but numbers are fine
+      });
+
+      // Handle in-memory pagination if needed, but usually we return all
+      // The frontend requested "VLR style" (all rows), so we return all.
+      // But if explicit page/limit was passed, we mock it.
+      let resultData = aggregatedData;
+      if (filters?.page && filters?.limit) {
+         const from = (filters.page - 1) * filters.limit;
+         const to = from + filters.limit;
+         resultData = aggregatedData.slice(from, to);
       }
 
-      // Calculate averages
-      const results = Array.from(playerMap.values()).map(player => ({
-        ...player,
-        kills_per_game: player.games_played > 0 ? player.total_kills / player.games_played : 0,
-        deaths_per_game: player.games_played > 0 ? player.total_deaths / player.games_played : 0,
-        assists_per_game: player.games_played > 0 ? player.total_assists / player.games_played : 0,
-        avg_gpm: player.games_played > 0 ? player.total_gold / player.games_played : 0
-      }));
-
-      return { success: true as const, data: results };
+      return { 
+        success: true as const, 
+        data: resultData as unknown as MlbbPlayerStats[], 
+        count: aggregatedData.length 
+      };
     } catch (error) {
       return this.formatError<MlbbPlayerStats[]>(error, 'Failed to fetch MLBB stats');
     }
@@ -158,86 +207,82 @@ export class StatisticsService extends BaseService {
     try {
       const supabase = await this.getClient();
 
+      // Query the Materialized View directly
       let query = supabase
-        .from('stats_valorant_game_player' as any)
-        .select(`
-          *,
-          players!inner(id, ign, photo_url, team_id,
-            schools_teams(id, name, logo_url)
-          ),
-          games!inner(id, match_id,
-            matches(stage_id,
-              esports_seasons_stages(season_id)
-            )
-          )
-        `);
+        .from('mv_valorant_player_stats' as any)
+        .select('*');
 
+      // Apply Filters
+      if (filters?.season_id) {
+        query = query.eq('season_id', filters.season_id);
+      }
+      if (filters?.stage_id) {
+        query = query.eq('stage_id', filters.stage_id);
+      }
+      if (filters?.team_id) {
+        query = query.eq('team_id', filters.team_id);
+      }
+
+      // No DB pagination, fetch all then aggregate
       const { data, error } = await query;
 
       if (error) throw error;
 
-      // Aggregate by player
-      const playerMap = new Map<string, ValorantPlayerStats>();
-      const rows = (data as any[]) || [];
+      const rawData = data as any[] || [];
+      const playerMap = new Map<string, any>();
 
-      for (const row of rows) {
-        const playerId = row.player_id;
-        const existing = playerMap.get(playerId);
-
-        if (existing) {
-          existing.games_played++;
-          existing.total_kills += row.kills || 0;
-          existing.total_deaths += row.deaths || 0;
-          existing.total_assists += row.assists || 0;
-          existing.avg_acs += row.acs || 0;
-          existing.avg_adr += row.adr || 0;
-          existing.avg_hs_percent += row.headshot_percent || 0;
-          existing.total_first_bloods += row.first_bloods || 0;
-          existing.total_plants += row.plants || 0;
-          existing.total_defuses += row.defuses || 0;
-          if (row.is_mvp) existing.mvp_count++;
+      rawData.forEach(row => {
+        const existing = playerMap.get(row.player_id);
+        if (!existing) {
+          playerMap.set(row.player_id, { ...row });
         } else {
-          const player = row.players as any;
-          const team = player?.schools_teams as any;
+             // Aggregate
+            existing.games_played += row.games_played;
+            existing.wins += row.wins;
+            existing.mvp_count += row.mvp_count;
+            existing.total_kills += row.total_kills;
+            existing.total_deaths += row.total_deaths;
+            existing.total_assists += row.total_assists;
+            
+            existing.total_first_bloods += row.total_first_bloods;
+            existing.total_plants += row.total_plants;
+            existing.total_defuses += row.total_defuses;
 
-          playerMap.set(playerId, {
-            player_id: playerId,
-            player_ign: player?.ign || 'Unknown',
-            player_photo_url: player?.photo_url,
-            team_id: player?.team_id,
-            team_name: team?.name || null,
-            team_logo_url: team?.logo_url || null,
-            games_played: 1,
-            total_kills: row.kills || 0,
-            total_deaths: row.deaths || 0,
-            total_assists: row.assists || 0,
-            kills_per_game: 0,
-            deaths_per_game: 0,
-            assists_per_game: 0,
-            mvp_count: row.is_mvp ? 1 : 0,
-            agent_name: row.agent_name,
-            avg_acs: row.acs || 0,
-            avg_adr: row.adr || 0,
-            avg_hs_percent: row.headshot_percent || 0,
-            total_first_bloods: row.first_bloods || 0,
-            total_plants: row.plants || 0,
-            total_defuses: row.defuses || 0
-          });
+           // Weighted averages for ACS/Econ
+           const g1 = existing.games_played - row.games_played;
+           const g2 = row.games_played;
+           const gTotal = g1 + g2;
+
+           if (gTotal > 0) {
+               existing.avg_acs = ((existing.avg_acs * g1) + (row.avg_acs * g2)) / gTotal;
+               existing.avg_econ_rating = ((existing.avg_econ_rating * g1) + (row.avg_econ_rating * g2)) / gTotal;
+           }
         }
+      });
+
+      const aggregatedData = Array.from(playerMap.values());
+
+      // Recalculate derived averages
+      aggregatedData.forEach(p => {
+        const g = p.games_played || 1;
+        p.kills_per_game = p.total_kills / g;
+        p.deaths_per_game = p.total_deaths / g;
+        p.assists_per_game = p.total_assists / g;
+      });
+
+      // Handle in-memory pagination
+      let resultData = aggregatedData;
+      if (filters?.page && filters?.limit) {
+         const from = (filters.page - 1) * filters.limit;
+         const to = from + filters.limit;
+         resultData = aggregatedData.slice(from, to);
       }
 
-      // Calculate averages
-      const results = Array.from(playerMap.values()).map(player => ({
-        ...player,
-        kills_per_game: player.games_played > 0 ? player.total_kills / player.games_played : 0,
-        deaths_per_game: player.games_played > 0 ? player.total_deaths / player.games_played : 0,
-        assists_per_game: player.games_played > 0 ? player.total_assists / player.games_played : 0,
-        avg_acs: player.games_played > 0 ? player.avg_acs / player.games_played : 0,
-        avg_adr: player.games_played > 0 ? player.avg_adr / player.games_played : 0,
-        avg_hs_percent: player.games_played > 0 ? player.avg_hs_percent / player.games_played : 0
-      }));
-
-      return { success: true as const, data: results };
+      return { 
+          success: true as const, 
+          data: resultData as unknown as ValorantPlayerStats[], 
+          count: aggregatedData.length 
+      };
     } catch (error) {
       return this.formatError<ValorantPlayerStats[]>(error, 'Failed to fetch Valorant stats');
     }
@@ -323,117 +368,88 @@ export class StatisticsService extends BaseService {
   /**
    * Get aggregated hero statistics for MLBB
    */
+  /**
+   * Get aggregated hero statistics for MLBB
+   */
   static async getHeroStats(
     seasonId?: number,
-    stageId?: number
+    stageId?: number,
+    categoryId?: number
   ) {
     try {
       const supabase = await this.getClient();
 
       let query = supabase
-        .from('stats_mlbb_game_player' as any)
-        .select(`
-          hero_name,
-          kills,
-          deaths,
-          assists,
-          gold,
-          damage_dealt,
-          damage_taken,
-          turret_damage,
-          games!inner(
-            id,
-            winner_team_id,
-            matches!inner(
-              stage_id,
-              esports_seasons_stages(season_id)
-            )
-          )
-        `);
+        .from('mv_mlbb_hero_stats' as any)
+        .select('*');
+
+      if (seasonId) query = query.eq('season_id', seasonId);
+      if (stageId) query = query.eq('stage_id', stageId);
+      if (categoryId) query = query.eq('category_id', categoryId);
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      // Aggregate by hero
-      const heroMap = new Map<string, {
-        hero_name: string;
-        games_played: number;
-        wins: number;
-        total_kills: number;
-        total_deaths: number;
-        total_assists: number;
-        total_gold: number;
-        total_damage_dealt: number;
-        total_damage_taken: number;
-        total_turret_damage: number;
-      }>();
-
+      // Aggregation Map
+      const heroMap = new Map<string, any>();
       const rows = (data as any[]) || [];
-      let totalGames = 0;
-
-      // Get unique games for total count
-      const uniqueGames = new Set(rows.map(r => r.games?.id));
-      totalGames = uniqueGames.size;
 
       for (const row of rows) {
-        const heroName = row.hero_name || 'Unknown';
-        const existing = heroMap.get(heroName);
+          const id = row.hero_id;
+          const existing = heroMap.get(id);
 
-        // Check if this player won (their team_id matches winner_team_id)
-        const isWin = false; // Simplified - would need team_id comparison
-
-        if (existing) {
-          existing.games_played++;
-          existing.total_kills += row.kills || 0;
-          existing.total_deaths += row.deaths || 0;
-          existing.total_assists += row.assists || 0;
-          existing.total_gold += row.gold || 0;
-          existing.total_damage_dealt += row.damage_dealt || 0;
-          existing.total_damage_taken += row.damage_taken || 0;
-          existing.total_turret_damage += row.turret_damage || 0;
-        } else {
-          heroMap.set(heroName, {
-            hero_name: heroName,
-            games_played: 1,
-            wins: 0,
-            total_kills: row.kills || 0,
-            total_deaths: row.deaths || 0,
-            total_assists: row.assists || 0,
-            total_gold: row.gold || 0,
-            total_damage_dealt: row.damage_dealt || 0,
-            total_damage_taken: row.damage_taken || 0,
-            total_turret_damage: row.turret_damage || 0,
-          });
-        }
+          if (existing) {
+              existing.total_picks += row.total_picks;
+              existing.total_wins += row.total_wins;
+              existing.total_kills += row.total_kills;
+              existing.total_deaths += row.total_deaths;
+              existing.total_assists += row.total_assists;
+              existing.avg_gold += row.avg_gold * row.total_picks; // Weighted sum
+              existing.avg_damage += row.avg_damage * row.total_picks; // Weighted sum
+          } else {
+              heroMap.set(id, {
+                  ...row,
+                  avg_gold: row.avg_gold * row.total_picks, // Init weighted sum
+                  avg_damage: row.avg_damage * row.total_picks, // Init weighted sum
+              });
+          }
       }
 
-      // Calculate derived stats
-      const results = Array.from(heroMap.values()).map(hero => ({
-        hero_name: hero.hero_name,
-        icon_url: null, // For future use
-        games_played: hero.games_played,
-        total_picks: hero.games_played,
-        pick_rate: totalGames > 0 ? (hero.games_played / totalGames) * 100 : 0,
-        total_wins: hero.wins,
-        win_rate: hero.games_played > 0 ? (hero.wins / hero.games_played) * 100 : 0,
-        total_kills: hero.total_kills,
-        total_deaths: hero.total_deaths,
-        total_assists: hero.total_assists,
-        avg_kills: hero.games_played > 0 ? hero.total_kills / hero.games_played : 0,
-        avg_deaths: hero.games_played > 0 ? hero.total_deaths / hero.games_played : 0,
-        avg_assists: hero.games_played > 0 ? hero.total_assists / hero.games_played : 0,
-        avg_kda: hero.total_deaths > 0
-          ? (hero.total_kills + hero.total_assists) / hero.total_deaths
-          : hero.total_kills + hero.total_assists,
-        avg_gold: hero.games_played > 0 ? hero.total_gold / hero.games_played : 0,
-        avg_damage_dealt: hero.games_played > 0 ? hero.total_damage_dealt / hero.games_played : 0,
-        avg_damage_taken: hero.games_played > 0 ? hero.total_damage_taken / hero.games_played : 0,
-        avg_turret_damage: hero.games_played > 0 ? hero.total_turret_damage / hero.games_played : 0,
-      }));
+      const results = Array.from(heroMap.values()).map(row => {
+        const picks = row.total_picks;
+        const avg_kills = picks > 0 ? row.total_kills / picks : 0;
+        const avg_deaths = picks > 0 ? row.total_deaths / picks : 0;
+        const avg_assists = picks > 0 ? row.total_assists / picks : 0;
+        const avg_kda = row.total_deaths > 0 ? (row.total_kills + row.total_assists) / row.total_deaths : (row.total_kills + row.total_assists);
 
-      // Sort by pick rate
-      results.sort((a, b) => b.pick_rate - a.pick_rate);
+        return {
+            hero_id: row.hero_id,
+            hero_name: row.hero_name,
+            icon_url: row.icon_url,
+            season_id: seasonId || row.season_id, // Best effort
+            total_picks: picks,
+            total_wins: row.total_wins,
+            total_kills: row.total_kills,
+            total_deaths: row.total_deaths,
+            total_assists: row.total_assists,
+            
+            games_played: picks,
+            pick_rate: 0, // Placeholder
+            win_rate: picks > 0 ? (row.total_wins / picks) * 100 : 0,
+            avg_gold: picks > 0 ? row.avg_gold / picks : 0,
+            avg_damage_dealt: picks > 0 ? row.avg_damage / picks : 0,
+            
+            // Added averages
+            avg_kills,
+            avg_deaths,
+            avg_assists,
+            avg_kda
+        };
+      });
+
+      // Sort by picks (desc)
+      results.sort((a, b) => b.total_picks - a.total_picks);
 
       return { success: true as const, data: results };
     } catch (error) {
@@ -446,113 +462,82 @@ export class StatisticsService extends BaseService {
    */
   static async getAgentStats(
     seasonId?: number,
-    stageId?: number
+    stageId?: number,
+    categoryId?: number
   ) {
     try {
       const supabase = await this.getClient();
 
       let query = supabase
-        .from('stats_valorant_game_player' as any)
-        .select(`
-          agent_name,
-          kills,
-          deaths,
-          assists,
-          acs,
-          first_bloods,
-          games!inner(
-            id,
-            winner_team_id,
-            matches!inner(
-              stage_id,
-              esports_seasons_stages(season_id)
-            )
-          )
-        `);
+        .from('mv_valorant_agent_stats' as any)
+        .select('*');
+
+      if (seasonId) query = query.eq('season_id', seasonId);
+      if (stageId) query = query.eq('stage_id', stageId);
+      if (categoryId) query = query.eq('category_id', categoryId);
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      // Agent role mapping
-      const agentRoles: Record<string, string> = {
-        'Jett': 'duelist', 'Phoenix': 'duelist', 'Reyna': 'duelist', 'Raze': 'duelist',
-        'Yoru': 'duelist', 'Neon': 'duelist', 'Iso': 'duelist',
-        'Breach': 'initiator', 'Skye': 'initiator', 'Sova': 'initiator',
-        'KAY/O': 'initiator', 'Fade': 'initiator', 'Gekko': 'initiator',
-        'Brimstone': 'controller', 'Omen': 'controller', 'Viper': 'controller',
-        'Astra': 'controller', 'Harbor': 'controller', 'Clove': 'controller',
-        'Killjoy': 'sentinel', 'Cypher': 'sentinel', 'Sage': 'sentinel',
-        'Chamber': 'sentinel', 'Deadlock': 'sentinel', 'Vyse': 'sentinel',
-      };
-
-      // Aggregate by agent
-      const agentMap = new Map<string, {
-        agent_name: string;
-        games_played: number;
-        wins: number;
-        total_kills: number;
-        total_deaths: number;
-        total_assists: number;
-        total_acs: number;
-        total_first_bloods: number;
-      }>();
-
+      // Aggregation Map
+      const agentMap = new Map<string, any>();
       const rows = (data as any[]) || [];
-      const uniqueGames = new Set(rows.map(r => r.games?.id));
-      const totalGames = uniqueGames.size;
 
       for (const row of rows) {
-        const agentName = row.agent_name || 'Unknown';
-        const existing = agentMap.get(agentName);
+          const id = row.agent_id;
+          const existing = agentMap.get(id);
 
-        if (existing) {
-          existing.games_played++;
-          existing.total_kills += row.kills || 0;
-          existing.total_deaths += row.deaths || 0;
-          existing.total_assists += row.assists || 0;
-          existing.total_acs += row.acs || 0;
-          existing.total_first_bloods += row.first_bloods || 0;
-        } else {
-          agentMap.set(agentName, {
-            agent_name: agentName,
-            games_played: 1,
-            wins: 0,
-            total_kills: row.kills || 0,
-            total_deaths: row.deaths || 0,
-            total_assists: row.assists || 0,
-            total_acs: row.acs || 0,
-            total_first_bloods: row.first_bloods || 0,
-          });
-        }
+          if (existing) {
+              existing.total_picks += row.total_picks;
+              existing.total_wins += row.total_wins;
+              existing.total_kills += row.total_kills;
+              existing.total_deaths += row.total_deaths;
+              existing.total_assists += row.total_assists;
+              existing.avg_acs += row.avg_acs * row.total_picks; // Weighted
+              existing.total_first_bloods += row.total_first_bloods;
+          } else {
+              agentMap.set(id, {
+                  ...row,
+                  avg_acs: row.avg_acs * row.total_picks // Init weighted
+              });
+          }
       }
 
-      // Calculate derived stats
-      const results = Array.from(agentMap.values()).map(agent => ({
-        agent_name: agent.agent_name,
-        icon_url: null, // For future use
-        role: agentRoles[agent.agent_name] || null,
-        games_played: agent.games_played,
-        total_picks: agent.games_played,
-        pick_rate: totalGames > 0 ? (agent.games_played / totalGames) * 100 : 0,
-        total_wins: agent.wins,
-        win_rate: agent.games_played > 0 ? (agent.wins / agent.games_played) * 100 : 0,
-        total_kills: agent.total_kills,
-        total_deaths: agent.total_deaths,
-        total_assists: agent.total_assists,
-        avg_kills: agent.games_played > 0 ? agent.total_kills / agent.games_played : 0,
-        avg_deaths: agent.games_played > 0 ? agent.total_deaths / agent.games_played : 0,
-        avg_assists: agent.games_played > 0 ? agent.total_assists / agent.games_played : 0,
-        avg_kda: agent.total_deaths > 0
-          ? (agent.total_kills + agent.total_assists) / agent.total_deaths
-          : agent.total_kills + agent.total_assists,
-        avg_acs: agent.games_played > 0 ? agent.total_acs / agent.games_played : 0,
-        total_first_bloods: agent.total_first_bloods,
-        avg_first_bloods: agent.games_played > 0 ? agent.total_first_bloods / agent.games_played : 0,
-      }));
+      const results = Array.from(agentMap.values()).map(row => {
+          const picks = row.total_picks;
+          const avg_kills = picks > 0 ? row.total_kills / picks : 0;
+          const avg_deaths = picks > 0 ? row.total_deaths / picks : 0;
+          const avg_assists = picks > 0 ? row.total_assists / picks : 0;
+          const avg_kda = row.total_deaths > 0 ? (row.total_kills + row.total_assists) / row.total_deaths : (row.total_kills + row.total_assists);
 
-      // Sort by pick rate
-      results.sort((a, b) => b.pick_rate - a.pick_rate);
+          return {
+            agent_id: row.agent_id,
+            agent_name: row.agent_name,
+            icon_url: row.icon_url,
+            agent_role: row.agent_role,
+            season_id: seasonId || row.season_id,
+            total_picks: picks,
+            total_wins: row.total_wins,
+            total_kills: row.total_kills,
+            total_deaths: row.total_deaths,
+            total_assists: row.total_assists,
+            
+            games_played: picks,
+            win_rate: picks > 0 ? (row.total_wins / picks) * 100 : 0,
+            avg_acs: picks > 0 ? row.avg_acs / picks : 0,
+            avg_first_bloods: picks > 0 ? row.total_first_bloods / picks : 0,
+
+            // Added averages
+            avg_kills,
+            avg_deaths,
+            avg_assists,
+            avg_kda
+          };
+      });
+
+      // Sort by picks
+      results.sort((a, b) => b.total_picks - a.total_picks);
 
       return { success: true as const, data: results };
     } catch (error) {
@@ -663,113 +648,89 @@ export class StatisticsService extends BaseService {
   static async getTeamStats(
     game: 'mlbb' | 'valorant',
     seasonId?: number,
-    stageId?: number
+    stageId?: number,
+    categoryId?: number
   ) {
     try {
       const supabase = await this.getClient();
 
-      const tableName = game === 'mlbb' ? 'stats_mlbb_game_player' : 'stats_valorant_game_player';
+      const tableName = game === 'mlbb' ? 'mv_mlbb_team_stats' : 'mv_valorant_team_stats';
 
-      const { data, error } = await supabase
+      let query = supabase
         .from(tableName as any)
-        .select(`
-          team_id,
-          kills,
-          deaths,
-          assists,
-          ${game === 'mlbb' ? 'gold, damage_dealt,' : 'acs, first_bloods,'}
-          schools_teams!inner(
-            id,
-            name,
-            school:schools(
-              id,
-              name,
-              abbreviation,
-              logo_url
-            )
-          ),
-          games!inner(
-            id,
-            winner_team_id,
-            matches!inner(
-              stage_id,
-              esports_seasons_stages(season_id)
-            )
-          )
-        `);
+        .select('*');
+
+      // Apply Filters
+      if (seasonId) {
+        query = query.eq('season_id', seasonId);
+      }
+      if (stageId) {
+        query = query.eq('stage_id', stageId);
+      }
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      // Aggregate by team
-      const teamMap = new Map<string, {
-        team_id: string;
-        team_name: string;
-        school_name: string;
-        school_abbreviation: string;
-        school_logo_url: string | null;
-        games_played: number;
-        wins: number;
-        total_kills: number;
-        total_deaths: number;
-        total_assists: number;
-        total_gold?: number;
-        total_damage?: number;
-        total_acs?: number;
-        total_first_bloods?: number;
-        gameIds: Set<number>;
-      }>();
-
+      // Group by team_id to aggregate across stages if needed (when no stage filter is applied)
+      // The MV is granualar by stage. If the user wants "Season" stats, we sum up the stages.
+      
+      const teamMap = new Map<string, any>();
       const rows = (data as any[]) || [];
 
       for (const row of rows) {
         const teamId = row.team_id;
-        if (!teamId) continue;
-
-        const team = row.schools_teams as any;
-        const school = team?.school as any;
-        const gameId = row.games?.id;
-        const isWin = row.team_id === row.games?.winner_team_id;
-
         const existing = teamMap.get(teamId);
 
         if (existing) {
-          existing.total_kills += row.kills || 0;
-          existing.total_deaths += row.deaths || 0;
-          existing.total_assists += row.assists || 0;
-          if (game === 'mlbb') {
-            existing.total_gold = (existing.total_gold || 0) + (row.gold || 0);
-            existing.total_damage = (existing.total_damage || 0) + (row.damage_dealt || 0);
-          } else {
-            existing.total_acs = (existing.total_acs || 0) + (row.acs || 0);
-            existing.total_first_bloods = (existing.total_first_bloods || 0) + (row.first_bloods || 0);
-          }
-          if (gameId && !existing.gameIds.has(gameId)) {
-            existing.gameIds.add(gameId);
-            existing.games_played++;
-            if (isWin) existing.wins++;
-          }
+            existing.games_played += row.games_played;
+            existing.wins += row.wins;
+            existing.total_kills += row.total_kills;
+            existing.total_deaths += row.total_deaths;
+            existing.total_assists += row.total_assists;
+
+            if (game === 'mlbb') {
+                existing.total_gold += row.total_gold;
+                existing.total_damage += row.total_damage_dealt;
+                existing.total_turret_damage += row.total_turret_damage;
+                existing.total_lord_slain += row.total_lord_slain;
+                existing.total_turtle_slain += row.total_turtle_slain;
+            } else {
+                existing.total_acs += row.avg_acs * row.games_played; // Approx weighted sum to re-avg later
+                existing.total_first_bloods += row.total_first_bloods;
+                existing.total_plants += row.total_plants;
+                existing.total_defuses += row.total_defuses;
+            }
         } else {
-          const newEntry: any = {
-            team_id: teamId,
-            team_name: team?.name || 'Unknown',
-            school_name: school?.name || 'Unknown',
-            school_abbreviation: school?.abbreviation || '',
-            school_logo_url: school?.logo_url || null,
-            games_played: 1,
-            wins: isWin ? 1 : 0,
-            total_kills: row.kills || 0,
-            total_deaths: row.deaths || 0,
-            total_assists: row.assists || 0,
-            gameIds: new Set([gameId]),
-          };
-          if (game === 'mlbb') {
-            newEntry.total_gold = row.gold || 0;
-            newEntry.total_damage = row.damage_dealt || 0;
-          } else {
-            newEntry.total_acs = row.acs || 0;
-            newEntry.total_first_bloods = row.first_bloods || 0;
-          }
-          teamMap.set(teamId, newEntry);
+             const newEntry = {
+                team_id: row.team_id,
+                team_name: row.team_name,
+                school_name: row.school_name,
+                school_abbreviation: row.school_abbreviation,
+                school_logo_url: row.school_logo_url,
+                games_played: row.games_played,
+                wins: row.wins,
+                total_kills: row.total_kills,
+                total_deaths: row.total_deaths,
+                total_assists: row.total_assists,
+                // Init game-specific
+                ...(game === 'mlbb' ? {
+                    total_gold: row.total_gold,
+                    total_damage: row.total_damage_dealt,
+                    total_turret_damage: row.total_turret_damage,
+                    total_lord_slain: row.total_lord_slain,
+                    total_turtle_slain: row.total_turtle_slain,
+                } : {
+                    total_acs: row.avg_acs * row.games_played, // Weighted sum
+                    total_first_bloods: row.total_first_bloods,
+                    total_plants: row.total_plants,
+                    total_defuses: row.total_defuses,
+                })
+             };
+             teamMap.set(teamId, newEntry);
         }
       }
 
@@ -815,21 +776,13 @@ export class StatisticsService extends BaseService {
 
       const { data, error } = await supabase
         .from('seasons')
-        .select('id, start_at, end_at')
+        .select('id, name, start_at, end_at')
         .order('start_at', { ascending: false });
 
       if (error) throw error;
 
-      const options = (data || []).map((season: any) => {
-        const year = new Date(season.start_at).getFullYear();
-        return {
-          id: season.id,
-          label: `Season ${season.id} (${year})`,
-          value: season.id,
-        };
-      });
-
-      return { success: true as const, data: options };
+      // Return raw data to let frontend handle labeling
+      return { success: true as const, data: data as any[] };
     } catch (error) {
       return this.formatError<any[]>(error, 'Failed to fetch seasons');
     }
@@ -863,6 +816,7 @@ export class StatisticsService extends BaseService {
         label: `${stage.esports_categories?.esports?.name || ''} - ${stage.competition_stage}`,
         value: stage.id,
         category: stage.esports_categories,
+        competition_stage: stage.competition_stage, 
       }));
 
       return { success: true as const, data: options };
