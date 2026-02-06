@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Swords, ChevronUp, ChevronDown, Crosshair, Zap } from 'lucide-react';
-import { HeroStats, AgentStats } from '@/lib/types/stats-enhanced';
+import { HeroStats, AgentStats, LEADERBOARD_METRICS } from '@/lib/types/stats-enhanced';
 import Image from 'next/image';
 import { moderniz } from '@/lib/fonts';
 
@@ -19,25 +19,25 @@ interface CharacterStatsTableProps {
 }
 
 const mlbbColumns = [
-    { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'w-[80px]' },
-    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'w-[80px]' },
-    { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'w-[80px]' },
-    { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'avg_deaths', label: 'DPG', tooltip: 'Average Deaths Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'avg_assists', label: 'APG', tooltip: 'Average Assists Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'avg_gold', label: 'GPM', tooltip: 'Gold Per Minute', sortable: true, width: 'w-[90px]' },
-    { key: 'avg_damage_dealt', label: 'DMG', tooltip: 'Damage Per Game', sortable: true, width: 'w-[90px]' },
+    { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_deaths', label: 'DPG', tooltip: 'Average Deaths Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_assists', label: 'APG', tooltip: 'Average Assists Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_gold', label: 'GPM', tooltip: 'Gold Per Minute', sortable: true, width: 'min-w-[90px] w-[90px]' },
+    { key: 'avg_damage_dealt', label: 'DMG', tooltip: 'Damage Per Game', sortable: true, width: 'min-w-[90px] w-[90px]' },
 ];
 
 const valorantColumns = [
-    { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'w-[80px]' },
-    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'w-[80px]' },
-    { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'w-[80px]' },
-    { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'avg_deaths', label: 'DPG', tooltip: 'Average Deaths Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'avg_assists', label: 'APG', tooltip: 'Average Assists Per Game', sortable: true, width: 'w-[70px]' },
-    { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'w-[80px]' },
-    { key: 'avg_first_bloods', label: 'FB', tooltip: 'First Bloods per Game', sortable: true, width: 'w-[80px]' },
+    { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_deaths', label: 'DPG', tooltip: 'Average Deaths Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_assists', label: 'APG', tooltip: 'Average Assists Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_first_bloods', label: 'FB', tooltip: 'First Bloods per Game', sortable: true, width: 'min-w-[80px] w-[80px]' },
 ];
 
 const podiumColors = [
@@ -147,7 +147,13 @@ export function CharacterStatsTable({
     <div className="space-y-8">
          {/* Top 3 Podium Cards */}
             <div className="hidden lg:grid grid-cols-3 gap-6 mb-12 px-4">
-                {top3.map((char, index) => (
+                {top3.map((char, index) => {
+                    const heroRow = char as HeroStats;
+                    const agentRow = char as AgentStats;
+                    const name = game === 'mlbb' ? heroRow.hero_name : agentRow.agent_name;
+                    const role = game === 'valorant' ? agentRow.role : (game === 'mlbb' ? 'Hero' : 'Agent');
+
+                    return (
                     <Card
                         key={`char-podium-${index}`}
                         className={cn(
@@ -172,7 +178,7 @@ export function CharacterStatsTable({
                                 <div className={cn("absolute -inset-4 rounded-full blur-xl opacity-30 animate-pulse", podiumColors[index])} />
                                 <div className="w-24 h-24 rounded-lg overflow-hidden border-4 border-background shadow-2xl relative z-10 bg-muted">
                                      {char.icon_url ? (
-                                        <Image src={char.icon_url} alt={char.hero_name || (char as any).agent_name} fill className="object-cover" />
+                                        <Image src={char.icon_url} alt={name} fill className="object-cover" />
                                      ) : (
                                          <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
                                              <Swords className="w-8 h-8"/>
@@ -183,10 +189,10 @@ export function CharacterStatsTable({
 
                             <div className="mt-2 space-y-1">
                                 <h3 className={cn(moderniz.className, "text-2xl font-bold tracking-wide uppercase truncate max-w-[200px]")}>
-                                    {char.hero_name || (char as any).agent_name}
+                                    {name}
                                 </h3>
                                 <p className="text-sm text-muted-foreground font-medium truncate max-w-[200px] mx-auto">
-                                    {(char as any).agent_role || (game === 'mlbb' ? 'Hero' : 'Agent')}
+                                    {role}
                                 </p>
                             </div>
                             
@@ -208,7 +214,7 @@ export function CharacterStatsTable({
                             </div>
                         </CardContent>
                     </Card>
-                ))}
+                )})}
             </div>
 
             {/* Dense Data Table */}
@@ -223,26 +229,26 @@ export function CharacterStatsTable({
                                 {game === 'mlbb' ? 'Hero Statistics' : 'Agent Statistics'}
                             </h3>
                             <p className="text-xs text-muted-foreground font-medium">
-                                Showing all {data.length} {game === 'mlbb' ? 'heroes' : 'agents'} • Sorted by {columns.find(c => c.key === sortColumn)?.label || sortColumn}
+                                Showing all {data.length} {game === 'mlbb' ? 'heroes' : 'agents'} • Sorted by {columns.find(c => c.key === sortColumn)?.tooltip || LEADERBOARD_METRICS.find(m => m.metric === sortColumn)?.label || sortColumn}
                             </p>
                          </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-muted/30 border-b border-border/50 hover:bg-muted/30">
-                                <TableHead className="w-[300px] pl-6 text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10">
+                <div className="overflow-x-auto relative">
+                    <table className="w-max min-w-full caption-bottom text-sm border-collapse">
+                        <thead>
+                            <tr className="bg-muted/30 border-b border-border/50 hover:bg-muted/30 text-left">
+                                <th className="sticky left-0 z-20 w-[220px] md:w-[320px] pl-8 text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10 bg-background/95 shadow-[1px_0_0_0_rgba(255,255,255,0.05)] backdrop-blur-sm">
                                     {game === 'mlbb' ? 'Hero Identity' : 'Agent Identity'}
-                                </TableHead>
+                                </th>
                                 {columns.map((col) => (
-                                    <TableHead
+                                    <th
                                         key={col.key}
                                         className={cn(
                                             col.width,
-                                            "text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-1 h-10 select-none",
-                                            col.sortable && 'cursor-pointer hover:text-foreground transition-colors'
+                                            "min-w-max text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-4 h-10 select-none bg-background/95 backdrop-blur-sm",
+                                            col.sortable && 'cursor-pointer hover:bg-muted/50 transition-colors'
                                         )}
                                         onClick={() => col.sortable && onSort(col.key)}
                                     >
@@ -269,20 +275,26 @@ export function CharacterStatsTable({
                                                 </Tooltip>
                                             </TooltipProvider>
                                         </div>
-                                    </TableHead>
+                                    </th>
                                 ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {data.map((row, idx) => (
-                                <TableRow 
-                                    key={`${row.character_id || idx}`}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.map((row, idx) => {
+                                const heroRow = row as HeroStats;
+                                const agentRow = row as AgentStats;
+                                const name = game === 'mlbb' ? heroRow.hero_name : agentRow.agent_name;
+                                const role = game === 'valorant' ? agentRow.role : undefined;
+                                
+                                return (
+                                <tr 
+                                    key={`${name}-${idx}`}
                                     className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[60px]"
                                 >
-                                    <TableCell className="pl-6 py-2">
-                                        <div className="flex items-center gap-4">
+                                    <td className="sticky left-0 z-10 pl-8 py-2 bg-card/95 group-hover:bg-muted/20 backdrop-blur-sm shadow-[1px_0_0_0_rgba(255,255,255,0.05)] w-[220px] md:w-[320px] max-w-[220px] md:max-w-[320px] transition-colors">
+                                        <div className="flex items-center gap-6">
                                             <div className={cn(
-                                                "w-6 text-center font-bold text-sm",
+                                                "w-6 text-center font-bold text-sm flex-shrink-0",
                                                 idx < 3 ? "text-amber-400 scale-110" : "text-muted-foreground"
                                             )}>
                                                 {idx + 1}
@@ -292,7 +304,7 @@ export function CharacterStatsTable({
                                                 {row.icon_url ? (
                                                     <Image 
                                                         src={row.icon_url} 
-                                                        alt={row.hero_name || (row as any).agent_name} 
+                                                        alt={name} 
                                                         fill
                                                         className="object-cover"
                                                     />
@@ -305,18 +317,18 @@ export function CharacterStatsTable({
 
                                             <div className="flex flex-col min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-sm text-foreground truncate max-w-[140px] group-hover:text-primary transition-colors">
-                                                        {row.hero_name || (row as any).agent_name}
+                                                    <span className="font-bold text-sm text-foreground truncate max-w-[100px] md:max-w-[140px] group-hover:text-primary transition-colors">
+                                                        {name}
                                                     </span>
                                                 </div>
-                                                 {game === 'valorant' && (row as any).agent_role && (
-                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                                        {(row as any).agent_role}
-                                                    </span>
+                                                 {role && (
+                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium truncate max-w-[120px] md:max-w-[160px]">
+                                                        {role}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
-                                    </TableCell>
+                                    </td>
 
                                     {columns.map((col) => {
                                         const rawValue = getRawValue(row, col.key);
@@ -324,28 +336,28 @@ export function CharacterStatsTable({
                                         const heatmapStyle = getHeatmapStyle(rawValue, col.key);
 
                                         return (
-                                            <TableCell 
+                                            <td 
                                                 key={`${col.key}-${idx}`} 
                                                 className="p-0 h-full border-l border-border/10"
                                             >
                                                 <div 
-                                                    className="w-full h-full flex items-center justify-center min-h-[60px]"
+                                                    className="w-full h-full flex items-center justify-center min-h-[60px] px-4"
                                                     style={heatmapStyle}
                                                 >
                                                     <span className={cn(
-                                                        "text-xs font-medium tabular-nums",
+                                                        "text-xs font-medium tabular-nums whitespace-nowrap",
                                                         col.key === sortColumn ? "font-bold text-foreground" : "text-muted-foreground"
                                                     )}>
                                                         {displayValue}
                                                     </span>
                                                 </div>
-                                            </TableCell>
+                                            </td>
                                         );
                                     })}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                </tr>
+                            )})}
+                        </tbody>
+                    </table>
                 </div>
             </div>
             

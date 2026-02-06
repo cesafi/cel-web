@@ -23,9 +23,10 @@ export interface MatchWithFullDetails extends Match {
   games: Game[];
   esports_seasons_stages: {
     id: number;
-    name: string;
+    name: string; // This might not be in DB, check DB types if 'name' is actually 'competition_stage' or distinct
     season_id: number | null;
     competition_stage: string;
+    stage_type: Database["public"]["Enums"]["stage_type"]; // Added
     esports_categories: {
       id: number;
       division: string;

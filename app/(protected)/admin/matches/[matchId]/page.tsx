@@ -146,6 +146,17 @@ export default function MatchDetailPage() {
                   <Gamepad2 className="h-4 w-4" />
                   Best of {match.best_of}
                 </div>
+
+                <div className="mt-2">
+                  <Button 
+                    size="sm" 
+                    variant="default"
+                    onClick={() => router.push(`/admin/matches/${matchId}/manage`)}
+                  >
+                    <Gamepad2 className="mr-2 h-4 w-4" />
+                    Manage Match & Games
+                  </Button>
+                </div>
               </div>
             </div>
 

@@ -35,6 +35,7 @@ interface GenericStatsTableProps<T> {
     
     // Identity column configuration
     renderRank?: boolean;
+    stickyFirstColumn?: boolean;
 }
 
 export function GenericStatsTable<T extends Record<string, any>>({
@@ -49,6 +50,7 @@ export function GenericStatsTable<T extends Record<string, any>>({
     isLoading = false,
     className,
     renderRank = true,
+    stickyFirstColumn = false,
 }: GenericStatsTableProps<T>) {
 
     // Calculate max values for heatmap
@@ -130,69 +132,80 @@ export function GenericStatsTable<T extends Record<string, any>>({
             )}
 
             {/* Table */}
-            <div className="overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/30 border-b border-border/50 hover:bg-muted/30">
+            <div className="overflow-x-auto relative min-h-[400px]">
+                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
+                    <thead>
+                        <tr className="bg-muted/30 border-b border-border/50 hover:bg-muted/30">
                             {renderRank && (
-                                <TableHead className="w-[50px] text-center text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10">
+                                <th className={cn(
+                                    "w-[50px] text-center text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10 bg-background/95", // explicit bg for sticky
+                                    stickyFirstColumn && "sticky left-0 z-20 shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                                )}>
                                     #
-                                </TableHead>
+                                </th>
                             )}
                             
-                            {columns.map((col) => (
-                                <TableHead
-                                    key={col.key}
-                                    className={cn(
-                                        col.width, 
-                                        "text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10 px-1",
-                                        col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
-                                        col.sortable ? 'cursor-pointer hover:bg-muted/50 select-none' : ''
-                                    )}
-                                    onClick={() => col.sortable && onSort?.(col.key)}
-                                >
-                                    <div className={cn(
-                                        "flex items-center gap-1 h-full",
-                                        col.align === 'center' ? 'justify-center' : col.align === 'right' ? 'justify-end' : 'justify-start'
-                                    )}>
-                                        <TooltipProvider delayDuration={200}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span className={cn(
-                                                        "flex items-center gap-1",
-                                                        col.tooltip && "cursor-help decoration-dotted underline-offset-4 hover:underline decoration-muted-foreground/50"
-                                                    )}>
-                                                        {col.label}
-                                                        {col.sortable && <SortIcon column={col.key} />}
-                                                    </span>
-                                                </TooltipTrigger>
-                                                {col.tooltip && (
-                                                    <TooltipContent 
-                                                        side="top" 
-                                                        className="bg-popover text-popover-foreground text-xs font-medium px-3 py-1.5 border border-border/50 shadow-xl"
-                                                    >
-                                                        <p>{col.tooltip}</p>
-                                                    </TooltipContent>
-                                                )}
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </div>
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                            {columns.map((col, index) => {
+                                const isSticky = stickyFirstColumn && index === 0;
+                                return (
+                                    <th
+                                        key={col.key}
+                                        className={cn(
+                                            col.width, 
+                                            "text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10 px-4 bg-background/95", // Increased padding
+                                            col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
+                                            col.sortable ? 'cursor-pointer hover:bg-muted/50 select-none' : '',
+                                            isSticky && "sticky z-20 shadow-[1px_0_0_0_rgba(255,255,255,0.05)]",
+                                            isSticky && (renderRank ? "left-[50px]" : "left-0")
+                                        )}
+                                        onClick={() => col.sortable && onSort?.(col.key)}
+                                    >
+                                        <div className={cn(
+                                            "flex items-center gap-1 h-full",
+                                            col.align === 'center' ? 'justify-center' : col.align === 'right' ? 'justify-end' : 'justify-start'
+                                        )}>
+                                            <TooltipProvider delayDuration={200}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className={cn(
+                                                            "flex items-center gap-1",
+                                                            col.tooltip && "cursor-help decoration-dotted underline-offset-4 hover:underline decoration-muted-foreground/50"
+                                                        )}>
+                                                            {col.label}
+                                                            {col.sortable && <SortIcon column={col.key} />}
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    {col.tooltip && (
+                                                        <TooltipContent 
+                                                            side="top" 
+                                                            className="bg-popover text-popover-foreground text-xs font-medium px-3 py-1.5 border border-border/50 shadow-xl"
+                                                        >
+                                                            <p>{col.tooltip}</p>
+                                                        </TooltipContent>
+                                                    )}
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    </th>
+                                );
+                            })}
+                        </tr>
+                    </thead>
+                    <tbody>
                         {data.map((row, index) => {
                             const rank = index + 1;
                             const isTop3 = rank <= 3;
                             
                             return (
-                                <TableRow 
+                                <tr 
                                     key={index}
                                     className="group border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                                 >
                                     {renderRank && (
-                                        <TableCell className="text-center py-2.5 px-1">
+                                        <td className={cn(
+                                            "text-center py-2.5 px-1 bg-card/50 backdrop-blur-sm", // Keep rank compact
+                                            stickyFirstColumn && "sticky left-0 z-10 shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                                        )}>
                                             <div className={cn(
                                                 "w-6 h-6 mx-auto flex items-center justify-center rounded-full text-[10px] font-bold border",
                                                 rank === 1 ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/50" :
@@ -202,24 +215,24 @@ export function GenericStatsTable<T extends Record<string, any>>({
                                             )}>
                                                 {rank}
                                             </div>
-                                        </TableCell>
+                                        </td>
                                     )}
 
-                                    {columns.map((col) => {
+                                    {columns.map((col, colIndex) => {
                                         const value = row[col.key];
                                         const heatmapStyle = getHeatmapStyle(value, col);
+                                        const isSticky = stickyFirstColumn && colIndex === 0;
 
                                         return (
-                                            <TableCell 
+                                            <td 
                                                 key={col.key}
-                                                style={heatmapStyle}
+                                                style={isSticky ? {} : heatmapStyle} // Don't apply heatmap bg to sticky column directly if possible, or handle carefully
                                                 className={cn(
-                                                    "py-2.5 px-2 text-sm tabular-nums text-foreground/80 transition-colors",
-                                                    // Add rounded corners to first/last heatmap cells if we wanted, 
-                                                    // but table cells need handling. For now just let background handle it.
+                                                    "py-3 px-4 text-sm tabular-nums text-foreground/80 transition-colors", // Increased vertical and horizontal padding
                                                     col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
-                                                    // Font weight for key columns (often explicitly handled in formatter, but good default)
-                                                    col.key === 'win_rate' || col.key === 'avg_kda' ? 'font-bold' : ''
+                                                    col.key === 'win_rate' || col.key === 'avg_kda' ? 'font-bold' : '',
+                                                    isSticky && "sticky z-10 bg-card/95 backdrop-blur-sm shadow-[1px_0_0_0_rgba(255,255,255,0.05)]", // Explicit BG for sticky
+                                                    isSticky && (renderRank ? "left-[50px]" : "left-0")
                                                 )}
                                             >
                                                 {col.render ? (
@@ -229,14 +242,14 @@ export function GenericStatsTable<T extends Record<string, any>>({
                                                 ) : (
                                                     value === undefined || value === null ? '-' : String(value)
                                                 )}
-                                            </TableCell>
+                                            </td>
                                         );
                                     })}
-                                </TableRow>
+                                </tr>
                             );
                         })}
-                    </TableBody>
-                </Table>
+                    </tbody>
+                </table>
             </div>
         </div>
     );

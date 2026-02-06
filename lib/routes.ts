@@ -36,7 +36,10 @@ export const PUBLIC_ROUTES = [
 
   // Error pages
   '/not-found',
-  '/no-access'
+  '/no-access',
+
+  // Lobby
+  '/lobby/[matchId]'
 ] as const;
 
 // Protected routes that require authentication
@@ -53,6 +56,7 @@ export const PROTECTED_ROUTES = [
   '/admin/league-stage',
   '/admin/matches',
   '/admin/matches/[id]',
+  '/admin/matches/[id]/manage',
   '/admin/photo-gallery',
   '/admin/school-teams',
   '/admin/schools',
@@ -114,7 +118,8 @@ export const ROUTE_PATTERNS = {
     /^\/volunteers$/,
     /^\/partners$/,
     /^\/not-found$/,
-    /^\/no-access$/
+    /^\/no-access$/,
+    /^\/lobby\/[^\/]+$/ // /lobby/[matchId]
   ],
 
   // Protected dynamic routes
@@ -131,6 +136,7 @@ export const ROUTE_PATTERNS = {
     /^\/admin\/league-stage$/,
     /^\/admin\/matches$/,
     /^\/admin\/matches\/[^\/]+$/, // /admin/matches/[id]
+    /^\/admin\/matches\/[^\/]+\/manage$/, // /admin/matches/[id]/manage
     /^\/admin\/photo-gallery$/,
     /^\/admin\/school-teams$/,
     /^\/admin\/schools$/,

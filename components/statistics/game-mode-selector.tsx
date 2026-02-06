@@ -92,7 +92,7 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                     id: gameId,
                     name: esport.name,
                     shortName: esport.abbreviation || gameId.toUpperCase(),
-                    description: gameId === 'mlbb' ? 'Bang Bang' : 'Tactical Shooter',
+                    description: 'Click to view statistics',
                     logo: esport.logo_url,
                     ...styling,
                 };

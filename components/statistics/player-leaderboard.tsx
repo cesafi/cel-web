@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trophy, ChevronUp, ChevronDown, Medal, Target, Shield, Zap, Crosshair, Bomb, Skull, Sword, Box } from 'lucide-react';
 import { MlbbPlayerStats, ValorantPlayerStats } from '@/services/statistics';
+import { EnhancedMlbbPlayerStats, EnhancedValorantPlayerStats, LEADERBOARD_METRICS } from '@/lib/types/stats-enhanced';
 import Image from 'next/image';
 import { moderniz } from '@/lib/fonts';
 
@@ -30,35 +31,35 @@ interface PlayerLeaderboardProps {
 // Expanded columns for maximum data density
 const mlbbColumns = [
     // Identity column handled separately
-    { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'w-[50px]' },
-    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate', sortable: true, width: 'w-[60px]' }, // Derived in render
-    { key: 'avg_rating', label: 'RTG', tooltip: 'Avg Rating', sortable: true, width: 'w-[60px]' },
-    { key: 'mvp_count', label: 'MVP', tooltip: 'Total MVPs', sortable: true, width: 'w-[50px]' },
-    { key: 'kills_per_game', label: 'K', tooltip: 'Kills/Game', sortable: true, width: 'w-[50px]' },
-    { key: 'deaths_per_game', label: 'D', tooltip: 'Deaths/Game', sortable: true, width: 'w-[50px]' },
-    { key: 'assists_per_game', label: 'A', tooltip: 'Assists/Game', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', sortable: true, width: 'w-[60px]' }, // Derived
-    { key: 'avg_gpm', label: 'GPM', tooltip: 'Gold/Min', sortable: true, width: 'w-[70px]' },
-    { key: 'total_damage_dealt', label: 'DMG', tooltip: 'Total Damage', sortable: true, width: 'w-[80px]' },
-    { key: 'total_turret_damage', label: 'TUR', tooltip: 'Turret Damage', sortable: true, width: 'w-[70px]' },
-    { key: 'total_lord_slain', label: 'LRD', tooltip: 'Lords Slain', sortable: true, width: 'w-[50px]' },
-    { key: 'total_turtle_slain', label: 'TRT', tooltip: 'Turtles Slain', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_teamfight_percent', label: 'TF%', tooltip: 'Teamfight Participation', sortable: true, width: 'w-[60px]' },
+    { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'avg_rating', label: 'RTG', tooltip: 'Avg Rating', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'mvp_count', label: 'MVP', tooltip: 'Total MVPs', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'kills_per_game', label: 'K', tooltip: 'Kills/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'deaths_per_game', label: 'D', tooltip: 'Deaths/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'assists_per_game', label: 'A', tooltip: 'Assists/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_gpm', label: 'GPM', tooltip: 'Gold/Min', sortable: true, width: 'min-w-[90px] w-[90px]' },
+    { key: 'total_damage_dealt', label: 'DMG', tooltip: 'Total Damage', sortable: true, width: 'min-w-[90px] w-[90px]' },
+    { key: 'total_turret_damage', label: 'TUR', tooltip: 'Turret Damage', sortable: true, width: 'min-w-[90px] w-[90px]' },
+    { key: 'total_lord_slain', label: 'LRD', tooltip: 'Lords Slain', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'total_turtle_slain', label: 'TRT', tooltip: 'Turtles Slain', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'avg_teamfight_percent', label: 'TF%', tooltip: 'Teamfight Participation', sortable: true, width: 'min-w-[80px] w-[80px]' },
 ];
 
 const valorantColumns = [
     // Identity column handled separately
-    { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'w-[50px]' },
-    { key: 'wins', label: 'W', tooltip: 'Wins', sortable: true, width: 'w-[50px]' }, // Use wins to calc WR
-    { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'w-[60px]' },
-    { key: 'avg_econ_rating', label: 'ECO', tooltip: 'Econ Rating', sortable: true, width: 'w-[60px]' },
-    { key: 'kills_per_game', label: 'K', tooltip: 'Kills/Game', sortable: true, width: 'w-[50px]' },
-    { key: 'deaths_per_game', label: 'D', tooltip: 'Deaths/Game', sortable: true, width: 'w-[50px]' },
-    { key: 'assists_per_game', label: 'A', tooltip: 'Assists/Game', sortable: true, width: 'w-[50px]' },
-    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', sortable: true, width: 'w-[60px]' }, // Derived
-    { key: 'total_first_bloods', label: 'FB', tooltip: 'First Bloods', sortable: true, width: 'w-[50px]' },
-    { key: 'total_plants', label: 'PL', tooltip: 'Plants', sortable: true, width: 'w-[50px]' },
-    { key: 'total_defuses', label: 'DF', tooltip: 'Defuses', sortable: true, width: 'w-[50px]' },
+    { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'wins', label: 'W', tooltip: 'Wins', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'avg_econ_rating', label: 'ECO', tooltip: 'Econ Rating', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'kills_per_game', label: 'K', tooltip: 'Kills/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'deaths_per_game', label: 'D', tooltip: 'Deaths/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'assists_per_game', label: 'A', tooltip: 'Assists/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'avg_kda', label: 'KDA', tooltip: 'KDA Ratio', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'total_first_bloods', label: 'FB', tooltip: 'First Bloods', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'total_plants', label: 'PL', tooltip: 'Plants', sortable: true, width: 'min-w-[70px] w-[70px]' },
+    { key: 'total_defuses', label: 'DF', tooltip: 'Defuses', sortable: true, width: 'min-w-[70px] w-[70px]' },
 ];
 
 const podiumColors = [
@@ -283,29 +284,29 @@ export function PlayerLeaderboard({
                          <div>
                             <h3 className={cn(moderniz.className, "text-xl font-bold tracking-wide")}>Player Statistics</h3>
                             <p className="text-xs text-muted-foreground font-medium">
-                                Showing all {data.length} players • Sorted by {columns.find(c => c.key === sortColumn)?.label || sortColumn}
+                                Showing all {data.length} players • Sorted by {columns.find(c => c.key === sortColumn)?.tooltip || LEADERBOARD_METRICS.find(m => m.metric === sortColumn)?.label || sortColumn}
                             </p>
                          </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-muted/30 border-b border-border/50 hover:bg-muted/30">
+                <div className="overflow-x-auto relative">
+                    <table className="w-max min-w-full caption-bottom text-sm border-collapse">
+                        <thead>
+                            <tr className="bg-muted/30 border-b border-border/50 hover:bg-muted/30 text-left">
                                 {/* Fixed Identity Column Header */}
-                                <TableHead className="w-[300px] pl-6 text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10">
+                                <th className="sticky left-0 z-20 w-[220px] md:w-[320px] pl-8 text-xs uppercase font-bold tracking-wider text-muted-foreground/80 h-10 bg-background/95 shadow-[1px_0_0_0_rgba(255,255,255,0.05)] backdrop-blur-sm">
                                     Player Identity
-                                </TableHead>
+                                </th>
                                 
                                 {/* Dynamic Stat Headers */}
                                 {columns.map((col) => (
-                                    <TableHead
+                                    <th
                                         key={col.key}
                                         className={cn(
                                             col.width,
-                                            "text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-1 h-10 select-none",
-                                            col.sortable && 'cursor-pointer hover:text-foreground transition-colors'
+                                            "min-w-max text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-4 h-10 select-none bg-background/95 backdrop-blur-sm", // Increased padding
+                                            col.sortable && 'cursor-pointer hover:bg-muted/50 transition-colors'
                                         )}
                                         onClick={() => col.sortable && onSort(col.key)}
                                     >
@@ -332,22 +333,22 @@ export function PlayerLeaderboard({
                                                 </Tooltip>
                                             </TooltipProvider>
                                         </div>
-                                    </TableHead>
+                                    </th>
                                 ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                            </tr>
+                        </thead>
+                        <tbody>
                             {data.map((row, idx) => (
-                                <TableRow 
+                                <tr 
                                     key={`${row.player_id}-${idx}`}
                                     className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[60px]"
                                 >
                                     {/* Consolidated Identity Column */}
-                                    <TableCell className="pl-6 py-2">
-                                        <div className="flex items-center gap-4">
+                                    <td className="sticky left-0 z-10 pl-8 py-2 bg-card/95 group-hover:bg-muted/20 backdrop-blur-sm shadow-[1px_0_0_0_rgba(255,255,255,0.05)] w-[220px] md:w-[320px] max-w-[220px] md:max-w-[320px] transition-colors">
+                                        <div className="flex items-center gap-6">
                                             {/* Rank */}
                                             <div className={cn(
-                                                "w-6 text-center font-bold text-sm",
+                                                "w-6 text-center font-bold text-sm flex-shrink-0",
                                                 idx < 3 ? "text-amber-400 scale-110" : "text-muted-foreground"
                                             )}>
                                                 {idx + 1}
@@ -355,7 +356,7 @@ export function PlayerLeaderboard({
 
                                             {/* Avatar */}
                                             <Avatar className={cn(
-                                                "w-10 h-10 border border-border bg-muted",
+                                                "w-10 h-10 border border-border bg-muted flex-shrink-0",
                                                 idx < 3 && "ring-2 ring-amber-500/20"
                                             )}>
                                                 <AvatarImage src={row.player_photo_url || ''} className="object-cover" />
@@ -367,11 +368,11 @@ export function PlayerLeaderboard({
                                             {/* Info Block */}
                                             <div className="flex flex-col min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-sm text-foreground truncate max-w-[140px] group-hover:text-primary transition-colors">
+                                                    <span className="font-bold text-sm text-foreground truncate max-w-[100px] md:max-w-[140px] group-hover:text-primary transition-colors">
                                                         {row.player_ign}
                                                     </span>
                                                     {(game === 'mlbb' ? (row as any).hero_name : (row as any).agent_name) && (
-                                                        <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[10px] font-medium opacity-70 group-hover:opacity-100 transition-opacity">
+                                                        <Badge variant="secondary" className="hidden md:inline-flex px-1.5 py-0 h-4 text-[10px] font-medium opacity-70 group-hover:opacity-100 transition-opacity">
                                                             {game === 'mlbb' ? (row as any).hero_name : (row as any).agent_name}
                                                         </Badge>
                                                     )}
@@ -387,11 +388,11 @@ export function PlayerLeaderboard({
                                                             />
                                                         </div>
                                                     )}
-                                                    <span className="truncate max-w-[140px]">{row.team_name || 'Free Agent'}</span>
+                                                    <span className="truncate max-w-[100px] md:max-w-[140px]">{row.team_name || 'Free Agent'}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </TableCell>
+                                    </td>
 
                                     {/* Statistic Columns with Heatmap Backgrounds */}
                                     {columns.map((col) => {
@@ -400,28 +401,28 @@ export function PlayerLeaderboard({
                                         const heatmapStyle = getHeatmapStyle(rawValue, col.key);
 
                                         return (
-                                            <TableCell 
+                                            <td 
                                                 key={`${col.key}-${idx}`} 
                                                 className="p-0 h-full border-l border-border/10"
                                             >
                                                 <div 
-                                                    className="w-full h-full flex items-center justify-center min-h-[60px]"
+                                                    className="w-full h-full flex items-center justify-center min-h-[60px] px-4"
                                                     style={heatmapStyle}
                                                 >
                                                     <span className={cn(
-                                                        "text-xs font-medium tabular-nums",
+                                                        "text-xs font-medium tabular-nums whitespace-nowrap",
                                                         col.key === sortColumn ? "font-bold text-foreground" : "text-muted-foreground"
                                                     )}>
                                                         {displayValue}
                                                     </span>
                                                 </div>
-                                            </TableCell>
+                                            </td>
                                         );
                                     })}
-                                </TableRow>
+                                </tr>
                             ))}
-                        </TableBody>
-                    </Table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

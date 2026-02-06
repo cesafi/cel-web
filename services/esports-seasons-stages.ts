@@ -54,7 +54,9 @@ export class EsportsSeasonsStagesService extends BaseService {
 
       return { success: true, data };
     } catch (err) {
-      return this.formatError(err, 'Failed to create league stage');
+      console.error('Create Stage Error:', err);
+      // Return the specific error message to help debugging
+      return this.formatError(err, err instanceof Error ? err.message : 'Failed to create league stage');
     }
   }
 

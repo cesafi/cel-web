@@ -2,10 +2,10 @@
 
 import { Database } from '@/database.types';
 
-// Hero bans from database
-export type GameHeroBan = Database['public']['Tables']['game_hero_bans']['Row'];
-export type GameHeroBanInsert = Database['public']['Tables']['game_hero_bans']['Insert'];
-export type GameHeroBanUpdate = Database['public']['Tables']['game_hero_bans']['Update'];
+// Draft Action from database (Unified Bans & Picks)
+export type GameDraftAction = Database['public']['Tables']['game_draft_actions']['Row'];
+export type GameDraftActionInsert = Database['public']['Tables']['game_draft_actions']['Insert'];
+export type GameDraftActionUpdate = Database['public']['Tables']['game_draft_actions']['Update'];
 
 // Game character (hero) from database
 export type GameCharacter = Database['public']['Tables']['game_characters']['Row'];
@@ -14,10 +14,9 @@ export type GameCharacter = Database['public']['Tables']['game_characters']['Row
 export interface DraftCharacter extends GameCharacter {
   isBanned: boolean;
   isPicked: boolean;
-  bannedByTeam?: string;
-  pickedByTeam?: string;
-  pickOrder?: number;
-  banOrder?: number;
+  actionByTeam?: string; // Team ID
+  actionType?: 'ban' | 'pick';
+  sortOrder?: number;
 }
 
 // Draft phase definitions for MLBB
@@ -29,20 +28,33 @@ export type DraftPhase =
   | 'pick-phase-2'   // Second pick phase
   | 'completed';
 
+// Action Definition for Sequencing
+export interface DraftSequenceStep {
+  action: 'ban' | 'pick';
+  team: 'team1' | 'team2';
+  phase: DraftPhase;
+  timer?: number; // Optional override for specific steps
+}
+
 // Draft state for real-time synchronization
 export interface DraftState {
   gameId: number;
   matchId: number;
-  phase: DraftPhase;
-  currentTurn: 'team1' | 'team2';
+  // Current status derived from actions
+  currentStepIndex: number; // 0-based index into sequence
+  nextAction: DraftSequenceStep | null;
+  
   team1Id: string;
   team2Id: string;
-  team1Bans: GameHeroBan[];
-  team2Bans: GameHeroBan[];
-  team1Picks: string[]; // Hero names
-  team2Picks: string[]; // Hero names
-  timer: number;
-  isActive: boolean;
+  
+  // Lists for easy UI rendering
+  actions: GameDraftAction[]; 
+  team1Bans: GameDraftAction[];
+  team2Bans: GameDraftAction[];
+  team1Picks: GameDraftAction[];
+  team2Picks: GameDraftAction[];
+  
+  isComplete: boolean;
 }
 
 // MLBB Draft sequence (standard MPL format)
@@ -50,11 +62,7 @@ export interface DraftState {
 // Pick Phase 1: Team1, Team2, Team2, Team1, Team1, Team2 (1-2-2-1 format)
 // Ban Phase 2: Team2, Team1, Team2, Team1 (2 each)
 // Pick Phase 2: Team2, Team1, Team1, Team2 (remaining picks)
-export const MLBB_DRAFT_SEQUENCE: Array<{
-  action: 'ban' | 'pick';
-  team: 'team1' | 'team2';
-  phase: DraftPhase;
-}> = [
+export const MLBB_DRAFT_SEQUENCE: DraftSequenceStep[] = [
   // Ban Phase 1
   { action: 'ban', team: 'team1', phase: 'ban-phase-1' },
   { action: 'ban', team: 'team2', phase: 'ban-phase-1' },
@@ -81,18 +89,41 @@ export const MLBB_DRAFT_SEQUENCE: Array<{
   { action: 'pick', team: 'team2', phase: 'pick-phase-2' },
 ];
 
-// Helper to get current draft step
-export function getCurrentDraftStep(draftState: DraftState): number {
-  const totalBans = draftState.team1Bans.length + draftState.team2Bans.length;
-  const totalPicks = draftState.team1Picks.length + draftState.team2Picks.length;
-  return totalBans + totalPicks;
+/**
+ * Calculates the current state of the draft based on the actions log.
+ */
+export function calculateDraftState(
+  gameId: number, 
+  matchId: number,
+  team1Id: string, 
+  team2Id: string, 
+  actions: GameDraftAction[]
+): DraftState {
+  const sortedActions = [...actions].sort((a, b) => a.sort_order - b.sort_order);
+  const currentStepIndex = sortedActions.length;
+  
+  const team1Bans = sortedActions.filter(a => a.team_id === team1Id && a.action_type === 'ban');
+  const team2Bans = sortedActions.filter(a => a.team_id === team2Id && a.action_type === 'ban');
+  const team1Picks = sortedActions.filter(a => a.team_id === team1Id && a.action_type === 'pick');
+  const team2Picks = sortedActions.filter(a => a.team_id === team2Id && a.action_type === 'pick');
+
+  const nextAction = currentStepIndex < MLBB_DRAFT_SEQUENCE.length 
+    ? MLBB_DRAFT_SEQUENCE[currentStepIndex] 
+    : null;
+
+  return {
+    gameId,
+    matchId,
+    currentStepIndex,
+    nextAction,
+    team1Id,
+    team2Id,
+    actions: sortedActions,
+    team1Bans,
+    team2Bans,
+    team1Picks,
+    team2Picks,
+    isComplete: nextAction === null
+  };
 }
 
-// Helper to get next action in sequence
-export function getNextDraftAction(draftState: DraftState) {
-  const currentStep = getCurrentDraftStep(draftState);
-  if (currentStep >= MLBB_DRAFT_SEQUENCE.length) {
-    return null; // Draft complete
-  }
-  return MLBB_DRAFT_SEQUENCE[currentStep];
-}

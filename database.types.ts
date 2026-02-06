@@ -300,41 +300,71 @@ export type Database = {
           },
         ]
       }
-      game_hero_bans: {
+      game_draft_actions: {
         Row: {
-          ban_order: number | null
+          action_type: string
           created_at: string
           game_id: number
+          hero_id: number | null
           hero_name: string
           id: string
+          is_locked: boolean | null
+          sort_order: number
           team_id: string
         }
         Insert: {
-          ban_order?: number | null
+          action_type: string
           created_at?: string
           game_id: number
+          hero_id?: number | null
           hero_name: string
           id?: string
+          is_locked?: boolean | null
+          sort_order: number
           team_id: string
         }
         Update: {
-          ban_order?: number | null
+          action_type?: string
           created_at?: string
           game_id?: number
+          hero_id?: number | null
           hero_name?: string
           id?: string
+          is_locked?: boolean | null
+          sort_order?: number
           team_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "game_hero_bans_game_id_fkey"
+            foreignKeyName: "game_draft_actions_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "game_hero_bans_team_id_fkey"
+            foreignKeyName: "game_draft_actions_hero_id_fkey"
+            columns: ["hero_id"]
+            isOneToOne: false
+            referencedRelation: "game_characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_draft_actions_hero_id_fkey"
+            columns: ["hero_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_hero_stats"
+            referencedColumns: ["hero_id"]
+          },
+          {
+            foreignKeyName: "game_draft_actions_hero_id_fkey"
+            columns: ["hero_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_agent_stats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "game_draft_actions_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "schools_teams"
@@ -386,39 +416,55 @@ export type Database = {
       }
       games: {
         Row: {
+          coin_toss_winner: string | null
           created_at: string
           duration: string
           end_at: string | null
           game_number: number
           id: number
           match_id: number
+          side_selection: string | null
           start_at: string | null
+          status: string | null
           updated_at: string
           valorant_map_id: number | null
         }
         Insert: {
+          coin_toss_winner?: string | null
           created_at?: string
           duration?: string
           end_at?: string | null
           game_number?: number
           id?: number
           match_id: number
+          side_selection?: string | null
           start_at?: string | null
+          status?: string | null
           updated_at?: string
           valorant_map_id?: number | null
         }
         Update: {
+          coin_toss_winner?: string | null
           created_at?: string
           duration?: string
           end_at?: string | null
           game_number?: number
           id?: number
           match_id?: number
+          side_selection?: string | null
           start_at?: string | null
+          status?: string | null
           updated_at?: string
           valorant_map_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_coin_toss_winner_fkey"
+            columns: ["coin_toss_winner"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_match_id_fkey"
             columns: ["match_id"]
