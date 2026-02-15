@@ -19,7 +19,8 @@ export class GameDraftService extends BaseService {
         .from(TABLE_NAME)
         .select(`
           *,
-          schools_teams(id, name, schools(id, name, abbreviation, logo_url))
+          schools_teams(id, name, schools(id, name, abbreviation, logo_url)),
+          player:players(id, ign, role)
         `)
         .eq('game_id', gameId)
         .order('sort_order', { ascending: true });
@@ -58,6 +59,42 @@ export class GameDraftService extends BaseService {
       return { success: true, data: undefined };
     } catch (err) {
       return this.formatError(err, `Failed to reset draft.`);
+    }
+  }
+
+  /**
+   * Undo the last draft action by deleting the one with the highest sort_order.
+   */
+  static async undoLastAction(gameId: number): Promise<ServiceResponse<undefined>> {
+    try {
+      const supabase = await this.getClient();
+      
+      // 1. Get the last action (highest sort_order)
+      const { data: lastActions, error: fetchError } = await supabase
+          .from(TABLE_NAME)
+          .select('id')
+          .eq('game_id', gameId)
+          .order('sort_order', { ascending: false })
+          .limit(1);
+
+      if (fetchError) throw fetchError;
+      if (!lastActions || lastActions.length === 0) {
+          return { success: false, error: 'No actions to undo.' };
+      }
+
+      const lastActionId = lastActions[0].id;
+
+      // 2. Delete it
+      const { error: deleteError } = await supabase
+          .from(TABLE_NAME)
+          .delete()
+          .eq('id', lastActionId);
+
+      if (deleteError) throw deleteError;
+
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to undo last action.`);
     }
   }
 

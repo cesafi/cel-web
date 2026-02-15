@@ -79,11 +79,12 @@ export default function PlayersManagementPage() {
     setPlayerToDelete(undefined);
   };
 
-  const handleSubmit = (data: PlayerInsert | PlayerUpdate) => {
+  const handleSubmit = (data: PlayerInsert | PlayerUpdate, teamId?: string | null) => {
+    const seasonId = currentSeason?.id;
     if (modalMode === 'add') {
-      createMutation.mutate(data as PlayerInsert);
+      createMutation.mutate({ data: data as PlayerInsert, teamId, seasonId });
     } else if (editingPlayer) {
-      updateMutation.mutate({ id: editingPlayer.id, ...data } as PlayerUpdate);
+      updateMutation.mutate({ data: { id: editingPlayer.id, ...data } as PlayerUpdate, teamId, seasonId });
     }
     setIsModalOpen(false);
   };

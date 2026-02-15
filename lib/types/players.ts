@@ -8,7 +8,9 @@ export type PlayerInsert = z.infer<typeof createPlayerSchema>;
 export type PlayerUpdate = z.infer<typeof updatePlayerSchema>;
 
 export interface PlayerWithTeam extends Player {
-  schools_teams: {
+  // We will likely flatten this from player_seasons or fetch it differently
+  // For compatibility, we keep this structure if we transform the data
+  schools_teams?: {
     id: string;
     name: string;
     school_id: string;

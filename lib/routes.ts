@@ -56,7 +56,6 @@ export const PROTECTED_ROUTES = [
   '/admin/league-stage',
   '/admin/matches',
   '/admin/matches/[id]',
-  '/admin/matches/[id]/manage',
   '/admin/photo-gallery',
   '/admin/school-teams',
   '/admin/schools',

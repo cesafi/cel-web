@@ -3,7 +3,13 @@
 import { Database } from '@/database.types';
 
 // Draft Action from database (Unified Bans & Picks)
-export type GameDraftAction = Database['public']['Tables']['game_draft_actions']['Row'];
+export type GameDraftAction = Database['public']['Tables']['game_draft_actions']['Row'] & {
+  player?: {
+    id: string;
+    ign: string;
+    role: string | null;
+  };
+};
 export type GameDraftActionInsert = Database['public']['Tables']['game_draft_actions']['Insert'];
 export type GameDraftActionUpdate = Database['public']['Tables']['game_draft_actions']['Update'];
 

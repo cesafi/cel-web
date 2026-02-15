@@ -29,16 +29,26 @@ export async function getPlayerById(id: string) {
   return PlayerService.getById(id);
 }
 
-export async function createPlayer(data: PlayerInsert) {
+export async function createPlayer(data: PlayerInsert, teamId?: string | null, seasonId?: number) {
   const result = await PlayerService.insert(data);
+  
+  if (result.success && result.data && teamId) {
+      await PlayerService.assignTeam(result.data.id, teamId, seasonId);
+  }
+
   if (result.success) {
     revalidatePath('/dashboard/players');
   }
   return result;
 }
 
-export async function updatePlayerById(data: PlayerUpdate) {
+export async function updatePlayerById(data: PlayerUpdate, teamId?: string | null, seasonId?: number) {
   const result = await PlayerService.updateById(data);
+  
+  if (result.success && teamId) {
+      await PlayerService.assignTeam(data.id, teamId, seasonId);
+  }
+
   if (result.success) {
     revalidatePath('/dashboard/players');
   }

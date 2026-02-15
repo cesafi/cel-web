@@ -307,7 +307,6 @@ export class StatisticsService extends BaseService {
             id,
             ign,
             photo_url,
-            team_id,
             schools_teams (id, name, logo_url)
           )
         `)

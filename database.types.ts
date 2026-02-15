@@ -309,6 +309,7 @@ export type Database = {
           hero_name: string
           id: string
           is_locked: boolean | null
+          player_id: string | null
           sort_order: number
           team_id: string
         }
@@ -320,6 +321,7 @@ export type Database = {
           hero_name: string
           id?: string
           is_locked?: boolean | null
+          player_id?: string | null
           sort_order: number
           team_id: string
         }
@@ -331,6 +333,7 @@ export type Database = {
           hero_name?: string
           id?: string
           is_locked?: boolean | null
+          player_id?: string | null
           sort_order?: number
           team_id?: string
         }
@@ -364,7 +367,66 @@ export type Database = {
             referencedColumns: ["agent_id"]
           },
           {
+            foreignKeyName: "game_draft_actions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "game_draft_actions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_rosters: {
+        Row: {
+          created_at: string
+          game_id: number
+          id: number
+          player_id: string
+          player_role: string
+          sort_order: number
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: number
+          id?: number
+          player_id: string
+          player_role: string
+          sort_order: number
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: number
+          id?: number
+          player_id?: string
+          player_role?: string
+          sort_order?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_rosters_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_rosters_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_rosters_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "schools_teams"
@@ -711,7 +773,6 @@ export type Database = {
           id: number
           is_active: boolean | null
           player_id: string
-          season_id: number
           team_id: string | null
         }
         Insert: {
@@ -719,7 +780,6 @@ export type Database = {
           id?: number
           is_active?: boolean | null
           player_id: string
-          season_id: number
           team_id?: string | null
         }
         Update: {
@@ -727,7 +787,6 @@ export type Database = {
           id?: number
           is_active?: boolean | null
           player_id?: string
-          season_id?: number
           team_id?: string | null
         }
         Relationships: [
@@ -736,13 +795,6 @@ export type Database = {
             columns: ["player_id"]
             isOneToOne: false
             referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "player_seasons_season_id_fkey"
-            columns: ["season_id"]
-            isOneToOne: false
-            referencedRelation: "seasons"
             referencedColumns: ["id"]
           },
           {
@@ -764,7 +816,6 @@ export type Database = {
           last_name: string | null
           photo_url: string | null
           role: string | null
-          team_id: string | null
         }
         Insert: {
           created_at?: string
@@ -775,7 +826,6 @@ export type Database = {
           last_name?: string | null
           photo_url?: string | null
           role?: string | null
-          team_id?: string | null
         }
         Update: {
           created_at?: string
@@ -786,17 +836,8 @@ export type Database = {
           last_name?: string | null
           photo_url?: string | null
           role?: string | null
-          team_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "players_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "schools_teams"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       schools: {
         Row: {

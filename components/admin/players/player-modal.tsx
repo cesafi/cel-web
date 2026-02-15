@@ -21,7 +21,7 @@ interface PlayerModalProps {
   onOpenChange: (open: boolean) => void;
   mode: 'add' | 'edit';
   player?: PlayerWithTeam;
-  onSubmit: (data: PlayerInsert | PlayerUpdate) => void;
+  onSubmit: (data: PlayerInsert | PlayerUpdate, teamId?: string | null) => void;
   isSubmitting: boolean;
 }
 
@@ -33,15 +33,17 @@ export function PlayerModal({
   onSubmit,
   isSubmitting
 }: PlayerModalProps) {
+  // We keep team_id separate because it's no longer part of the player record directly
   const [formData, setFormData] = useState<PlayerInsert | PlayerUpdate>({
     ign: '',
     first_name: '',
     last_name: '',
     photo_url: '',
     role: '',
-    team_id: null,
     is_active: true
   });
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedCreating = useRef(false);
   const hasStartedUpdating = useRef(false);
@@ -64,9 +66,10 @@ export function PlayerModal({
           last_name: player.last_name || '',
           photo_url: player.photo_url || '',
           role: player.role || '',
-          team_id: player.team_id,
           is_active: player.is_active ?? true
         });
+        // Set initial team from player's current team (mapped via schools_teams)
+        setSelectedTeamId(player.schools_teams?.id || null);
       } else {
         setFormData({
           ign: '',
@@ -74,9 +77,9 @@ export function PlayerModal({
           last_name: '',
           photo_url: '',
           role: '',
-          team_id: null,
           is_active: true
         });
+        setSelectedTeamId(null);
       }
       setErrors({});
       hasStartedCreating.current = false;
@@ -111,7 +114,7 @@ export function PlayerModal({
         hasStartedUpdating.current = true;
       }
 
-      onSubmit(validatedData);
+      onSubmit(validatedData, selectedTeamId);
     } catch (error) {
       if (error instanceof ZodError) {
         const newErrors: Record<string, string> = {};
@@ -252,8 +255,8 @@ export function PlayerModal({
             <div className="space-y-2">
               <Label htmlFor="team_id">Team</Label>
               <Select
-                value={formData.team_id || ''}
-                onValueChange={(value) => handleInputChange('team_id', value || null)}
+                value={selectedTeamId || ''}
+                onValueChange={(value) => setSelectedTeamId(value || null)}
               >
                 <SelectTrigger className={errors.team_id ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Select team" />
@@ -266,7 +269,7 @@ export function PlayerModal({
                   ))}
                 </SelectContent>
               </Select>
-              {errors.team_id && <p className="text-sm text-red-500">{errors.team_id}</p>}
+              {/* Note: team_id is separate now, so zod validation on formData won't catch it unless we manually validate if required */}
             </div>
 
             {/* Active Status */}

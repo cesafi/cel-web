@@ -32,7 +32,7 @@ export function GameStats({ gameId, gameType, mapName, duration }: GameStatsProp
            player_id: row.player_id,
            player_ign: row.players?.ign || 'Unknown',
            player_photo_url: row.players?.photo_url,
-           team_id: row.players?.team_id,
+           team_id: row.team_id,
            team_name: row.players?.schools_teams?.name || null,
            team_logo_url: row.players?.schools_teams?.logo_url || null,
            games_played: 1,
@@ -45,6 +45,7 @@ export function GameStats({ gameId, gameType, mapName, duration }: GameStatsProp
            deaths_per_game: row.deaths,
            assists_per_game: row.assists,
            mvp_count: row.is_mvp ? 1 : 0,
+           wins: 0, // Placeholder for interface compliance
 
            // MLBB specific
            hero_name: row.hero_name,

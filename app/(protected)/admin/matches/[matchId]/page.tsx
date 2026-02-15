@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { getMatchById } from '@/actions/matches';
+import { useMatchByIdWithFullDetails, matchKeys } from '@/hooks/use-matches';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +14,13 @@ import { ValorantStatsUpload } from '@/components/stats/valorant-stats-upload';
 import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
 import { getPlayersByTeamId } from '@/actions/players';
 import { Player } from '@/lib/types/players';
+import { MatchModal } from '@/components/shared/matches/match-modal';
+import { updateMatchById } from '@/actions/matches';
+import { createGame } from '@/actions/games';
+import { MatchInsert, MatchUpdate } from '@/lib/types/matches';
+import { toast } from 'sonner';
+import { ActiveGameCard } from '@/components/admin/matches/active-game-card';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -23,37 +29,39 @@ import {
   Gamepad2,
   Map,
   BarChart3,
-  Info
+  Info,
+  MonitorPlay,
+  Swords,
+  Timer,
+  Trophy,
+  Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
-// Status badge colors
-const statusColors: Record<string, string> = {
-  upcoming: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  live: 'bg-green-500/10 text-green-500 border-green-500/20',
-  finished: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
-  completed: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
-  rescheduled: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-  canceled: 'bg-red-500/10 text-red-500 border-red-500/20',
+// Status badge variants
+const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  upcoming: 'outline',
+  live: 'destructive',
+  finished: 'secondary',
+  completed: 'secondary',
+  rescheduled: 'outline',
+  canceled: 'destructive',
 };
 
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const matchId = Number(params.matchId);
   const [activeTab, setActiveTab] = useState('info');
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch match data
-  const { data: match, isLoading, error } = useQuery({
-    queryKey: ['match', matchId],
-    queryFn: async () => {
-      const result = await getMatchById(matchId);
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
-    enabled: !!matchId,
-  });
+  // Fetch match data with full details (real-time capable hook)
+  const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
   // Get participants (safe access)
   const team1 = match?.match_participants?.[0];
@@ -91,49 +99,112 @@ export default function MatchDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Matches
         </Button>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-red-500">Failed to load match details</p>
-          </CardContent>
-        </Card>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>Failed to load match details. {(error as Error)?.message}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
-  // Determine game type from esport name
+  // Determine game type and logic
   const esportName = match.esports_seasons_stages?.esports_categories?.esports?.name?.toLowerCase() || '';
   const isMlbb = esportName.includes('mobile legends') || esportName.includes('mlbb');
   const isValorant = esportName.includes('valorant');
+  
+  const completedGames = match.games?.filter(g => g.status === 'completed') || [];
+  const activeGame = match.games?.find(g => ['drafting', 'in_progress'].includes(g.status || ''));
+  const nextGameNumber = (match.games?.length || 0) + 1;
+
+  const handleLobbyRedirect = () => {
+    router.push(`/lobby/${matchId}`);
+  };
+
+  const handleStartGame = async () => {
+    try {
+      const result = await createGame({
+        match_id: matchId,
+        game_number: nextGameNumber,
+      });
+
+      if (result.success) {
+        toast.success(`Game ${nextGameNumber} started successfully`);
+        queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      } else {
+        toast.error(result.error || 'Failed to start game');
+      }
+    } catch (error) {
+      console.error('Start game error:', error);
+      toast.error('Failed to start game');
+    }
+  };
+
+  const handleUpdateMatch = async (data: MatchInsert | MatchUpdate, participantTeamIds?: string[]) => {
+    setIsSubmitting(true);
+    try {
+      if ('id' in data && data.id) {
+        // Safe check for ID existence
+        const result = await updateMatchById(data as MatchUpdate & { id: number });
+        if (result.success) {
+          toast.success('Match updated successfully');
+          setEditModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+        } else {
+          toast.error(result.error || 'Failed to update match');
+        }
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="w-full space-y-6">
-      {/* Back Button */}
-      <Button variant="ghost" onClick={() => router.back()}>
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Matches
-      </Button>
+      {/* Header Navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Matches
+        </Button>
+      </div>
 
-      {/* Match Header */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Match Header / Command Center */}
+      <Card className="overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             {/* Match Info */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold">{match.name}</h1>
-                <Badge 
-                  variant="outline" 
-                  className={statusColors[match.status] || statusColors.upcoming}
-                >
-                  {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                </Badge>
+                 <Badge variant="outline" className="text-muted-foreground font-mono uppercase tracking-wider">
+                   {match.esports_seasons_stages?.stage_type?.replace(/_/g, ' ') || 'STAGE'}
+                 </Badge>
+                 <Badge 
+                   variant={statusVariants[match.status] || 'default'}
+                   className={match.status === 'live' ? 'animate-pulse' : ''}
+                 >
+                   {match.status.toUpperCase()}
+                 </Badge>
+              </div>
+
+              <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight">{match.name}</h1>
+                <p className="text-muted-foreground">{match.esports_seasons_stages?.esports_categories?.esports?.name || 'Esports Match'}</p>
               </div>
               
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                {match.scheduled_at && (
+              <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground pt-2">
+                {match.scheduled_at ? (
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     {format(new Date(match.scheduled_at), 'PPP p')}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    Unscheduled
                   </div>
                 )}
                 {match.venue && (
@@ -143,68 +214,130 @@ export default function MatchDetailPage() {
                   </div>
                 )}
                 <div className="flex items-center gap-1">
-                  <Gamepad2 className="h-4 w-4" />
+                  <Swords className="h-4 w-4" />
                   Best of {match.best_of}
                 </div>
-
-                <div className="mt-2">
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    onClick={() => router.push(`/admin/matches/${matchId}/manage`)}
-                  >
-                    <Gamepad2 className="mr-2 h-4 w-4" />
-                    Manage Match & Games
-                  </Button>
-                </div>
               </div>
             </div>
 
-            {/* Teams Display */}
-            <div className="flex items-center gap-4">
+            {/* Quick Actions */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)} className="w-full sm:w-auto">
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit Details
+              </Button>
+               <Button variant="outline" size="sm" onClick={handleLobbyRedirect} className="w-full sm:w-auto">
+                <MonitorPlay className="w-4 h-4 mr-2" />
+                Open Captain's Lobby
+              </Button>
+              <Button 
+                size="sm"
+                disabled={match.status === 'completed'} 
+                onClick={activeGame ? undefined : handleStartGame}
+                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Gamepad2 className="w-4 h-4 mr-2" />
+                {activeGame ? 'Manage Active Game' : `Start Game ${nextGameNumber}`}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
               {/* Team 1 */}
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-1">
-                  {team1?.schools_teams?.school?.abbreviation?.substring(0, 2) || '?'}
+              <div className="flex flex-col items-center gap-3 md:order-1">
+                <div className="w-20 h-20 bg-background rounded-full border-4 border-muted flex items-center justify-center shadow-sm relative overflow-hidden">
+                   {team1?.schools_teams?.school?.logo_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img 
+                        src={team1.schools_teams.school.logo_url} 
+                        alt={team1.schools_teams.school.abbreviation || 'T1'}
+                        className="w-full h-full object-cover"
+                      />
+                   ) : (
+                      <span className="text-2xl font-bold text-muted-foreground">
+                          {team1?.schools_teams?.school?.abbreviation?.substring(0, 2) || 'T1'}
+                      </span>
+                   )}
                 </div>
-                <p className="text-sm font-medium truncate max-w-[80px]">
-                  {team1?.schools_teams?.school?.abbreviation || 'TBD'}
-                </p>
-                {team1?.match_score !== null && team1?.match_score !== undefined && (
-                  <p className="text-2xl font-bold">{team1?.match_score}</p>
-                )}
+                <div className="text-center">
+                  <h3 className="font-bold text-lg">{team1?.schools_teams?.name || 'Team 1'}</h3>
+                  <p className="text-sm text-muted-foreground">{team1?.schools_teams?.school?.name || 'TBD'}</p>
+                </div>
+                <div className="text-4xl font-bold tabular-nums">
+                  {team1?.match_score ?? 0}
+                </div>
               </div>
 
-              <span className="text-muted-foreground font-bold">VS</span>
+              {/* VS */}
+              <div className="flex flex-col items-center justify-center gap-2 md:order-2">
+                 <span className="text-muted-foreground font-medium uppercase tracking-wider text-sm">VS</span>
+                 {activeGame && (
+                    <Badge variant="destructive" className="animate-pulse">
+                        GAME {activeGame.game_number} LIVE
+                    </Badge> 
+                 )}
+              </div>
 
               {/* Team 2 */}
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-1">
-                  {team2?.schools_teams?.school?.abbreviation?.substring(0, 2) || '?'}
+              <div className="flex flex-col items-center gap-3 md:order-3">
+                <div className="w-20 h-20 bg-background rounded-full border-4 border-muted flex items-center justify-center shadow-sm relative overflow-hidden">
+                   {team2?.schools_teams?.school?.logo_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img 
+                        src={team2.schools_teams.school.logo_url} 
+                        alt={team2.schools_teams.school.abbreviation || 'T2'}
+                        className="w-full h-full object-cover"
+                      />
+                   ) : (
+                      <span className="text-2xl font-bold text-muted-foreground">
+                          {team2?.schools_teams?.school?.abbreviation?.substring(0, 2) || 'T2'}
+                      </span>
+                   )}
                 </div>
-                <p className="text-sm font-medium truncate max-w-[80px]">
-                  {team2?.schools_teams?.school?.abbreviation || 'TBD'}
-                </p>
-                {team2?.match_score !== null && team2?.match_score !== undefined && (
-                  <p className="text-2xl font-bold">{team2?.match_score}</p>
-                )}
+                <div className="text-center">
+                  <h3 className="font-bold text-lg">{team2?.schools_teams?.name || 'Team 2'}</h3>
+                  <p className="text-sm text-muted-foreground">{team2?.schools_teams?.school?.name || 'TBD'}</p>
+                </div>
+                <div className="text-4xl font-bold tabular-nums">
+                   {team2?.match_score ?? 0}
+                </div>
               </div>
-            </div>
           </div>
         </CardContent>
       </Card>
+      
+      {/* Active Game Console */}
+      {activeGame && (
+        <Card className="border-primary/50 bg-primary/5">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-primary flex items-center gap-2 text-lg">
+                    <MonitorPlay className="w-5 h-5" />
+                    Live Game Console
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ActiveGameCard 
+                  game={activeGame} 
+                  matchId={matchId} 
+                  esportId={match.esports_seasons_stages?.esports_categories?.esports?.id || 0}
+                  team1Id={team1?.schools_teams?.id || ''}
+                  team2Id={team2?.schools_teams?.id || ''}
+                />
+            </CardContent>
+        </Card>
+      )}
 
       {/* Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="info" className="flex items-center gap-2">
             <Info className="h-4 w-4" />
-            <span className="hidden sm:inline">Info</span>
+            <span className="hidden sm:inline">Overview</span>
           </TabsTrigger>
           {isMlbb && (
             <TabsTrigger value="draft" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Draft</span>
+              <span className="hidden sm:inline">Draft & Games</span>
             </TabsTrigger>
           )}
           {isValorant && (
@@ -215,61 +348,137 @@ export default function MatchDetailPage() {
           )}
           <TabsTrigger value="games" className="flex items-center gap-2">
             <Gamepad2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Games</span>
+            <span className="hidden sm:inline">Games List</span>
           </TabsTrigger>
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Stats</span>
+            <span className="hidden sm:inline">Post-Game Stats</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Info Tab */}
-        <TabsContent value="info" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Match Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Stage</p>
-                  <p className="font-medium">
-                    {match.esports_seasons_stages?.competition_stage || 'N/A'}
-                  </p>
+        <TabsContent value="info" className="mt-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Context Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  Competition Context
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Game Title</p>
+                      <p className="font-medium flex items-center gap-2">
+                         {isValorant ? <Swords className="h-4 w-4" /> : isMlbb ? <Users className="h-4 w-4" /> : <Gamepad2 className="h-4 w-4" />}
+                         {match.esports_seasons_stages?.esports_categories?.esports?.name || 'N/A'}
+                      </p>
+                   </div>
+                   <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Stage</p>
+                      <Badge variant="secondary" className="font-semibold">
+                        {match.esports_seasons_stages?.competition_stage || 'N/A'}
+                      </Badge>
+                   </div>
+                   <div className="space-y-1 col-span-2">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Division & Category</p>
+                      <p className="font-medium">
+                        {match.esports_seasons_stages?.esports_categories?.division} • {match.esports_seasons_stages?.esports_categories?.levels}
+                      </p>
+                   </div>
+                   {(match.round || match.group_name) && (
+                      <div className="space-y-1 col-span-2">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Grouping</p>
+                        <p className="font-medium">
+                           {match.group_name && `Group ${match.group_name}`}
+                           {match.group_name && match.round && ' • '}
+                           {match.round && `Round ${match.round}`}
+                        </p>
+                      </div>
+                   )}
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Game</p>
-                  <p className="font-medium">
-                    {match.esports_seasons_stages?.esports_categories?.esports?.name || 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Category</p>
-                  <p className="font-medium">
-                    {match.esports_seasons_stages?.esports_categories?.division} - {match.esports_seasons_stages?.esports_categories?.levels}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Description</p>
-                  <p className="font-medium">{match.description || 'No description'}</p>
-                </div>
-              </div>
-              
-              {match.stream_url && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Stream</p>
-                  <a 
-                    href={match.stream_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    {match.stream_url}
-                  </a>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Broadcast & Media */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MonitorPlay className="h-5 w-5 text-primary" />
+                  Broadcast & Media
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-4">
+                 {match.stream_url ? (
+                    <div className="space-y-4">
+                       <div className="rounded-md bg-muted aspect-video flex items-center justify-center relative overflow-hidden group">
+                           {/* Placeholder pattern or thumbnail could go here */}
+                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/5 hover:bg-black/10 transition-colors">
+                              <MonitorPlay className="h-12 w-12 text-primary opacity-80" />
+                              <p className="mt-2 text-sm font-medium text-muted-foreground">Official Stream Available</p>
+                           </div>
+                       </div>
+                       <Button className="w-full" variant="outline" asChild>
+                          <a href={match.stream_url} target="_blank" rel="noopener noreferrer">
+                             Watch Stream <Swords className="ml-2 h-4 w-4" />
+                          </a>
+                       </Button>
+                    </div>
+                 ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
+                       <MonitorPlay className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                       <p className="text-muted-foreground">No official stream link provided for this match.</p>
+                       <Button variant="link" size="sm" className="mt-2">Add Stream Link</Button>
+                    </div>
+                 )}
+              </CardContent>
+            </Card>
+
+            {/* Schedule & Venue - Full Width Description */}
+            <Card className="md:col-span-2">
+               <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                     <Info className="h-5 w-5 text-primary" />
+                     Additional Details
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                     <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Match Description</p>
+                        <p className="text-sm leading-relaxed text-foreground/80">
+                           {match.description || 'No additional description provided for this match.'}
+                        </p>
+                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Scheduled Date</p>
+                          <p className="font-medium flex items-center gap-2">
+                             <Calendar className="h-4 w-4 text-muted-foreground" />
+                             {match.scheduled_at ? format(new Date(match.scheduled_at), 'PPP') : 'TBD'}
+                          </p>
+                      </div>
+                      <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Scheduled Time</p>
+                          <p className="font-medium flex items-center gap-2">
+                             <Timer className="h-4 w-4 text-muted-foreground" />
+                             {match.scheduled_at ? format(new Date(match.scheduled_at), 'p') : 'TBD'}
+                          </p>
+                      </div>
+                      <div className="space-y-1 col-span-2">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Venue</p>
+                          <p className="font-medium flex items-center gap-2">
+                             <MapPin className="h-4 w-4 text-muted-foreground" />
+                             {match.venue || 'TBD'}
+                          </p>
+                      </div>
+                  </div>
+               </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Draft Tab (MLBB) */}
@@ -279,7 +488,7 @@ export default function MatchDetailPage() {
             <div className="mb-6">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Select Game</CardTitle>
+                  <CardTitle className="text-lg">Select Game to Manage</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2 flex-wrap">
@@ -290,12 +499,13 @@ export default function MatchDetailPage() {
                           variant={selectedGameId === game.id ? "default" : "outline"}
                           size="sm"
                           onClick={() => setSelectedGameId(game.id)}
+                          className={game.id === activeGame?.id ? "border-green-500 text-green-500" : ""}
                         >
-                          Game {game.game_number}
+                          Game {game.game_number} {game.id === activeGame?.id && '(LIVE)'}
                         </Button>
                       ))
                     ) : (
-                      <p className="text-muted-foreground text-sm">No games created yet. Create games in the Games tab first.</p>
+                      <p className="text-muted-foreground text-sm">No games created yet. Start a game to begin drafting.</p>
                     )}
                   </div>
                 </CardContent>
@@ -373,18 +583,16 @@ export default function MatchDetailPage() {
         <TabsContent value="games" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Games</CardTitle>
+              <CardTitle>Games History</CardTitle>
             </CardHeader>
             <CardContent>
               {match.games && match.games.length > 0 ? (
                 <div className="space-y-4">
                   {match.games.map((game, index) => (
-                    <div key={game.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">Game {game.game_number}</span>
-                        {game.map_name && (
-                          <Badge variant="outline">{game.map_name}</Badge>
-                        )}
+                    <div key={game.id} className="p-4 border rounded-lg flex justify-between items-center">
+                      <div>
+                         <span className="font-bold mr-2">Game {game.game_number}</span>
+                         <Badge variant="secondary">{game.status}</Badge>
                       </div>
                     </div>
                   ))}
@@ -398,134 +606,95 @@ export default function MatchDetailPage() {
 
         {/* Stats Tab */}
         <TabsContent value="stats" className="mt-6">
-          {isValorant ? (
-            <>
-              {/* Game Selector for Stats */}
-              <div className="mb-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Select Game for Statistics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2 flex-wrap">
-                      {match.games && match.games.length > 0 ? (
-                        match.games.map((game) => (
-                          <Button
-                            key={game.id}
-                            variant={selectedGameId === game.id ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSelectedGameId(game.id)}
-                          >
-                            Game {game.game_number}
-                          </Button>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-sm">No games created yet.</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {selectedGameId && team1?.schools_teams && team2?.schools_teams ? (
-                <ValorantStatsUpload
-                  gameId={selectedGameId}
-                  team1={{
-                    id: team1.schools_teams.id,
-                    name: team1.schools_teams.name,
-                    abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
-                    players: team1Players,
-                  }}
-                  team2={{
-                    id: team2.schools_teams.id,
-                    name: team2.schools_teams.name,
-                    abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
-                    players: team2Players,
-                  }}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
-                      {!selectedGameId 
-                        ? 'Select a game above to upload stats.'
-                        : 'Missing team information.'}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          ) : isMlbb ? (
-            <>
-              {/* Game Selector for Stats */}
-              <div className="mb-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Select Game for Statistics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2 flex-wrap">
-                      {match.games && match.games.length > 0 ? (
-                        match.games.map((game) => (
-                          <Button
-                            key={game.id}
-                            variant={selectedGameId === game.id ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSelectedGameId(game.id)}
-                          >
-                            Game {game.game_number}
-                          </Button>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-sm">No games created yet.</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {selectedGameId && team1?.schools_teams && team2?.schools_teams ? (
-                <MlbbStatsUpload
-                  gameId={selectedGameId}
-                  team1={{
-                    id: team1.schools_teams.id,
-                    name: team1.schools_teams.name,
-                    abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
-                    players: team1Players,
-                  }}
-                  team2={{
-                    id: team2.schools_teams.id,
-                    name: team2.schools_teams.name,
-                    abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
-                    players: team2Players,
-                  }}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
-                      {!selectedGameId 
-                        ? 'Select a game above to upload stats.'
-                        : 'Missing team information.'}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          ) : (
+            {/* Game Selector for Stats */}
+            <div className="mb-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Match statistics coming soon for this sport...
-                </p>
-              </CardContent>
+                <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Select Game for Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <div className="flex gap-2 flex-wrap">
+                    {match.games && match.games.length > 0 ? (
+                    match.games.map((game) => (
+                        <Button
+                        key={game.id}
+                        variant={selectedGameId === game.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedGameId(game.id)}
+                        disabled={game.status !== 'completed'}
+                        >
+                        Game {game.game_number} {game.status !== 'completed' && '(Not Finished)'}
+                        </Button>
+                    ))
+                    ) : (
+                    <p className="text-muted-foreground text-sm">No completed games available yet.</p>
+                    )}
+                </div>
+                </CardContent>
             </Card>
-          )}
+            </div>
+
+            {(isMlbb || isValorant) && selectedGameId && team1?.schools_teams && team2?.schools_teams ? (
+                 isValorant ? (
+                    <ValorantStatsUpload
+                    gameId={selectedGameId}
+                    team1={{
+                        id: team1.schools_teams.id,
+                        name: team1.schools_teams.name,
+                        abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+                        players: team1Players,
+                    }}
+                    team2={{
+                        id: team2.schools_teams.id,
+                        name: team2.schools_teams.name,
+                        abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+                        players: team2Players,
+                    }}
+                    />
+                 ) : (
+                    <MlbbStatsUpload
+                    gameId={selectedGameId}
+                    team1={{
+                        id: team1.schools_teams.id,
+                        name: team1.schools_teams.name,
+                        abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+                        players: team1Players,
+                    }}
+                    team2={{
+                        id: team2.schools_teams.id,
+                        name: team2.schools_teams.name,
+                        abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+                        players: team2Players,
+                    }}
+                    />
+                 )
+            ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-muted-foreground">
+                       {(!isMlbb && !isValorant) 
+                          ? 'Statistics not available for this sport.' 
+                          : !selectedGameId 
+                             ? 'Select a completed game above to manage statistics.'
+                             : 'Match data incomplete.'}
+                    </p>
+                  </CardContent>
+                </Card>
+            )}
         </TabsContent>
       </Tabs>
+      {/* Match Edit Modal */}
+      {match && (
+        <MatchModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          mode="edit"
+          match={match}
+          selectedStageId={match.stage_id}
+          onSubmit={handleUpdateMatch}
+          isSubmitting={isSubmitting}
+        />
+      )}
     </div>
   );
 }
@@ -536,15 +705,21 @@ function MatchDetailSkeleton() {
       <Skeleton className="h-10 w-40" />
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-4 w-96" />
+          <div className="flex flex-col gap-6">
+            <div className="flex justify-between">
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-96" />
+                </div>
+                <div className="flex gap-2">
+                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <Skeleton className="h-6 w-10" />
-              <Skeleton className="h-16 w-16 rounded-full" />
+            <div className="flex items-center justify-between px-12">
+               <Skeleton className="h-24 w-24 rounded-full" />
+               <Skeleton className="h-8 w-12" />
+               <Skeleton className="h-24 w-24 rounded-full" />
             </div>
           </div>
         </CardContent>

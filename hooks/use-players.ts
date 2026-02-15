@@ -139,11 +139,12 @@ export function usePlayerById(
 }
 
 export function useCreatePlayer(
-  mutationOptions?: UseMutationOptions<ServiceResponse<undefined>, Error, PlayerInsert>
+  mutationOptions?: UseMutationOptions<ServiceResponse<Player>, Error, { data: PlayerInsert; teamId?: string | null; seasonId?: number }>
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createPlayer,
+  mutationFn: (variables: { data: PlayerInsert; teamId?: string | null; seasonId?: number }) => 
+    createPlayer(variables.data, variables.teamId, variables.seasonId),
     onSuccess: (result, variables, context) => {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: playerKeys.all });
@@ -162,11 +163,11 @@ export function useCreatePlayer(
 }
 
 export function useUpdatePlayer(
-  mutationOptions?: UseMutationOptions<ServiceResponse<undefined>, Error, PlayerUpdate>
+  mutationOptions?: UseMutationOptions<ServiceResponse<undefined>, Error, { data: PlayerUpdate; teamId?: string | null; seasonId?: number }>
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: updatePlayerById,
+    mutationFn: (variables) => updatePlayerById(variables.data, variables.teamId, variables.seasonId),
     onSuccess: (result, variables, context) => {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: playerKeys.all });
@@ -250,7 +251,8 @@ export function usePlayersTable() {
   const queryClient = useQueryClient();
 
   const createPlayerMutation = useMutation({
-    mutationFn: createPlayer,
+    mutationFn: (variables: { data: PlayerInsert; teamId?: string | null; seasonId?: number }) => 
+      createPlayer(variables.data, variables.teamId, variables.seasonId),
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Player created successfully');
@@ -265,7 +267,8 @@ export function usePlayersTable() {
   });
 
   const updatePlayerMutation = useMutation({
-    mutationFn: (data: PlayerUpdate) => updatePlayerById(data),
+    mutationFn: (variables: { data: PlayerUpdate; teamId?: string | null; seasonId?: number }) => 
+      updatePlayerById(variables.data, variables.teamId, variables.seasonId),
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Player updated successfully');

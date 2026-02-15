@@ -4,6 +4,8 @@ import { use, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMatchByIdWithFullDetails } from '@/hooks/use-matches'; 
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
+import { useQuery } from '@tanstack/react-query';
+import { getPlayersByTeamId } from '@/actions/players';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +37,53 @@ export default function LobbyPage({ params }: { params: Promise<{ matchId: strin
     // In a highly optimized version, we'd update local state directly
     refetch(); 
   });
+
+  // Fetch players for roster assignment
+  const { data: team1Players } = useQuery({
+    queryKey: ['players', match?.match_participants?.[0]?.schools_teams?.id],
+    queryFn: async () => {
+        const teamId = match?.match_participants?.[0]?.schools_teams?.id;
+        if (!teamId) return [];
+        const res = await getPlayersByTeamId(teamId);
+        return res.success ? res.data : [];
+    },
+    enabled: !!match?.match_participants?.[0]?.schools_teams?.id
+  });
+
+  const { data: team2Players } = useQuery({
+    queryKey: ['players', match?.match_participants?.[1]?.schools_teams?.id],
+    queryFn: async () => {
+        const teamId = match?.match_participants?.[1]?.schools_teams?.id;
+        if (!teamId) return [];
+        const res = await getPlayersByTeamId(teamId);
+        return res.success ? res.data : [];
+    },
+    enabled: !!match?.match_participants?.[1]?.schools_teams?.id
+  });
+
+  // Early Debug Log
+  console.log('Lobby Render Debug', { 
+    params, 
+    matchId, 
+    isLoadingMatch: isLoading, 
+    matchError: error,
+    matchDataExists: !!match,
+    activeGameId: activeGame?.id,
+    team1Players: team1Players?.length,
+    team2Players: team2Players?.length
+  });
+
+  if (isLoading) return <LobbySkeleton />;
+
+  useEffect(() => {
+    console.log('Lobby Debug:', {
+        team1Id: match?.match_participants?.[0]?.schools_teams?.id,
+        team2Id: match?.match_participants?.[1]?.schools_teams?.id,
+        team1PlayersCount: team1Players?.length,
+        team2PlayersCount: team2Players?.length,
+        team1Players, // inspect actual data
+    });
+  }, [match, team1Players, team2Players]);
 
   if (isLoading) return <LobbySkeleton />;
   
@@ -116,6 +165,8 @@ export default function LobbyPage({ params }: { params: Promise<{ matchId: strin
                              abbreviation: match.match_participants[1]?.schools_teams?.school?.abbreviation || 'T2',
                              logoUrl: match.match_participants[1]?.schools_teams?.school?.logo_url
                         }}
+                        team1Players={team1Players}
+                        team2Players={team2Players}
                         isAdmin={true} // In real app, check user role
                     />
                 ) : (
