@@ -17,13 +17,6 @@ import { ModalLayout } from '@/components/ui/modal-layout';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 
 interface PhotoGalleryFormDialogProps {
@@ -32,15 +25,6 @@ interface PhotoGalleryFormDialogProps {
   photo?: PhotoGallery | null;
   onSubmit?: (data: PhotoGalleryUpdate) => void;
 }
-
-const CATEGORIES = [
-  { value: 'sports', label: 'Sports' },
-  { value: 'events', label: 'Events' },
-  { value: 'awards', label: 'Awards' },
-  { value: 'general', label: 'General' },
-  { value: 'team', label: 'Team' },
-  { value: 'facilities', label: 'Facilities' }
-] as const;
 
 export function PhotoGalleryFormDialog({
   open,
@@ -63,7 +47,6 @@ export function PhotoGalleryFormDialog({
     defaultValues: {
       title: '',
       caption: '',
-      category: 'general',
       photo_by: '',
       photo_url: ''
     }
@@ -74,13 +57,6 @@ export function PhotoGalleryFormDialog({
       reset({
         title: photo.title,
         caption: photo.caption,
-        category: photo.category as
-          | 'sports'
-          | 'events'
-          | 'awards'
-          | 'general'
-          | 'team'
-          | 'facilities',
         photo_by: photo.photo_by,
         photo_url: photo.photo_url
       });
@@ -88,7 +64,6 @@ export function PhotoGalleryFormDialog({
       reset({
         title: '',
         caption: '',
-        category: 'general',
         photo_by: '',
         photo_url: ''
       });
@@ -148,33 +123,6 @@ export function PhotoGalleryFormDialog({
               <Label htmlFor="title">Title *</Label>
               <Input id="title" placeholder="Enter photo title" {...register('title')} />
               {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Select
-                onValueChange={(value) =>
-                  setValue(
-                    'category',
-                    value as 'sports' | 'events' | 'awards' | 'general' | 'team' | 'facilities'
-                  )
-                }
-                value={watch('category')}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.category && (
-                <p className="text-sm text-red-600">{errors.category.message}</p>
-              )}
             </div>
 
             <div className="space-y-2">

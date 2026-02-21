@@ -1,8 +1,7 @@
 import { TableColumn, TableAction } from '@/lib/types/table';
 import { PhotoGallery } from '@/lib/types/photo-gallery';
 import { formatTableDate } from '@/lib/utils/date';
-import { Badge } from '@/components/ui/badge';
-import { User, Tag, Eye, Edit, Trash2 } from 'lucide-react';
+import { User, Eye, Edit, Trash2 } from 'lucide-react';
 
 export const getPhotoGalleryColumns = (): TableColumn<PhotoGallery>[] => [
   {
@@ -30,17 +29,7 @@ export const getPhotoGalleryColumns = (): TableColumn<PhotoGallery>[] => [
     sortable: true,
     render: (photo) => <span className="font-medium">{photo.title}</span>
   },
-  {
-    key: 'category',
-    header: 'Category',
-    sortable: true,
-    render: (photo) => (
-      <Badge className="bg-blue-100 text-blue-800 border border-blue-200">
-        <Tag className="mr-1 h-3 w-3" />
-        {photo.category}
-      </Badge>
-    )
-  },
+
   {
     key: 'photo_by',
     header: 'Photographer',

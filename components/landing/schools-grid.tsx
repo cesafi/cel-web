@@ -23,7 +23,7 @@ export default function SchoolsGrid({ schools }: SchoolsGridProps) {
   }));
 
   return (
-    <section className="relative bg-muted pt-16 pb-12 overflow-hidden transition-colors duration-300">
+    <section className="relative bg-background pt-16 pb-12 overflow-hidden transition-colors duration-300">
       <div className="container mx-auto px-4 relative z-10">
         <h2 className="text-center text-3xl md:text-4xl font-bold mb-12 font-moderniz uppercase tracking-wider">
           <span className="text-teal">Participating</span> <span className="text-emerald">Schools</span>

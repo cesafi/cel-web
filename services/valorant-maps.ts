@@ -3,6 +3,7 @@
 import { ServiceResponse } from '@/lib/types/base';
 import { BaseService } from './base';
 import { ValorantMap, ValorantMapInsert, ValorantMapUpdate } from '@/lib/types/valorant-maps';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 
 const TABLE_NAME = 'valorant_maps';
 
@@ -80,6 +81,28 @@ export class ValorantMapService extends BaseService {
   static async deleteById(id: number): Promise<ServiceResponse<undefined>> {
     try {
       const supabase = await this.getClient();
+
+      // Fetch splash image URL before deleting
+      const { data: map, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('splash_image_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from Cloudinary if splash image exists
+      if (map?.splash_image_url) {
+        try {
+          const publicId = extractCloudinaryPublicId(map.splash_image_url);
+          if (publicId) {
+            await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
+          }
+        } catch (cloudinaryError) {
+          console.warn('Failed to delete map splash image from Cloudinary:', cloudinaryError);
+        }
+      }
+
       const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
       if (error) throw error;
       return { success: true, data: undefined };

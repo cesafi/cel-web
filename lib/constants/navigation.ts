@@ -6,24 +6,25 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   { name: 'Home', href: '/' },
-  { 
-    name: 'Season', 
+  {
+    name: 'Season',
     children: [
       { name: 'Schedule', href: '/schedule' },
       { name: 'Standings', href: '/standings' },
       { name: 'Statistics', href: '/statistics' },
     ]
   },
-  { 
-    name: 'Community', 
+  {
+    name: 'Community',
     children: [
       { name: 'Schools', href: '/schools' },
       { name: 'Volunteers', href: '/volunteers' },
+      { name: 'Sponsors', href: '/sponsors' },
     ]
   },
   { name: 'News', href: '/news' },
-  { 
-    name: 'Info', 
+  {
+    name: 'Info',
     children: [
       { name: 'About Us', href: '/about-us' },
       { name: 'FAQ', href: '/faq' },

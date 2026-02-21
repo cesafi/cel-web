@@ -22,6 +22,7 @@ const iconMap: Record<string, LucideIcon> = {
   'FAQ': HelpCircle,
   'Contact Us': Mail,
   'Statistics': Activity,
+  'Sponsors': HeartHandshake,
 }
 
 // Subtitle mapping for navigation items
@@ -34,6 +35,7 @@ const subtitleMap: Record<string, string> = {
   'About Us': 'Learn about the league',
   'FAQ': 'Frequently asked questions',
   'Contact Us': 'Get in touch with us',
+  'Sponsors': 'Supporting organizations',
 }
 
 // Custom Dropdown Component
@@ -63,7 +65,7 @@ function NavDropdown({ item }: { item: NavItem }) {
               {item.children?.map((child) => {
                 const Icon = iconMap[child.name] || Circle;
                 const subtitle = subtitleMap[child.name];
-                
+
                 return (
                   <Link
                     key={child.name}

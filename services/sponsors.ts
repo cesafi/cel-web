@@ -6,6 +6,7 @@ import {
 } from '@/lib/types/base';
 import { BaseService } from './base';
 import { Sponsor, SponsorInsert, SponsorUpdate } from '@/lib/types/sponsors';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 
 const TABLE_NAME = 'sponsors';
 
@@ -52,6 +53,7 @@ export class SponsorService extends BaseService {
         .from(TABLE_NAME)
         .select()
         .eq('is_active', true)
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -131,6 +133,29 @@ export class SponsorService extends BaseService {
       }
 
       const supabase = await this.getClient();
+
+      // Fetch logo URLs before deleting
+      const { data: sponsor, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('logo_url, dark_logo_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete logos from Cloudinary if they exist
+      const logoUrls = [sponsor?.logo_url, sponsor?.dark_logo_url].filter(Boolean) as string[];
+      for (const logoUrl of logoUrls) {
+        try {
+          const publicId = extractCloudinaryPublicId(logoUrl);
+          if (publicId) {
+            await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
+          }
+        } catch (cloudinaryError) {
+          console.warn('Failed to delete sponsor logo from Cloudinary:', cloudinaryError);
+        }
+      }
+
       const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
 
       if (error) throw error;

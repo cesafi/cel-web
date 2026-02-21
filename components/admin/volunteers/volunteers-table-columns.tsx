@@ -39,16 +39,27 @@ export const getVolunteersTableColumns = (): TableColumn<Volunteer>[] => [
     )
   },
   {
+    key: 'title',
+    header: 'Title',
+    sortable: true,
+    width: '15%',
+    render: (volunteer: Volunteer) => (
+      <div className="text-sm text-muted-foreground">
+        {volunteer.title || '—'}
+      </div>
+    )
+  },
+  {
     key: 'is_active',
     header: 'Status',
     sortable: true,
     width: '20%',
     render: (volunteer: Volunteer) => (
-      <Badge 
-        className={`${volunteer.is_active 
-          ? 'bg-green-100 text-green-800 border-green-200' 
+      <Badge
+        className={`${volunteer.is_active
+          ? 'bg-green-100 text-green-800 border-green-200'
           : 'bg-muted text-muted-foreground border-muted'
-        } border`}
+          } border`}
       >
         {volunteer.is_active ? 'Active' : 'Inactive'}
       </Badge>
@@ -82,20 +93,20 @@ export const getVolunteersTableActions = (
   onEdit: (volunteer: Volunteer) => void,
   onDelete: (volunteer: Volunteer) => void
 ) => [
-  {
-    key: 'edit',
-    label: 'Edit Volunteer',
-    icon: <Pencil className="h-4 w-4" />,
-    onClick: onEdit,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  },
-  {
-    key: 'delete',
-    label: 'Delete Volunteer',
-    icon: <Trash2 className="h-4 w-4" />,
-    onClick: onDelete,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  }
-];
+    {
+      key: 'edit',
+      label: 'Edit Volunteer',
+      icon: <Pencil className="h-4 w-4" />,
+      onClick: onEdit,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    },
+    {
+      key: 'delete',
+      label: 'Delete Volunteer',
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: onDelete,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    }
+  ];

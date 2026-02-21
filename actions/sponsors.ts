@@ -52,6 +52,7 @@ export async function createSponsor(data: SponsorInsert) {
 
   if (result.success) {
     revalidatePath('/admin/sponsors');
+    revalidatePath('/sponsors');
   }
 
   return result;

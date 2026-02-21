@@ -17,13 +17,7 @@ export default async function LeaderboardPreview() {
   ]);
 
   return (
-    <section className="relative py-16 md:py-24 overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
-
-      {/* Decorative elements */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl" />
+    <section className="py-16 md:py-24 bg-background relative overflow-x-hidden">
 
       <div className="container relative mx-auto px-4">
         {/* Section Header */}

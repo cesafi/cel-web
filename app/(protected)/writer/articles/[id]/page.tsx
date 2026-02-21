@@ -29,8 +29,11 @@ export default function EditArticlePage() {
       ...data,
       id: articleId
     } as ArticleUpdate;
-    
-    updateArticleMutation.mutate(updateData);
+
+    const result = await updateArticleMutation.mutateAsync(updateData);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update article');
+    }
   };
 
   if (isLoading) {

@@ -31,18 +31,7 @@ export async function getAllPhotoGallery() {
   }
 }
 
-/**
- * Get photo gallery items by category
- */
-export async function getPhotoGalleryByCategory(category: string) {
-  try {
-    const result = await PhotoGalleryService.getByCategory(category);
-    return result;
-  } catch (error) {
-    console.error(`Error fetching photo gallery by category ${category}:`, error);
-    return { success: false, error: `Failed to fetch photo gallery items for category ${category}` };
-  }
-}
+
 
 /**
  * Get a single photo gallery item by ID

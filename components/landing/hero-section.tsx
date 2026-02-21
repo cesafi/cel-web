@@ -152,7 +152,7 @@ export default function HeroSection({ initialData }: HeroSectionProps) {
                 ease: 'easeInOut',
               }}
             >
-              <use xlinkHref="#wave-path" x="50" y="7" className="fill-muted" />
+              <use xlinkHref="#wave-path" x="50" y="7" className="fill-background" />
             </motion.g>
           </svg>
         </div>

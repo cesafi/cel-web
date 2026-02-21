@@ -16,10 +16,10 @@ interface SeasonalTabsProps {
   initialDepartments: Department[];
 }
 
-export default function SeasonalTabs({ 
-  initialSeasons, 
-  initialVolunteers, 
-  initialDepartments 
+export default function SeasonalTabs({
+  initialSeasons,
+  initialVolunteers,
+  initialDepartments
 }: SeasonalTabsProps) {
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
 
@@ -37,11 +37,25 @@ export default function SeasonalTabs({
     volunteer => volunteer.season_id === selectedSeasonId && volunteer.is_active !== false
   ) || [];
 
-  // Group volunteers by department
+  // Group volunteers by department, sort: titled first, then alphabetically by name
   const groupedVolunteers = departments?.map(department => ({
     department,
-    volunteers: filteredVolunteers.filter(volunteer => volunteer.department_id === department.id)
-  })).filter(group => group.volunteers.length > 0) || [];
+    volunteers: filteredVolunteers
+      .filter(volunteer => volunteer.department_id === department.id)
+      .sort((a, b) => {
+        // Volunteers with title come first
+        const aHasTitle = a.title ? 0 : 1;
+        const bHasTitle = b.title ? 0 : 1;
+        if (aHasTitle !== bHasTitle) return aHasTitle - bHasTitle;
+        // Then alphabetically by name
+        return a.full_name.localeCompare(b.full_name);
+      })
+  })).filter(group => group.volunteers.length > 0).sort((a, b) => {
+    // Executive department always comes first
+    const aIsExec = a.department.name?.toLowerCase().includes('executive') ? 0 : 1;
+    const bIsExec = b.department.name?.toLowerCase().includes('executive') ? 0 : 1;
+    return aIsExec - bIsExec;
+  }) || [];
 
   if (!seasons || seasons.length === 0) {
     return (
@@ -70,11 +84,10 @@ export default function SeasonalTabs({
               <button
                 key={season.id}
                 onClick={() => setSelectedSeasonId(season.id)}
-                className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
-                  selectedSeasonId === season.id
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                }`}
+                className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${selectedSeasonId === season.id
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
               >
                 <span className={moderniz.className}>
                   {season.name || `Season ${season.id}`}
@@ -121,7 +134,7 @@ export default function SeasonalTabs({
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
           >
-            <DepartmentGroups 
+            <DepartmentGroups
               departmentGroups={groupedVolunteers}
               isLoading={false}
             />

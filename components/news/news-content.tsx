@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArticleCard } from '@/components';
+import ArticleCard from '@/components/shared/article-card';
 import { usePaginatedArticles } from '@/hooks/use-articles';
 import { Skeleton } from '@/components/ui/skeleton';
 import NewsSearch from './news-search';
@@ -22,8 +22,8 @@ interface NewsContentProps {
   } | null;
 }
 
-export default function NewsContent({ 
-  initialArticles, 
+export default function NewsContent({
+  initialArticles,
   initialPagination
 }: NewsContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,9 +31,9 @@ export default function NewsContent({
   const pageSize = 6;
 
   // Use paginated articles hook for additional pages
-  const { 
-    data: articlesData, 
-    isLoading, 
+  const {
+    data: articlesData,
+    isLoading,
     error
   } = usePaginatedArticles({
     page: currentPage,
@@ -70,10 +70,10 @@ export default function NewsContent({
   // Use articles directly without category filtering
   const filteredArticles = currentArticles;
 
-  const featuredArticle = filteredArticles.find((article) => 
+  const featuredArticle = filteredArticles.find((article) =>
     article.featured === true
   );
-  const regularArticles = filteredArticles.filter((article) => 
+  const regularArticles = filteredArticles.filter((article) =>
     article.featured !== true
   );
 
@@ -87,9 +87,9 @@ export default function NewsContent({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Search Bar */}
         <div className="mb-12">
-          <NewsSearch 
-            searchTerm={searchTerm} 
-            onSearchChange={setSearchTerm} 
+          <NewsSearch
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
           />
         </div>
 

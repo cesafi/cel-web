@@ -30,7 +30,7 @@ export const PUBLIC_ROUTES = [
   '/schools',
   '/schools/[slug]', // Dynamic route pattern
   '/volunteers',
-  '/partners',
+  '/sponsors',
   '/statistics',
 
 
@@ -115,7 +115,7 @@ export const ROUTE_PATTERNS = {
     /^\/schools$/,
     /^\/schools\/[^\/]+$/, // /schools/[slug]
     /^\/volunteers$/,
-    /^\/partners$/,
+    /^\/sponsors$/,
     /^\/not-found$/,
     /^\/no-access$/,
     /^\/lobby\/[^\/]+$/ // /lobby/[matchId]

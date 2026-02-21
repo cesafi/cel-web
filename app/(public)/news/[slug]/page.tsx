@@ -8,10 +8,10 @@ import { ArrowLeft, Calendar, User, Clock, ChevronRight, Home } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShareButtons } from '@/components';
+import ShareButtons from '@/components/shared/share-buttons';
 import { moderniz, roboto } from '@/lib/fonts';
 import { useArticleBySlug, useRecentPublishedArticles } from '@/hooks/use-articles';
-import { renderArticleContent, extractPlainText, getArticleContentProps } from '@/lib/utils/content-renderer';
+import { renderArticleContent, extractSmartExcerpt, getArticleContentProps } from '@/lib/utils/content-renderer';
 import { formatSmartDate } from '@/lib/utils/date';
 import { calculateSportsReadTime } from '@/lib/utils/read-time';
 import { getArticleUrl } from '@/lib/utils/site-url';
@@ -67,7 +67,7 @@ export default function NewsArticlePage() {
     title: article.title,
     slug: article.slug,
     excerpt:
-      (article.content as { excerpt?: string })?.excerpt || extractPlainText(article.content, 200),
+      (article.content as { excerpt?: string })?.excerpt || extractSmartExcerpt(article.content, 200),
     content: renderArticleContent(article.content),
     author: article.authored_by || 'CESAFI Media Team',
     publishedAt: article.published_at || article.created_at,
@@ -247,7 +247,7 @@ export default function NewsArticlePage() {
                   slug: relatedArticle.slug,
                   excerpt:
                     (relatedArticle.content as { excerpt?: string })?.excerpt ||
-                    extractPlainText(relatedArticle.content, 150),
+                    extractSmartExcerpt(relatedArticle.content, 150),
                   category:
                     (relatedArticle.content as { category?: string })?.category || 'General',
                   image: relatedArticle.cover_image_url || '/img/cesafi-banner.jpg',

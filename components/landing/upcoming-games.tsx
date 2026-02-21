@@ -12,26 +12,26 @@ interface UpcomingGamesProps {
 
 export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
   const [isMounted, setIsMounted] = useState(false);
-  
+
   const upcomingGames = initialMatches.map((match) => {
     // Handle multiple participants (for sports like Track and Field)
     const participants = match.match_participants || [];
-    
+
     // For most sports, we expect 2 participants (home and away)
     // For sports with more participants, we'll show the first two
     const homeTeam = participants[0]?.schools_teams?.school?.name || 'Team A';
     const awayTeam = participants[1]?.schools_teams?.school?.name || 'Team B';
-    
+
     return {
       id: match.id,
       homeTeam,
       awayTeam,
       sport: match.esports_seasons_stages?.esports_categories?.esports?.name || 'Basketball',
       date: match.scheduled_at || new Date().toISOString(),
-      time: match.scheduled_at ? new Date(match.scheduled_at).toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      time: match.scheduled_at ? new Date(match.scheduled_at).toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: false 
+        hour12: false
       }) : '18:00',
       venue: match.venue || 'Cebu Coliseum',
       status: 'upcoming',
@@ -50,7 +50,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
   // Don't render scroll-based animations until mounted
   if (!isMounted) {
     return (
-      <section className="py-32 bg-background relative overflow-hidden">
+      <section className="py-32 bg-background relative overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
             <h2 className={`${moderniz.className} text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-8 leading-tight`}>
@@ -59,7 +59,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
               <span className="text-primary">GAMES</span>
             </h2>
             <p className={`${roboto.className} text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed`}>
-              Witness the most thrilling athletic competitions in Cebu. 
+              Witness the most thrilling athletic competitions in Cebu.
               Mark your calendars for these epic showdowns.
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
   // Handle case when there are no upcoming games
   if (upcomingGames.length === 0) {
     return (
-      <section className="py-32 bg-background relative overflow-hidden">
+      <section className="py-32 bg-background relative overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className={`${moderniz.className} text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-8 leading-tight`}>
@@ -134,7 +134,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
   }
 
   return (
-    <section className="py-32 bg-background relative overflow-hidden">
+    <section className="py-32 bg-background relative overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-20">
@@ -144,74 +144,74 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
             <span className="text-primary">GAMES</span>
           </h2>
           <p className={`${roboto.className} text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed`}>
-            Witness the most thrilling athletic competitions in Cebu. 
+            Witness the most thrilling athletic competitions in Cebu.
             Mark your calendars for these epic showdowns.
           </p>
         </div>
 
         {/* Featured Game - Large Display */}
         {upcomingGames.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="mb-20"
-        >
-          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-3xl p-8 lg:p-12 border border-primary/20">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-              
-              {/* Team 1 */}
-              <div className="text-center lg:text-right">
-                <div className={`${roboto.className} text-2xl lg:text-3xl font-bold text-foreground mb-4`}>
-                  {upcomingGames[0].homeTeam}
-                </div>
-                <div className={`${roboto.className} text-lg text-muted-foreground`}>
-                  Home Team
-                </div>
-              </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="mb-20"
+          >
+            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-3xl p-8 lg:p-12 border border-primary/20">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
 
-              {/* VS Section */}
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                    <Trophy className="w-8 h-8 text-primary-foreground" />
+                {/* Team 1 */}
+                <div className="text-center lg:text-right">
+                  <div className={`${roboto.className} text-2xl lg:text-3xl font-bold text-foreground mb-4`}>
+                    {upcomingGames[0].homeTeam}
+                  </div>
+                  <div className={`${roboto.className} text-lg text-muted-foreground`}>
+                    Home Team
                   </div>
                 </div>
-                <div className={`${roboto.className} text-2xl font-bold text-primary mb-2`}>
-                  VS
-                </div>
-                <div className={`${roboto.className} text-sm text-muted-foreground mb-4`}>
-                  {upcomingGames[0].sport} • {upcomingGames[0].category}
-                </div>
-                <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{new Date(upcomingGames[0].date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>{upcomingGames[0].time}</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>{upcomingGames[0].venue}</span>
-                </div>
-              </div>
 
-              {/* Team 2 */}
-              <div className="text-center lg:text-left">
-                <div className={`${roboto.className} text-2xl lg:text-3xl font-bold text-foreground mb-4`}>
-                  {upcomingGames[0].awayTeam}
+                {/* VS Section */}
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+                      <Trophy className="w-8 h-8 text-primary-foreground" />
+                    </div>
+                  </div>
+                  <div className={`${roboto.className} text-2xl font-bold text-primary mb-2`}>
+                    VS
+                  </div>
+                  <div className={`${roboto.className} text-sm text-muted-foreground mb-4`}>
+                    {upcomingGames[0].sport} • {upcomingGames[0].category}
+                  </div>
+                  <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>{new Date(upcomingGames[0].date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span>{upcomingGames[0].time}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span>{upcomingGames[0].venue}</span>
+                  </div>
                 </div>
-                <div className={`${roboto.className} text-lg text-muted-foreground`}>
-                  Away Team
+
+                {/* Team 2 */}
+                <div className="text-center lg:text-left">
+                  <div className={`${roboto.className} text-2xl lg:text-3xl font-bold text-foreground mb-4`}>
+                    {upcomingGames[0].awayTeam}
+                  </div>
+                  <div className={`${roboto.className} text-lg text-muted-foreground`}>
+                    Away Team
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
         )}
 
         {/* Other Games - Grid Layout */}

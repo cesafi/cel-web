@@ -36,10 +36,22 @@ export const getSponsorsTableColumns = (): TableColumn<Sponsor>[] => [
     )
   },
   {
+    key: 'type',
+    header: 'Type',
+    sortable: true,
+    width: '15%',
+    render: (sponsor: Sponsor) => {
+      if (!sponsor.type) return <span className="text-sm text-gray-400">—</span>;
+      const labels: Record<string, string> = { title: 'Title', venue: 'Venue', event: 'Event' };
+      const variants: Record<string, 'default' | 'outline' | 'secondary'> = { title: 'default', venue: 'outline', event: 'secondary' };
+      return <Badge variant={variants[sponsor.type] || 'secondary'}>{labels[sponsor.type] || sponsor.type}</Badge>;
+    }
+  },
+  {
     key: 'status',
     header: 'Status',
     sortable: true,
-    width: '15%',
+    width: '12%',
     render: (sponsor: Sponsor) => (
       <Badge variant={sponsor.is_active ? 'default' : 'secondary'}>
         {sponsor.is_active ? 'Active' : 'Inactive'}
@@ -74,20 +86,20 @@ export const getSponsorsTableActions = (
   onEdit: (sponsor: Sponsor) => void,
   onDelete: (sponsor: Sponsor) => void
 ) => [
-  {
-    key: 'edit',
-    label: 'Edit Sponsor',
-    icon: <Pencil className="h-4 w-4" />,
-    onClick: onEdit,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  },
-  {
-    key: 'delete',
-    label: 'Delete Sponsor',
-    icon: <Trash2 className="h-4 w-4" />,
-    onClick: onDelete,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  }
-];
+    {
+      key: 'edit',
+      label: 'Edit Sponsor',
+      icon: <Pencil className="h-4 w-4" />,
+      onClick: onEdit,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    },
+    {
+      key: 'delete',
+      label: 'Delete Sponsor',
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: onDelete,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    }
+  ];

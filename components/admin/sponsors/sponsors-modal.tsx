@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ImageUpload } from '@/components/shared/image-upload';
 import { toast } from 'sonner';
 import { Sponsor, SponsorInsert, SponsorUpdate } from '@/lib/types/sponsors';
@@ -21,6 +22,12 @@ interface SponsorModalProps {
   isSubmitting: boolean;
 }
 
+const SPONSOR_TYPE_LABELS: Record<string, string> = {
+  title: 'Title Partner',
+  venue: 'Venue Partner',
+  event: 'Event Partner',
+};
+
 export function SponsorModal({
   open,
   onOpenChange,
@@ -34,7 +41,10 @@ export function SponsorModal({
     title: '',
     tagline: '',
     logo_url: null,
-    is_active: true
+    dark_logo_url: null,
+    is_active: true,
+    type: null,
+    display_order: null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedCreating = useRef(false);
@@ -50,14 +60,20 @@ export function SponsorModal({
           title: sponsor.title,
           tagline: sponsor.tagline,
           logo_url: sponsor.logo_url,
-          is_active: sponsor.is_active
+          dark_logo_url: sponsor.dark_logo_url,
+          is_active: sponsor.is_active,
+          type: sponsor.type,
+          display_order: sponsor.display_order,
         });
       } else {
         setFormData({
           title: '',
           tagline: '',
           logo_url: null,
-          is_active: true
+          dark_logo_url: null,
+          is_active: true,
+          type: null,
+          display_order: null,
         });
       }
       setErrors({});
@@ -117,12 +133,12 @@ export function SponsorModal({
     }
   };
 
-  const handleInputChange = (field: keyof (SponsorInsert | SponsorUpdate), value: string | boolean | null) => {
+  const handleInputChange = (field: keyof (SponsorInsert | SponsorUpdate), value: string | boolean | number | null) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -181,6 +197,49 @@ export function SponsorModal({
           )}
         </div>
 
+        {/* Sponsor Type Field */}
+        <div className="space-y-2">
+          <Label htmlFor="type">Sponsor Type</Label>
+          <Select
+            value={formData.type || ''}
+            onValueChange={(value) => handleInputChange('type', value || null)}
+          >
+            <SelectTrigger className={errors.type ? 'border-red-500' : ''}>
+              <SelectValue placeholder="Select sponsor type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SPONSOR_TYPE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.type && (
+            <p className="text-sm text-red-500">{errors.type}</p>
+          )}
+        </div>
+
+        {/* Display Order Field */}
+        <div className="space-y-2">
+          <Label htmlFor="display_order">Display Order</Label>
+          <Input
+            id="display_order"
+            type="number"
+            min={0}
+            value={formData.display_order ?? ''}
+            onChange={(e) => handleInputChange('display_order', e.target.value === '' ? null : parseInt(e.target.value, 10))}
+            placeholder="e.g. 1, 2, 3..."
+            className={errors.display_order ? 'border-red-500' : ''}
+          />
+          <p className="text-xs text-gray-500">
+            Lower numbers appear first. Leave empty for default ordering.
+          </p>
+          {errors.display_order && (
+            <p className="text-sm text-red-500">{errors.display_order}</p>
+          )}
+        </div>
+
         {/* Logo Upload Field */}
         <div className="space-y-2">
           <Label htmlFor="logo_url">Sponsor Logo</Label>
@@ -197,6 +256,25 @@ export function SponsorModal({
           />
           {errors.logo_url && (
             <p className="text-sm text-red-500">{errors.logo_url}</p>
+          )}
+        </div>
+
+        {/* Dark Mode Logo Upload Field */}
+        <div className="space-y-2">
+          <Label htmlFor="dark_logo_url">Dark Mode Logo</Label>
+          <ImageUpload
+            preset="SPONSOR_LOGO"
+            currentImageUrl={formData.dark_logo_url || undefined}
+            onUpload={(url) => handleInputChange('dark_logo_url', url)}
+            onRemove={() => handleInputChange('dark_logo_url', null)}
+            placeholder="Upload dark mode logo"
+            description="Optional logo variant for dark mode. Falls back to the main logo if not set."
+            showPreview={true}
+            showRemoveButton={true}
+            error={errors.dark_logo_url}
+          />
+          {errors.dark_logo_url && (
+            <p className="text-sm text-red-500">{errors.dark_logo_url}</p>
           )}
         </div>
 

@@ -2,8 +2,7 @@
 
 import { PhotoGallery } from '@/lib/types/photo-gallery';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, User, Tag } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
 import Image from 'next/image';
 
 interface PhotoGalleryViewDialogProps {
@@ -40,14 +39,6 @@ export function PhotoGalleryViewDialog({ open, onOpenChange, photo }: PhotoGalle
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Caption</h4>
                 <p className="text-gray-700 leading-relaxed">{photo.caption}</p>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Category</h4>
-                <Badge variant="secondary" className="inline-flex items-center">
-                  <Tag className="w-3 h-3 mr-1" />
-                  {photo.category}
-                </Badge>
               </div>
             </div>
 

@@ -22,7 +22,7 @@ export default function AboutCesafi() {
   const opacity2 = useTransform(scrollYProgress, [0.2, 0.6], [0, 1]);
 
   return (
-    <section ref={ref} className="bg-muted/30 relative min-h-screen overflow-hidden">
+    <section ref={ref} className="bg-background relative min-h-screen overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 py-32 sm:px-6 lg:px-8">
         <div className="grid min-h-[90vh] grid-cols-1 items-center gap-20 lg:grid-cols-3">
           {/* Left Side - CESAFI Logo */}
@@ -48,9 +48,9 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        scale: [1, 1.1, 1],
-                        opacity: [0.3, 0.6, 0.3]
-                      }
+                      scale: [1, 1.1, 1],
+                      opacity: [0.3, 0.6, 0.3]
+                    }
                     : { scale: 1, opacity: 0.3 }
                 }
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
@@ -62,9 +62,9 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        y: [0, -20, 0],
-                        rotate: [0, 180, 360]
-                      }
+                      y: [0, -20, 0],
+                      rotate: [0, 180, 360]
+                    }
                     : { y: 0, rotate: 0 }
                 }
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
@@ -74,9 +74,9 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        y: [0, 15, 0],
-                        rotate: [0, -180, -360]
-                      }
+                      y: [0, 15, 0],
+                      rotate: [0, -180, -360]
+                    }
                     : { y: 0, rotate: 0 }
                 }
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
@@ -86,9 +86,9 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        y: [0, -10, 0],
-                        x: [0, 10, 0]
-                      }
+                      y: [0, -10, 0],
+                      x: [0, 10, 0]
+                    }
                     : { y: 0, x: 0 }
                 }
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
@@ -100,10 +100,10 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        rotate: [0, 5, -5, 0],
-                        scale: [1, 1.02, 1],
-                        y: [0, -5, 0]
-                      }
+                      rotate: [0, 5, -5, 0],
+                      scale: [1, 1.02, 1],
+                      y: [0, -5, 0]
+                    }
                     : { rotate: 0, scale: 1, y: 0 }
                 }
                 transition={{
@@ -129,9 +129,9 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        scale: [1, 1.3, 1],
-                        opacity: [0.4, 0, 0.4]
-                      }
+                      scale: [1, 1.3, 1],
+                      opacity: [0.4, 0, 0.4]
+                    }
                     : { scale: 1, opacity: 0.4 }
                 }
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
@@ -141,9 +141,9 @@ export default function AboutCesafi() {
                 animate={
                   isInView
                     ? {
-                        scale: [1, 1.5, 1],
-                        opacity: [0.2, 0, 0.2]
-                      }
+                      scale: [1, 1.5, 1],
+                      opacity: [0.2, 0, 0.2]
+                    }
                     : { scale: 1, opacity: 0.2 }
                 }
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeOut', delay: 0.5 }}

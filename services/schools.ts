@@ -6,7 +6,7 @@ import {
 } from '@/lib/types/base';
 import { BaseService } from './base';
 import { School, SchoolInsert, SchoolUpdate } from '@/lib/types/schools';
-import CloudinaryService from './cloudinary';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 import { nowUtc } from '@/lib/utils/utc-time';
 
 const TABLE_NAME = 'schools';
@@ -187,18 +187,11 @@ export class SchoolService extends BaseService {
       // Delete the logo from Cloudinary if it exists
       if (school?.logo_url) {
         try {
-          // Extract public_id from the URL for deletion
-          const url = school.logo_url;
-          // Match the full path after /upload/ or /upload/vX_Y_Z/ and remove extension
-          const publicIdMatch = url.match(/\/upload\/(?:v\d+\/)?(.+)\.(jpg|jpeg|png|gif|webp)$/i);
-
-          if (publicIdMatch) {
-            const publicId = publicIdMatch[1]; // This includes the full folder path without extension
-
+          const publicId = extractCloudinaryPublicId(school.logo_url);
+          if (publicId) {
             await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
           }
         } catch (cloudinaryError) {
-          // Log the error but don't block the database deletion
           console.warn('Failed to delete school logo from Cloudinary:', cloudinaryError);
         }
       }

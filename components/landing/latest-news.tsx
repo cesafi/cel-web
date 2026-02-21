@@ -35,7 +35,7 @@ export default function LatestNews({ initialArticles }: LatestNewsProps) {
   const regularArticles = newsArticles.filter(article => !article.featured);
 
   return (
-    <section className="py-32 bg-background relative overflow-hidden">
+    <section className="py-32 bg-background relative overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-20">
@@ -45,7 +45,7 @@ export default function LatestNews({ initialArticles }: LatestNewsProps) {
             <span className="text-primary">NEWS</span>
           </h2>
           <p className={`${roboto.className} text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed`}>
-            Stay updated with the latest happenings in CESAFI. 
+            Stay updated with the latest happenings in CESAFI.
             From championship victories to groundbreaking partnerships.
           </p>
         </div>

@@ -15,12 +15,12 @@ import { formatCategoryName } from '@/lib/utils/esports';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Building2, 
-  Trophy, 
-  Users, 
-  Calendar, 
-  MapPin, 
+import {
+  Building2,
+  Trophy,
+  Users,
+  Calendar,
+  MapPin,
   ArrowLeft,
   Clock,
   Target,
@@ -38,27 +38,27 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
   const { data: school, isLoading: schoolLoading, error: schoolError } = useSchoolByAbbreviation(schoolAbbreviation);
   const { data: seasons, isLoading: seasonsLoading, error: seasonsError } = useAllSeasons();
   const { currentSeason: selectedSeason, setCurrentSeason: setSelectedSeason } = useSeason();
-  
+
   // Always call both hooks, but use the appropriate one based on season selection
   const { data: seasonTeams, isLoading: seasonTeamsLoading } = useSchoolsTeamsBySchoolAndSeason(
-    school?.id || '', 
+    school?.id || '',
     selectedSeason?.id || 0
   );
   const { data: activeTeams, isLoading: activeTeamsLoading } = useActiveTeamsBySchool(school?.id || '');
-  
+
   const teams = selectedSeason?.id ? seasonTeams : activeTeams;
   const teamsLoading = selectedSeason?.id ? seasonTeamsLoading : activeTeamsLoading;
-  
+
   // Type assertion to ensure TypeScript knows the correct type
   const typedTeams = teams as SchoolsTeamWithSportDetails[] | undefined;
-  
+
   // Use the new school-specific matches hook
   const { data: recentMatches, isLoading: matchesLoading } = useMatchesBySchoolId(school?.id || '', {
     limit: 5,
     season_id: selectedSeason?.id,
     direction: 'past'
   });
-  
+
   // Fallback setSelectedSeason if context is not working
   const handleSeasonSelect = (season: Season | null) => {
     if (setSelectedSeason && typeof setSelectedSeason === 'function') {
@@ -67,26 +67,26 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
       console.warn('setSelectedSeason is not available');
     }
   };
-  
+
   // Debug logging
   console.log('Seasons data:', seasons);
   console.log('Seasons loading:', seasonsLoading);
   console.log('Seasons error:', seasonsError);
-  
+
   // Fallback seasons for testing if none exist
   const fallbackSeasons: Season[] = [
-    { id: 1, start_at: '2024-01-01', end_at: '2024-12-31', created_at: '2024-01-01', updated_at: '2024-01-01' },
-    { id: 2, start_at: '2023-01-01', end_at: '2023-12-31', created_at: '2023-01-01', updated_at: '2023-01-01' },
-    { id: 3, start_at: '2022-01-01', end_at: '2022-12-31', created_at: '2022-01-01', updated_at: '2022-01-01' }
+    { id: 1, start_at: '2024-01-01', end_at: '2024-12-31', created_at: '2024-01-01', updated_at: '2024-01-01', name: 'Season 1' },
+    { id: 2, start_at: '2023-01-01', end_at: '2023-12-31', created_at: '2023-01-01', updated_at: '2023-01-01', name: 'Season 2' },
+    { id: 3, start_at: '2022-01-01', end_at: '2022-12-31', created_at: '2022-01-01', updated_at: '2022-01-01', name: 'Season 3' }
   ];
 
   // Sort seasons in descending order (latest first)
-  const sortedSeasons = seasons && seasons.length > 0 
+  const sortedSeasons = seasons && seasons.length > 0
     ? [...seasons].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())
     : fallbackSeasons.sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime());
 
   const displaySeasons = sortedSeasons;
-  
+
   // Carousel state
   // Carousel state - moved to simple flex layout based on user feedback
   // const [scrollPosition, setScrollPosition] = React.useState(0);
@@ -104,7 +104,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 <Skeleton className="h-6 w-32 mx-auto bg-muted/80" />
               </div>
             </div>
-            
+
             {/* Content Skeleton */}
             <div className="space-y-12">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -167,7 +167,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
           <div className="absolute inset-0 bg-[url('/img/cclex-banner.webp')] bg-cover bg-center bg-no-repeat"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent"></div>
         </div>
-        
+
         {/* School Branding - Responsive Positioning */}
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
           {/* Mobile: Centered */}
@@ -193,7 +193,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 </div>
               )}
             </div>
-            
+
             {/* School Info */}
             <div className="text-white">
               <h1 className={`${roboto.className} text-3xl font-bold mb-1 drop-shadow-lg`}>
@@ -228,7 +228,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 </div>
               )}
             </div>
-            
+
             {/* School Info */}
             <div className="text-white">
               <h1 className={`${roboto.className} text-6xl font-bold mb-2 drop-shadow-lg`}>
@@ -240,7 +240,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
             </div>
           </div>
         </div>
-        
+
         {/* Back Button - Top Left */}
         <div className="absolute top-6 left-6">
           <Button variant="ghost" size="sm" asChild className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
@@ -276,14 +276,13 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 <button
                   key={season.id}
                   onClick={() => handleSeasonSelect(season)}
-                  className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 flex-shrink-0 ${
-                    selectedSeason?.id === season.id 
-                      ? 'bg-primary text-primary-foreground shadow-sm' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
+                  className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 flex-shrink-0 ${selectedSeason?.id === season.id
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
                 >
                   <span className={moderniz.className}>
-                    Season {season.id}
+                    {season.name || `Season ${season.id}`}
                   </span>
                 </button>
               ))
@@ -314,7 +313,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 {school.name} teams competing in Season {selectedSeason?.id || 'All Seasons'}
               </p>
             </div>
-            
+
             {teamsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
@@ -347,8 +346,8 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                         {team.esports_categories?.esports?.name || 'Esport'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {team.esports_categories ? 
-                          formatCategoryName(team.esports_categories.division, team.esports_categories.levels) : 
+                        {team.esports_categories ?
+                          formatCategoryName(team.esports_categories.division, team.esports_categories.levels) :
                           'Category'
                         }
                       </p>
@@ -387,7 +386,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 Latest matches featuring {school.name} in Season {selectedSeason?.id || 'All Seasons'}
               </p>
             </div>
-            
+
             {matchesLoading ? (
               <div className="space-y-4">
                 {[...Array(5)].map((_, i) => (
@@ -454,7 +453,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 </p>
               </div>
             )}
-            
+
             <div className="text-center mt-12">
               <Button size="lg" asChild className="px-6 py-3">
                 <Link href="/schedule">

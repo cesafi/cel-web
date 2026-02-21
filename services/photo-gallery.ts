@@ -1,6 +1,7 @@
 import { BaseService } from './base';
 import { PhotoGallery, PhotoGalleryInsert, PhotoGalleryUpdate, PhotoGalleryPaginationOptions } from '@/lib/types/photo-gallery';
 import { ServiceResponse, PaginatedResponse } from '@/lib/types/base';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 
 const TABLE_NAME = 'photo_gallery' as const;
 
@@ -48,24 +49,6 @@ export class PhotoGalleryService extends BaseService {
     }
   }
 
-  /**
-   * Get photo gallery items by category
-   */
-  static async getByCategory(category: string): Promise<ServiceResponse<PhotoGallery[]>> {
-    try {
-      const client = await this.getClient();
-      const { data, error } = await client
-        .from(TABLE_NAME)
-        .select('*')
-        .eq('category', category)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return { success: true, data: data || [] };
-    } catch (err) {
-      return this.formatError(err, `Failed to fetch ${TABLE_NAME} by category.`);
-    }
-  }
 
   /**
    * Get a single photo gallery item by ID
@@ -131,6 +114,28 @@ export class PhotoGalleryService extends BaseService {
   static async deleteById(id: number): Promise<ServiceResponse<null>> {
     try {
       const client = await this.getClient();
+
+      // Fetch photo URL before deleting
+      const { data: photo, error: fetchError } = await client
+        .from(TABLE_NAME)
+        .select('photo_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from Cloudinary if photo exists
+      if (photo?.photo_url) {
+        try {
+          const publicId = extractCloudinaryPublicId(photo.photo_url);
+          if (publicId) {
+            await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
+          }
+        } catch (cloudinaryError) {
+          console.warn('Failed to delete gallery photo from Cloudinary:', cloudinaryError);
+        }
+      }
+
       const { error } = await client
         .from(TABLE_NAME)
         .delete()

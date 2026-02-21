@@ -64,18 +64,18 @@ export class RevalidationHelper {
         // Revalidate schools and seasons (direct relationships)
         this.revalidateSchools();
         this.revalidateSeasons();
-        
+
         // Revalidate matches since teams are used in match participants
         this.revalidateMatches();
         this.revalidateMatchParticipants();
-        
+
         // Revalidate league stage since teams participate in stages
         this.revalidateLeagueStage();
-        
+
         // Revalidate dashboards since team operations affect stats
         this.revalidateAdminDashboard();
         this.revalidateLeagueOperatorDashboard();
-        
+
         // Revalidate specific school team routes
         revalidatePath('/admin/school-teams');
         revalidatePath('/admin/schools');
@@ -119,11 +119,11 @@ export class RevalidationHelper {
         this.revalidateMatchParticipants();
         this.revalidateGames();
         this.revalidateGameScores();
-        
+
         // Revalidate dashboards since match deletion affects stats and recent activity
         this.revalidateLeagueOperatorDashboard();
         this.revalidateAdminDashboard();
-        
+
         // Revalidate specific match detail pages (they should redirect or show 404)
         revalidatePath('/admin/matches/[id]', 'page');
         revalidatePath('/league-operator/matches/[id]', 'page');
@@ -164,7 +164,7 @@ export class RevalidationHelper {
 
         // Public pages that display sponsors
         revalidatePath('/'); // Landing page shows sponsors carousel
-        revalidatePath('/partners'); // Partners page (when implemented)
+        revalidatePath('/sponsors'); // Sponsors page
     }
 
     /**

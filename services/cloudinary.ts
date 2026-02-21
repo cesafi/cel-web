@@ -50,7 +50,7 @@ class CloudinaryService {
         formData.append('public_id', options.public_id);
         params.public_id = options.public_id;
       }
-      
+
       if (options.overwrite) {
         formData.append('overwrite', 'true');
         params.overwrite = 'true';
@@ -155,18 +155,18 @@ class CloudinaryService {
   ): Promise<CloudinaryServiceResponse<CloudinaryDeleteResult>> {
     try {
       const resourceType = options.resourceType || 'image';
-      
-      
+
+
       // Create FormData for the destroy API call
       const formData = new FormData();
       formData.append('public_id', publicId);
-      
+
       // Add timestamp for signature
       const timestamp = Math.round(Date.now() / 1000);
       formData.append('timestamp', timestamp.toString());
-      
 
-      
+
+
       if (!this.apiKey || !this.apiSecret) {
         const error = 'Cloudinary API credentials not found. Please set CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET environment variables.';
         return {
@@ -174,50 +174,50 @@ class CloudinaryService {
           error
         };
       }
-      
+
       formData.append('api_key', this.apiKey);
-      
+
       // Add optional parameters
       if (options.invalidate) {
         formData.append('invalidate', 'true');
       }
-      
+
       // Generate signature for authentication
       // Build params object for signature (not URLSearchParams to avoid encoding issues)
       const params: Record<string, string> = {
         public_id: publicId,
         timestamp: timestamp.toString()
       };
-      
+
       if (options.invalidate) {
         params.invalidate = 'true';
       }
-      
+
       // Sort keys alphabetically and create string
       const sortedKeys = Object.keys(params).sort();
       const signatureString = sortedKeys
         .map(key => `${key}=${params[key]}`)
         .join('&');
-      
-      
+
+
       // Create signature using Web Crypto API
       const encoder = new TextEncoder();
       const data = encoder.encode(signatureString + this.apiSecret);
       const hashBuffer = await crypto.subtle.digest('SHA-1', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
+
       formData.append('signature', signature);
-      
+
       const apiUrl = `https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/destroy`;
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
       });
 
       const result = await response.json();
-      
+
 
       if (!response.ok) {
         return {
@@ -270,5 +270,14 @@ class CloudinaryService {
   }
 }
 
+/**
+ * Extract Cloudinary public_id from a full Cloudinary URL.
+ * Returns null if the URL doesn't match Cloudinary format.
+ */
+export function extractCloudinaryPublicId(url: string): string | null {
+  // Match the full path after /upload/ or /upload/vX/ and remove extension
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.(jpg|jpeg|png|gif|webp|svg|avif)$/i);
+  return match ? match[1] : null;
+}
 
 export default CloudinaryService;

@@ -36,6 +36,7 @@ export function VolunteerModal({
 }: VolunteerModalProps) {
   const [formData, setFormData] = useState<VolunteerInsert | VolunteerUpdate>({
     full_name: '',
+    title: null,
     image_url: '',
     is_active: true,
     department_id: null,
@@ -60,6 +61,7 @@ export function VolunteerModal({
         setFormData({
           id: volunteer.id,
           full_name: volunteer.full_name,
+          title: volunteer.title || null,
           image_url: volunteer.image_url || '',
           is_active: volunteer.is_active ?? true,
           department_id: volunteer.department_id,
@@ -68,6 +70,7 @@ export function VolunteerModal({
       } else {
         setFormData({
           full_name: '',
+          title: null,
           image_url: '',
           is_active: true,
           department_id: null,
@@ -156,10 +159,10 @@ export function VolunteerModal({
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            form="volunteer-form" 
-            className="flex-1" 
+          <Button
+            type="submit"
+            form="volunteer-form"
+            className="flex-1"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Saving...' : mode === 'add' ? 'Create Volunteer' : 'Update Volunteer'}
@@ -187,6 +190,17 @@ export function VolunteerModal({
                 className={errors.full_name ? 'border-red-500' : ''}
               />
               {errors.full_name && <p className="text-sm text-red-500">{errors.full_name}</p>}
+            </div>
+
+            {/* Title Field */}
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={(formData as Record<string, unknown>).title as string || ''}
+                onChange={(e) => handleInputChange('title', e.target.value || null)}
+                placeholder="e.g. Head Coordinator, Lead Photographer"
+              />
             </div>
 
             {/* Photo Upload */}

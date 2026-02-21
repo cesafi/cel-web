@@ -101,8 +101,8 @@ export default function CesafiTimeline() {
           <p
             className={`${roboto.className} text-muted-foreground mx-auto max-w-4xl text-lg leading-relaxed sm:text-xl lg:text-2xl`}
           >
-            A journey through 25 years of excellence in Cebu collegiate sports, celebrating
-            milestones, achievements, and the spirit of competition.
+            From our founding in 2022 to the introduction of a women&apos;s division in Season 4
+            — follow the milestones that shaped the CESAFI Esports League.
           </p>
         </div>
 
@@ -119,17 +119,16 @@ export default function CesafiTimeline() {
             {timelineEvents.map((event, index) => (
               <div
                 key={event.id}
-                className={`relative flex flex-col items-center md:flex-row ${
-                  index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
-                }`}
+                className={`relative flex flex-col items-center md:flex-row ${index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
+                  }`}
               >
                 {/* Timeline Dot - Mobile: centered, Desktop: positioned */}
                 <div className="relative z-10 mb-6 md:absolute md:left-1/2 md:-translate-x-1/2 md:transform md:mb-0">
                   {/* Main Dot */}
-                  <div className={`w-12 h-12 rounded-full ${getCategoryColor(event.category)} flex items-center justify-center text-lg font-bold shadow-2xl border-2 border-background`}>                       
+                  <div className={`w-12 h-12 rounded-full ${getCategoryColor(event.category)} flex items-center justify-center text-lg font-bold shadow-2xl border-2 border-background`}>
                     <span className="text-xl">🏆</span>
                   </div>
-                  
+
                   {/* Year Badge - Mobile: below dot, Desktop: above */}
                   <div
                     className={`mt-2 md:absolute md:-top-12 md:left-1/2 md:-translate-x-1/2 md:transform md:mt-0 rounded-full px-3 py-1 text-xs font-bold ${getCategoryColor(event.category)} shadow-lg`}
@@ -141,9 +140,8 @@ export default function CesafiTimeline() {
                 {/* Event Content - Mobile: full width, Desktop: 5/12 width */}
                 <div className={`w-full md:w-5/12 ${index % 2 === 0 ? 'md:pr-12' : 'md:pl-12'}`}>
                   <div
-                    className={`bg-background/90 border-border/50 hover:border-primary/30 relative overflow-hidden rounded-3xl border backdrop-blur-sm transition-all duration-300 hover:shadow-xl ${           
-                      event.is_highlight ? 'ring-primary/20 shadow-lg ring-2' : ''
-                    }`}
+                    className={`bg-background/90 border-border/50 hover:border-primary/30 relative overflow-hidden rounded-3xl border backdrop-blur-sm transition-all duration-300 hover:shadow-xl ${event.is_highlight ? 'ring-primary/20 shadow-lg ring-2' : ''
+                      }`}
                   >
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-5">
@@ -199,9 +197,8 @@ export default function CesafiTimeline() {
 
                       {/* Title */}
                       <h3
-                        className={`${moderniz.className} mb-3 text-lg font-bold sm:mb-4 sm:text-xl lg:text-2xl ${
-                          event.is_highlight ? 'text-accent' : 'text-foreground'
-                        }`}
+                        className={`${moderniz.className} mb-3 text-lg font-bold sm:mb-4 sm:text-xl lg:text-2xl ${event.is_highlight ? 'text-accent' : 'text-foreground'
+                          }`}
                       >
                         {event.title}
                       </h3>
@@ -235,17 +232,17 @@ export default function CesafiTimeline() {
         <div className="mt-12 text-center sm:mt-16 lg:mt-20">
           <div className="from-primary/10 via-primary/5 to-primary/10 border-primary/20 rounded-2xl border bg-gradient-to-r p-6 sm:rounded-3xl sm:p-8">
             <h3 className={`${moderniz.className} text-foreground mb-3 text-xl font-bold sm:mb-4 sm:text-2xl`}>
-              Be Part of Our History
+              Be Part of Our Story
             </h3>
             <p className={`${roboto.className} text-muted-foreground mx-auto mb-4 max-w-2xl text-sm sm:mb-6 sm:text-base`}>
-              Join us as we continue to write the next chapter of CESAFI&apos;s legacy. Whether as a
-              student-athlete, coach, or supporter, your story matters.
+              Join us as we continue to write the next chapter of the CESAFI Esports League. Whether
+              as a player, caster, volunteer, or supporter, your story matters.
             </p>
             <div className="flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
               <button
                 className={`${roboto.className} bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-6 py-2 text-sm font-semibold shadow-lg transition-all duration-300 hover:scale-105 sm:rounded-xl sm:px-8 sm:py-3 sm:text-base`}
               >
-                Learn More About CESAFI
+                Learn More About CEL
               </button>
               <button
                 className={`${roboto.className} border-primary text-primary hover:bg-primary hover:text-primary-foreground rounded-lg border-2 px-6 py-2 text-sm font-semibold transition-all duration-300 hover:scale-105 sm:rounded-xl sm:px-8 sm:py-3 sm:text-base`}

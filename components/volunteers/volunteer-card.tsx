@@ -53,9 +53,8 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
                     src={volunteer.image_url}
                     alt={volunteer.full_name || 'Volunteer'}
                     fill
-                    className={`object-cover transition-opacity duration-300 ${
-                      imageLoading ? 'opacity-0' : 'opacity-100'
-                    }`}
+                    className={`object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'
+                      }`}
                     onLoad={() => setImageLoading(false)}
                     onError={() => {
                       setImageError(true);
@@ -72,7 +71,7 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
                 </div>
               )}
             </div>
-            
+
             {/* Active status indicator */}
             {volunteer.is_active !== false && (
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-background rounded-full flex items-center justify-center">
@@ -83,10 +82,31 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
 
           {/* Volunteer Info */}
           <div className="text-center flex-1 flex flex-col">
-            <h4 className={`${roboto.className} font-semibold text-foreground text-lg mb-2`}>
-              {volunteer.full_name || 'Unknown Volunteer'}
-            </h4>
-            
+            {(() => {
+              const name = volunteer.full_name || 'Unknown Volunteer';
+              const match = name.match(/^(.*?)\s*"([^"]+)"\s*(.*)$/);
+              const cleanName = match ? `${match[1]}${match[3]}`.replace(/\s{2,}/g, ' ').trim() : name;
+              const nickname = match ? match[2] : null;
+
+              return (
+                <>
+                  <h4 className={`${roboto.className} font-semibold text-foreground text-lg leading-tight ${nickname || volunteer.title ? 'mb-0.5' : 'mb-1'}`}>
+                    {cleanName}
+                  </h4>
+                  {nickname && (
+                    <p className={`${roboto.className} text-sm italic text-primary/90 font-medium ${volunteer.title ? 'mb-0' : 'mb-2'}`}>
+                      &ldquo;{nickname}&rdquo;
+                    </p>
+                  )}
+                </>
+              );
+            })()}
+            {volunteer.title && (
+              <p className={`${roboto.className} text-xs text-muted-foreground/80 font-medium tracking-wide uppercase mb-2`}>
+                {volunteer.title}
+              </p>
+            )}
+
             {/* Joined Date */}
             <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm mt-auto">
               <Calendar className="h-4 w-4" />

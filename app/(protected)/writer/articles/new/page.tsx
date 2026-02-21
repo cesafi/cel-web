@@ -16,7 +16,10 @@ export default function CreateArticlePage() {
   });
 
   const handleSubmit = async (data: ArticleInsert | ArticleUpdate) => {
-    createArticleMutation.mutate(data as ArticleInsert);
+    const result = await createArticleMutation.mutateAsync(data as ArticleInsert);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create article');
+    }
   };
 
   return (

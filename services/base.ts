@@ -28,9 +28,30 @@ export abstract class BaseService {
   }
 
   protected static formatError<T>(error: unknown, message: string): ServiceResponse<T> {
+    // Log the full error for debugging
+    console.error(`[Service Error] ${message}:`, error);
+
+    let errorMessage = message;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (
+      error &&
+      typeof error === 'object' &&
+      'message' in error &&
+      typeof (error as { message: unknown }).message === 'string'
+    ) {
+      // Handle Supabase PostgrestError (not an Error instance, but has message/details/hint/code)
+      const pgError = error as { message: string; details?: string; hint?: string; code?: string };
+      errorMessage = pgError.message;
+      if (pgError.details) {
+        errorMessage += ` Details: ${pgError.details}`;
+      }
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : message
+      error: errorMessage
     };
   }
 

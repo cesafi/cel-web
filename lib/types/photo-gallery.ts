@@ -11,7 +11,6 @@ export type PhotoGalleryUpdate = z.infer<typeof updatePhotoGallerySchema>;
 // Search filters for photo gallery
 export interface PhotoGallerySearchFilters {
   title?: string;
-  category?: string;
   photo_by?: string;
 }
 
@@ -20,12 +19,8 @@ export type PhotoGalleryPaginationOptions = PaginationOptions<
   PhotoGallerySearchFilters & Record<string, FilterValue>
 >;
 
-// Photo gallery categories
-export type PhotoGalleryCategory = 'sports' | 'events' | 'awards' | 'general' | 'team' | 'facilities';
-
 // Photo gallery with additional computed fields
 export interface PhotoGalleryWithDetails extends PhotoGallery {
   // Add any computed fields here if needed
-  category_display?: string;
   formatted_date?: string;
 }

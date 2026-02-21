@@ -11,7 +11,7 @@ import { Suspense } from 'react';
 export default async function AboutUsPage() {
   // Fetch About Us FAQs server-side
   let aboutUsFaqs: Faq[] = [];
-  
+
   try {
     const faqResult = await getAboutUsFaq();
     if (faqResult.success && 'data' in faqResult && Array.isArray(faqResult.data)) {
@@ -48,7 +48,7 @@ export default async function AboutUsPage() {
                 >
                   CESAFI
                   <br />
-                  <span className="text-primary">SPORTS</span>
+                  <span className="text-primary">ESPORTS</span>
                 </h1>
               </div>
 
@@ -56,15 +56,16 @@ export default async function AboutUsPage() {
                 <p
                   className={`${roboto.className} text-muted-foreground text-xl leading-relaxed lg:text-2xl`}
                 >
-                  Honoring the athletes, coaches, and institutions who define the future of
-                  competitive sports in Cebu.
+                  The Official Esports League of the Cebu Schools Athletic Foundation, Inc.
+                  — where student-gamers compete, grow, and lead.
                 </p>
               </div>
 
               <div>
                 <p className={`${roboto.className} text-muted-foreground text-lg leading-relaxed`}>
-                  CESAFI is dedicated to showcasing top-class performance and innovation from the
-                  players, teams, schools, events, and personalities within the Cebu sports scene.
+                  Born from a vision to bring competitive gaming into the collegiate spotlight, CEL
+                  is a student-led initiative that provides a platform for esports student-athletes
+                  to showcase their skills in Mobile Legends: Bang Bang and Valorant.
                 </p>
               </div>
             </div>
@@ -77,7 +78,7 @@ export default async function AboutUsPage() {
                   <div className="bg-muted/30 relative h-96 overflow-hidden rounded-2xl">
                     <Image
                       src="/img/cesafi-banner.jpg"
-                      alt="CESAFI Sports Excellence"
+                      alt="CESAFI Esports League"
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
                       className="object-cover"
@@ -87,10 +88,10 @@ export default async function AboutUsPage() {
                     {/* Overlay Text */}
                     <div className="absolute right-6 bottom-6 left-6">
                       <h3 className={`${moderniz.className} mb-2 text-2xl font-bold text-white`}>
-                        Athletic Excellence
+                        Collegiate Esports Excellence
                       </h3>
                       <p className={`${roboto.className} text-white/90`}>
-                        Celebrating the best in Cebu sports
+                        The largest student-oriented esports league in Cebu
                       </p>
                     </div>
                   </div>

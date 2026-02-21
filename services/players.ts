@@ -8,6 +8,7 @@ import {
 } from '@/lib/types/base';
 import { BaseService } from './base';
 import { Player, PlayerInsert, PlayerUpdate, PlayerWithTeam } from '@/lib/types/players';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 
 const TABLE_NAME = 'players';
 
@@ -75,14 +76,14 @@ export class PlayerService extends BaseService {
 
       // Transform to match PlayerWithTeam interface
       const playersWithTeam = data.map((p: any) => {
-          // Get the first team from player_seasons (assuming one active team per context or just showing latest)
-          // In reality, a player might have multiple seasons. We might want to sort player_seasons by created_at desc.
-          // For now, we take the first one returned.
-          const team = p.player_seasons?.[0]?.team || null;
-          return {
-              ...p,
-              schools_teams: team
-          };
+        // Get the first team from player_seasons (assuming one active team per context or just showing latest)
+        // In reality, a player might have multiple seasons. We might want to sort player_seasons by created_at desc.
+        // For now, we take the first one returned.
+        const team = p.player_seasons?.[0]?.team || null;
+        return {
+          ...p,
+          schools_teams: team
+        };
       });
 
       return { success: true, data: playersWithTeam as unknown as PlayerWithTeam[] };
@@ -94,7 +95,7 @@ export class PlayerService extends BaseService {
   static async getByTeamId(teamId: string): Promise<ServiceResponse<Player[]>> {
     try {
       const supabase = await this.getClient();
-      
+
       // Query player_seasons to get players linked to this team
       // joining with players table to get player details
       const { data, error } = await supabase
@@ -174,11 +175,11 @@ export class PlayerService extends BaseService {
       if (error) {
         throw error;
       }
-      
+
       const team = (data as any).player_seasons?.[0]?.team || null;
       const playerWithTeam = {
-          ...data,
-          schools_teams: team
+        ...data,
+        schools_teams: team
       };
 
       return { success: true, data: playerWithTeam as unknown as PlayerWithTeam };
@@ -225,6 +226,28 @@ export class PlayerService extends BaseService {
   static async deleteById(id: string): Promise<ServiceResponse<undefined>> {
     try {
       const supabase = await this.getClient();
+
+      // Fetch photo URL before deleting
+      const { data: player, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('photo_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from Cloudinary if photo exists
+      if (player?.photo_url) {
+        try {
+          const publicId = extractCloudinaryPublicId(player.photo_url);
+          if (publicId) {
+            await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
+          }
+        } catch (cloudinaryError) {
+          console.warn('Failed to delete player photo from Cloudinary:', cloudinaryError);
+        }
+      }
+
       const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
 
       if (error) {
@@ -238,45 +261,45 @@ export class PlayerService extends BaseService {
   }
 
   static async assignTeam(playerId: string, teamId: string, seasonId?: number): Promise<ServiceResponse<undefined>> {
-      try {
-          const supabase = await this.getClient();
-          
-          // If no seasonId provided, try to find the active season? 
-          // For now, let's assume seasonId is passed or we default to a "current" one if we had a way to fetch it easily here.
-          // Ideally, the caller should provide the seasonId.
-          
-          if (!seasonId) {
-             // Fallback: fetch the most recent season? Or error?
-             // Let's error for now to enforce explicit season handling
-             // OR: fetch the active season
-             const { data: activeSeason } = await supabase
-                .from('seasons')
-                .select('id')
-                .eq('is_active', true)
-                .single();
-             
-             if (activeSeason) {
-                 seasonId = activeSeason.id;
-             } else {
-                 throw new Error('No active season found and no seasonId provided.');
-             }
-          }
+    try {
+      const supabase = await this.getClient();
 
-          // Upsert into player_seasons
-          // We use upsert to handle re-assignment or new assignment
-          const { error } = await supabase
-            .from('player_seasons')
-            .upsert({
-                player_id: playerId,
-                team_id: teamId,
-                season_id: seasonId
-            }, { onConflict: 'player_id, season_id' }); // Ensure one team per season per player
+      // If no seasonId provided, try to find the active season? 
+      // For now, let's assume seasonId is passed or we default to a "current" one if we had a way to fetch it easily here.
+      // Ideally, the caller should provide the seasonId.
 
-          if (error) throw error;
+      if (!seasonId) {
+        // Fallback: fetch the most recent season? Or error?
+        // Let's error for now to enforce explicit season handling
+        // OR: fetch the active season
+        const { data: activeSeason } = await supabase
+          .from('seasons')
+          .select('id')
+          .eq('is_active', true)
+          .single();
 
-          return { success: true, data: undefined };
-      } catch (err) {
-          return this.formatError(err, 'Failed to assign player to team.');
+        if (activeSeason) {
+          seasonId = activeSeason.id;
+        } else {
+          throw new Error('No active season found and no seasonId provided.');
+        }
       }
+
+      // Upsert into player_seasons
+      // We use upsert to handle re-assignment or new assignment
+      const { error } = await supabase
+        .from('player_seasons')
+        .upsert({
+          player_id: playerId,
+          team_id: teamId,
+          season_id: seasonId
+        }, { onConflict: 'player_id, season_id' }); // Ensure one team per season per player
+
+      if (error) throw error;
+
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, 'Failed to assign player to team.');
+    }
   }
 }

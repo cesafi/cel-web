@@ -5,6 +5,7 @@ import {
 } from '@/lib/types/base';
 import { BaseService } from './base';
 import { Volunteer, VolunteerInsert, VolunteerUpdate } from '@/lib/types/volunteers';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 
 const TABLE_NAME = 'volunteers';
 
@@ -142,6 +143,28 @@ export class VolunteerService extends BaseService {
   static async deleteById(id: string): Promise<ServiceResponse<undefined>> {
     try {
       const supabase = await this.getClient();
+
+      // Fetch image URL before deleting
+      const { data: volunteer, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('image_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from Cloudinary if image exists
+      if (volunteer?.image_url) {
+        try {
+          const publicId = extractCloudinaryPublicId(volunteer.image_url);
+          if (publicId) {
+            await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
+          }
+        } catch (cloudinaryError) {
+          console.warn('Failed to delete volunteer image from Cloudinary:', cloudinaryError);
+        }
+      }
+
       const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
       if (error) throw error;
       return { success: true, data: undefined };

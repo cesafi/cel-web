@@ -3,6 +3,7 @@
 import { ServiceResponse } from '@/lib/types/base';
 import { BaseService } from './base';
 import { GameCharacter, GameCharacterInsert, GameCharacterUpdate, GameCharacterWithEsport } from '@/lib/types/game-characters';
+import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
 
 const TABLE_NAME = 'game_characters';
 
@@ -95,6 +96,28 @@ export class GameCharacterService extends BaseService {
   static async deleteById(id: number): Promise<ServiceResponse<undefined>> {
     try {
       const supabase = await this.getClient();
+
+      // Fetch icon URL before deleting
+      const { data: character, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('icon_url')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from Cloudinary if icon exists
+      if (character?.icon_url) {
+        try {
+          const publicId = extractCloudinaryPublicId(character.icon_url);
+          if (publicId) {
+            await CloudinaryService.deleteImage(publicId, { resourceType: 'image' });
+          }
+        } catch (cloudinaryError) {
+          console.warn('Failed to delete character icon from Cloudinary:', cloudinaryError);
+        }
+      }
+
       const { error } = await supabase.from(TABLE_NAME).delete().eq('id', id);
       if (error) throw error;
       return { success: true, data: undefined };

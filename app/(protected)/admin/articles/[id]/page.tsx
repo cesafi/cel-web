@@ -24,7 +24,10 @@ export default function EditArticlePage() {
   });
 
   const handleSubmit = async (data: ArticleInsert | ArticleUpdate) => {
-    updateArticleMutation.mutate(data as ArticleUpdate);
+    const result = await updateArticleMutation.mutateAsync(data as ArticleUpdate);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update article');
+    }
   };
 
   if (isLoading) {

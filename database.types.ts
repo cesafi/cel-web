@@ -737,7 +737,6 @@ export type Database = {
       photo_gallery: {
         Row: {
           caption: string
-          category: string
           created_at: string
           id: number
           photo_by: string
@@ -747,7 +746,6 @@ export type Database = {
         }
         Insert: {
           caption: string
-          category: string
           created_at?: string
           id?: number
           photo_by: string
@@ -757,7 +755,6 @@ export type Database = {
         }
         Update: {
           caption?: string
-          category?: string
           created_at?: string
           id?: number
           photo_by?: string
@@ -954,29 +951,38 @@ export type Database = {
       sponsors: {
         Row: {
           created_at: string
+          dark_logo_url: string | null
+          display_order: number | null
           id: string
           is_active: boolean
           logo_url: string | null
           tagline: string
           title: string
+          type: Database["public"]["Enums"]["sponsor_type"] | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string
+          dark_logo_url?: string | null
+          display_order?: number | null
           id?: string
           is_active: boolean
           logo_url?: string | null
           tagline: string
           title: string
+          type?: Database["public"]["Enums"]["sponsor_type"] | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string
+          dark_logo_url?: string | null
+          display_order?: number | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
           tagline?: string
           title?: string
+          type?: Database["public"]["Enums"]["sponsor_type"] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1265,6 +1271,7 @@ export type Database = {
           image_url: string | null
           is_active: boolean | null
           season_id: number | null
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -1275,6 +1282,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean | null
           season_id?: number | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -1285,6 +1293,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean | null
           season_id?: number | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1628,6 +1637,7 @@ export type Database = {
         | "rescheduled"
         | "canceled"
       round_type: "group" | "playoffs" | "finals"
+      sponsor_type: "title" | "venue" | "event"
       stage_type: "round_robin" | "single_elimination" | "double_elimination"
       user_role: "admin" | "league_operator" | "head_writer" | "writer"
       veto_action: "pick" | "ban" | "remain"
@@ -1771,6 +1781,7 @@ export const Constants = {
         "canceled",
       ],
       round_type: ["group", "playoffs", "finals"],
+      sponsor_type: ["title", "venue", "event"],
       stage_type: ["round_robin", "single_elimination", "double_elimination"],
       user_role: ["admin", "league_operator", "head_writer", "writer"],
       veto_action: ["pick", "ban", "remain"],

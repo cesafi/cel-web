@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPaginatedPhotoGallery, getAllPhotoGallery, getPhotoGalleryByCategory, getPhotoGalleryById, createPhotoGallery, updatePhotoGallery, deletePhotoGallery } from '@/actions/photo-gallery';
+import { getPaginatedPhotoGallery, getAllPhotoGallery, getPhotoGalleryById, createPhotoGallery, updatePhotoGallery, deletePhotoGallery } from '@/actions/photo-gallery';
 import { PhotoGalleryInsert, PhotoGalleryUpdate, PhotoGalleryPaginationOptions } from '@/lib/types/photo-gallery';
 import { toast } from 'sonner';
 
@@ -27,14 +27,7 @@ export const useAllPhotoGallery = () => {
   });
 };
 
-export const usePhotoGalleryByCategory = (category: string) => {
-  return useQuery({
-    queryKey: [PHOTO_GALLERY_QUERY_KEY, 'category', category],
-    queryFn: () => getPhotoGalleryByCategory(category),
-    enabled: !!category,
-    placeholderData: (previousData) => previousData,
-  });
-};
+
 
 export const usePhotoGalleryById = (id: number) => {
   return useQuery({
