@@ -33,7 +33,6 @@ export function PlayerModal({
   onSubmit,
   isSubmitting
 }: PlayerModalProps) {
-  // We keep team_id separate because it's no longer part of the player record directly
   const [formData, setFormData] = useState<PlayerInsert | PlayerUpdate>({
     ign: '',
     first_name: '',
@@ -42,7 +41,6 @@ export function PlayerModal({
     role: '',
     is_active: true
   });
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedCreating = useRef(false);
@@ -68,8 +66,6 @@ export function PlayerModal({
           role: player.role || '',
           is_active: player.is_active ?? true
         });
-        // Set initial team from player's current team (mapped via schools_teams)
-        setSelectedTeamId(player.schools_teams?.id || null);
       } else {
         setFormData({
           ign: '',
@@ -79,7 +75,6 @@ export function PlayerModal({
           role: '',
           is_active: true
         });
-        setSelectedTeamId(null);
       }
       setErrors({});
       hasStartedCreating.current = false;
@@ -114,7 +109,7 @@ export function PlayerModal({
         hasStartedUpdating.current = true;
       }
 
-      onSubmit(validatedData, selectedTeamId);
+      onSubmit(validatedData);
     } catch (error) {
       if (error instanceof ZodError) {
         const newErrors: Record<string, string> = {};
@@ -163,10 +158,10 @@ export function PlayerModal({
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            form="player-form" 
-            className="flex-1" 
+          <Button
+            type="submit"
+            form="player-form"
+            className="flex-1"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Saving...' : mode === 'add' ? 'Create Player' : 'Update Player'}
@@ -251,26 +246,7 @@ export function PlayerModal({
               {errors.role && <p className="text-sm text-red-500">{errors.role}</p>}
             </div>
 
-            {/* Team Selector */}
-            <div className="space-y-2">
-              <Label htmlFor="team_id">Team</Label>
-              <Select
-                value={selectedTeamId || ''}
-                onValueChange={(value) => setSelectedTeamId(value || null)}
-              >
-                <SelectTrigger className={errors.team_id ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* Note: team_id is separate now, so zod validation on formData won't catch it unless we manually validate if required */}
-            </div>
+
 
             {/* Active Status */}
             <div className="flex items-center space-x-2">

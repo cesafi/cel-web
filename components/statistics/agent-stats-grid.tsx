@@ -48,12 +48,12 @@ function AgentCard({ agent, maxACS }: { agent: AgentStats; maxACS: number }) {
                 <div className="flex items-start gap-3">
                     {/* Agent Icon */}
                     <div className={cn(
-                        'w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0',
+                        'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0',
                         'bg-gradient-to-br',
                         role ? role.bgColor : 'from-gray-500/20 to-gray-600/30'
                     )}>
                         {agent.icon_url ? (
-                            <img src={agent.icon_url} alt={agent.agent_name} className="w-10 h-10 rounded" />
+                            <img src={agent.icon_url} alt={agent.agent_name} className="w-10 h-10 rounded-full object-cover" />
                         ) : (
                             <span className={cn('text-lg font-bold', role?.color || 'text-muted-foreground')}>
                                 {agent.agent_name.charAt(0)}

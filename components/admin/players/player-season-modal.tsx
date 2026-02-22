@@ -141,7 +141,7 @@ export function PlayerSeasonModal({
   };
 
   // Filter teams by selected season
-  const filteredTeams = formData.season_id 
+  const filteredTeams = formData.season_id
     ? teams.filter(team => team.season_id === formData.season_id)
     : teams;
 
@@ -162,10 +162,10 @@ export function PlayerSeasonModal({
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            form="player-season-form" 
-            className="flex-1" 
+          <Button
+            type="submit"
+            form="player-season-form"
+            className="flex-1"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Saving...' : mode === 'add' ? 'Add Entry' : 'Update Entry'}
@@ -221,7 +221,7 @@ export function PlayerSeasonModal({
                 <SelectContent>
                   {filteredTeams.map((team) => (
                     <SelectItem key={team.id} value={team.id}>
-                      {team.name}
+                      {team.name} {team.esports ? `(${team.esports.name} - ${team.category})` : team.category && `(${team.category})`}
                     </SelectItem>
                   ))}
                 </SelectContent>

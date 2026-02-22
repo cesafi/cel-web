@@ -136,9 +136,9 @@ export function HeroStatsGrid({ data, isLoading = false, className }: HeroStatsG
                             <CardContent className="p-4">
                                 <div className="flex items-start gap-3">
                                     {/* Hero Icon */}
-                                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
                                         {hero.icon_url ? (
-                                            <img src={hero.icon_url} alt={hero.hero_name} className="w-10 h-10 rounded" />
+                                            <img src={hero.icon_url} alt={hero.hero_name} className="w-full h-full object-cover" />
                                         ) : (
                                             <Swords className="w-5 h-5 text-muted-foreground" />
                                         )}

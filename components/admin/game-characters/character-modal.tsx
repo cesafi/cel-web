@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModalLayout } from '@/components/ui/modal-layout';
 import { ImageUpload } from '@/components/shared/image-upload';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GameCharacter, GameCharacterInsert, GameCharacterUpdate } from '@/lib/types/game-characters';
+import { parseFandomImageUrl } from '@/actions/game-characters';
 import { toast } from 'sonner';
-import { User } from 'lucide-react';
+import { User, Loader2 } from 'lucide-react';
 
 interface CharacterModalProps {
   open: boolean;
@@ -37,6 +39,7 @@ export function CharacterModal({
     esport_id: esportId
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCheckingUrl, setIsCheckingUrl] = useState(false);
   const hasStartedSubmitting = useRef(false);
 
   const handleClose = useCallback(() => {
@@ -130,10 +133,10 @@ export function CharacterModal({
           >
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            form="character-form" 
-            className="flex-1" 
+          <Button
+            type="submit"
+            form="character-form"
+            className="flex-1"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Saving...' : mode === 'add' ? 'Add Character' : 'Update Character'}
@@ -150,19 +153,59 @@ export function CharacterModal({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Icon Upload */}
-            <div className="space-y-2">
+            {/* Icon Upload or URL */}
+            <div className="space-y-4">
               <Label>Character Icon</Label>
-              <ImageUpload
-                preset="GAME_CHARACTER"
-                currentImageUrl={formData.icon_url || undefined}
-                onUpload={(url) => handleInputChange('icon_url', url)}
-                onRemove={() => handleInputChange('icon_url', '')}
-                placeholder="Upload character icon"
-                description="Upload a square icon (recommended: 128x128px)"
-                showPreview={true}
-                showRemoveButton={true}
-              />
+              <Tabs defaultValue="upload" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="upload">Upload Image</TabsTrigger>
+                  <TabsTrigger value="url">Enter URL</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="upload" className="space-y-4 pt-4">
+                  <ImageUpload
+                    preset="GAME_CHARACTER"
+                    currentImageUrl={formData.icon_url || undefined}
+                    onUpload={(url) => handleInputChange('icon_url', url)}
+                    onRemove={() => handleInputChange('icon_url', '')}
+                    placeholder="Upload character icon"
+                    description="Upload a square icon (recommended: 128x128px)"
+                    showPreview={true}
+                    showRemoveButton={true}
+                  />
+                </TabsContent>
+
+                <TabsContent value="url" className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="icon_url" className="text-sm text-muted-foreground">
+                      Image URL
+                    </Label>
+                    <Input
+                      id="icon_url"
+                      type="url"
+                      placeholder="https://example.com/icon.png or a Fandom Wiki URL"
+                      value={formData.icon_url || ''}
+                      onChange={(e) => handleInputChange('icon_url', e.target.value)}
+                    />
+                  </div>
+                  {formData.icon_url && typeof formData.icon_url === 'string' && formData.icon_url.startsWith('http') && (
+                    <div className="flex flex-col items-center gap-2 mt-4">
+                      <span className="text-sm font-medium text-muted-foreground self-start">Preview:</span>
+                      <img
+                        src={formData.icon_url}
+                        alt="Icon preview"
+                        className="w-32 h-32 object-cover rounded-md border"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
+                        onLoad={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'block';
+                        }}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
 
             {/* Name */}
@@ -193,6 +236,6 @@ export function CharacterModal({
           </CardContent>
         </Card>
       </form>
-    </ModalLayout>
+    </ModalLayout >
   );
 }

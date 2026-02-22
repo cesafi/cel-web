@@ -23,7 +23,7 @@ const TIER_CONFIG = {
     },
     event: {
         label: 'Event Sponsors',
-        subtitle: 'Supporting our marquee events and special occasions.',
+        subtitle: 'Supporting our opening and finale events.',
         logoSize: 'w-24 h-16 md:w-32 md:h-20 lg:w-40 lg:h-24',
         cardStyle: 'bg-card border border-border hover:border-primary/30 shadow-md hover:shadow-lg',
     },

@@ -45,7 +45,7 @@ export const getPlayersTableColumns = (): TableColumn<PlayerWithTeam>[] => [
   },
   {
     key: 'team',
-    header: 'Team',
+    header: 'Latest Team',
     sortable: false,
     width: '25%',
     render: (player: PlayerWithTeam) => (
@@ -82,11 +82,11 @@ export const getPlayersTableColumns = (): TableColumn<PlayerWithTeam>[] => [
     sortable: true,
     width: '15%',
     render: (player: PlayerWithTeam) => (
-      <Badge 
-        className={`${player.is_active 
-          ? 'bg-green-100 text-green-800 border-green-200' 
+      <Badge
+        className={`${player.is_active
+          ? 'bg-green-100 text-green-800 border-green-200'
           : 'bg-muted text-muted-foreground border-muted'
-        } border`}
+          } border`}
       >
         {player.is_active ? 'Active' : 'Inactive'}
       </Badge>
@@ -110,29 +110,29 @@ export const getPlayersTableActions = (
   onDelete: (player: PlayerWithTeam) => void,
   onViewHistory?: (player: PlayerWithTeam) => void
 ) => [
-  ...(onViewHistory ? [{
-    key: 'history',
-    label: 'Team History',
-    icon: <History className="h-4 w-4" />,
-    onClick: onViewHistory,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  }] : []),
-  {
-    key: 'edit',
-    label: 'Edit Player',
-    icon: <Pencil className="h-4 w-4" />,
-    onClick: onEdit,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  },
-  {
-    key: 'delete',
-    label: 'Delete Player',
-    icon: <Trash2 className="h-4 w-4" />,
-    onClick: onDelete,
-    variant: 'ghost' as const,
-    size: 'sm' as const
-  }
-];
+    ...(onViewHistory ? [{
+      key: 'history',
+      label: 'Team History',
+      icon: <History className="h-4 w-4" />,
+      onClick: onViewHistory,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    }] : []),
+    {
+      key: 'edit',
+      label: 'Edit Player',
+      icon: <Pencil className="h-4 w-4" />,
+      onClick: onEdit,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    },
+    {
+      key: 'delete',
+      label: 'Delete Player',
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: onDelete,
+      variant: 'ghost' as const,
+      size: 'sm' as const
+    }
+  ];
 

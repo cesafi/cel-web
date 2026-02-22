@@ -69,6 +69,7 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
           { href: '/admin/accounts', label: 'Accounts', icon: Key },
           { href: '/admin/schools', label: 'Schools', icon: Building2 },
           { href: '/admin/seasons', label: 'Seasons', icon: Trophy },
+          { href: '/admin/players', label: 'Players', icon: UsersRound },
           { href: '/admin/esports', label: 'Esports', icon: Gamepad2 },
           { href: '/admin/sponsors', label: 'Sponsors', icon: HandHeart },
           { href: '/admin/articles', label: 'Articles', icon: FileText },
@@ -118,7 +119,6 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
     return [
       { href: '/admin/league-stage', label: 'League Stages', icon: Group },
       { href: '/admin/school-teams', label: 'School Teams', icon: Shield },
-      { href: '/admin/players', label: 'Players', icon: UsersRound },
       { href: '/admin/volunteers', label: 'Volunteers', icon: Users },
       { href: '/admin/matches', label: 'Matches', icon: Target },
     ];

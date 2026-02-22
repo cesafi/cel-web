@@ -2,14 +2,14 @@
 
 import { useState, useMemo } from 'react';
 import { DataTable } from '@/components/table';
-import { 
-  useAllPlayersWithTeams, 
-  useCreatePlayer, 
-  useUpdatePlayer, 
-  useDeletePlayer 
+import {
+  useAllPlayersWithTeams,
+  useCreatePlayer,
+  useUpdatePlayer,
+  useDeletePlayer
 } from '@/hooks/use-players';
 import { useSeason } from '@/components/contexts/season-provider';
-import { 
+import {
   PlayerModal,
   getPlayersTableColumns,
   getPlayersTableActions,
@@ -25,7 +25,7 @@ export default function PlayersManagementPage() {
   const [editingPlayer, setEditingPlayer] = useState<PlayerWithTeam | undefined>();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [playerToDelete, setPlayerToDelete] = useState<PlayerWithTeam | undefined>();
-  
+
   // Team history modal state
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyPlayer, setHistoryPlayer] = useState<PlayerWithTeam | undefined>();
@@ -79,12 +79,12 @@ export default function PlayersManagementPage() {
     setPlayerToDelete(undefined);
   };
 
-  const handleSubmit = (data: PlayerInsert | PlayerUpdate, teamId?: string | null) => {
+  const handleSubmit = (data: PlayerInsert | PlayerUpdate) => {
     const seasonId = currentSeason?.id;
     if (modalMode === 'add') {
-      createMutation.mutate({ data: data as PlayerInsert, teamId, seasonId });
+      createMutation.mutate({ data: data as PlayerInsert, seasonId });
     } else if (editingPlayer) {
-      updateMutation.mutate({ data: { id: editingPlayer.id, ...data } as PlayerUpdate, teamId, seasonId });
+      updateMutation.mutate({ data: { id: editingPlayer.id, ...data } as PlayerUpdate, seasonId });
     }
     setIsModalOpen(false);
   };
@@ -107,11 +107,11 @@ export default function PlayersManagementPage() {
         pageSize={pageSize}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
-        onSortChange={() => {}}
-        onSearchChange={() => {}}
-        onFiltersChange={() => {}}
+        onSortChange={() => { }}
+        onSearchChange={() => { }}
+        onFiltersChange={() => { }}
         title="Players Management"
-        subtitle={currentSeason ? `Managing players for Season ${currentSeason.id}` : 'Manage esports players across all teams.'}
+        subtitle="Manage esports players across all teams."
         searchPlaceholder="Search players..."
         showSearch={true}
         showFilters={false}
@@ -123,7 +123,7 @@ export default function PlayersManagementPage() {
             setIsModalOpen(true);
           }
         }}
-        emptyMessage={currentSeason ? `No players found for Season ${currentSeason.id}` : 'No players found'}
+        emptyMessage="No players found."
         refetch={refetch}
       />
 

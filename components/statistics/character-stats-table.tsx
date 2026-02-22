@@ -11,11 +11,11 @@ import Image from 'next/image';
 import { moderniz } from '@/lib/fonts';
 
 interface CharacterStatsTableProps {
-  game: 'mlbb' | 'valorant';
-  data: (HeroStats | AgentStats)[];
-  sortColumn: string;
-  sortOrder: 'asc' | 'desc';
-  onSort: (column: string) => void;
+    game: 'mlbb' | 'valorant';
+    data: (HeroStats | AgentStats)[];
+    sortColumn: string;
+    sortOrder: 'asc' | 'desc';
+    onSort: (column: string) => void;
 }
 
 const mlbbColumns = [
@@ -47,11 +47,11 @@ const podiumColors = [
 ];
 
 export function CharacterStatsTable({
-  game,
-  data,
-  sortColumn,
-  sortOrder,
-  onSort
+    game,
+    data,
+    sortColumn,
+    sortOrder,
+    onSort
 }: CharacterStatsTableProps) {
     const columns = game === 'mlbb' ? mlbbColumns : valorantColumns;
     const top3 = data.slice(0, 3);
@@ -61,17 +61,17 @@ export function CharacterStatsTable({
         const max: Record<string, number> = {};
         columns.forEach(col => {
             if (col.key === 'win_rate' || col.key === 'avg_kda') {
-                 // Derived are already pre-calculated in this data source usually?
-                 // Checking data source: generic-stats-table passed raw data. 
-                 // Here data is HeroStats/AgentStats which has direct properties.
-                 // We can just iterate.
-                max[col.key] = 0; 
+                // Derived are already pre-calculated in this data source usually?
+                // Checking data source: generic-stats-table passed raw data. 
+                // Here data is HeroStats/AgentStats which has direct properties.
+                // We can just iterate.
+                max[col.key] = 0;
                 data.forEach(d => {
                     const val = Number((d as any)[col.key]) || 0;
                     if (val > max[col.key]) max[col.key] = val;
                 });
             } else {
-                 max[col.key] = Math.max(...data.map(d => Number((d as any)[col.key]) || 0));
+                max[col.key] = Math.max(...data.map(d => Number((d as any)[col.key]) || 0));
             }
         });
         return max;
@@ -82,24 +82,24 @@ export function CharacterStatsTable({
         if (value === 0 || max === 0) return {};
 
         const ratio = value / max;
-        
+
         // Handling for "Lower is Better" stats
         if (key.includes('death')) {
-             if (ratio > 0.8) return { backgroundColor: 'rgba(239, 68, 68, 0.15)' }; // Red tint
-             return {};
+            if (ratio > 0.8) return { backgroundColor: 'rgba(239, 68, 68, 0.15)' }; // Red tint
+            return {};
         }
 
         // Stats where Higher is Better
         if (ratio >= 0.9) return { backgroundColor: 'rgba(16, 185, 129, 0.2)' }; // Emerald
         if (ratio >= 0.7) return { backgroundColor: 'rgba(59, 130, 246, 0.15)' }; // Blue
         if (ratio >= 0.5) return { backgroundColor: 'rgba(59, 130, 246, 0.05)' }; // Subtle Blue
-        
+
         return {};
     };
 
     const formatValue = (row: any, key: string): string => {
         let value = row[key];
-        
+
         if (value === null || value === undefined) return '-';
         if (typeof value === 'number') {
             if (key.includes('win_rate')) {
@@ -110,16 +110,16 @@ export function CharacterStatsTable({
             }
             // Large numbers
             if (value > 1000) {
-                 // return (value / 1000).toFixed(1) + 'k'; // Characters stats usually smaller per game avg
-                 return Math.round(value).toLocaleString();
+                // return (value / 1000).toFixed(1) + 'k'; // Characters stats usually smaller per game avg
+                return Math.round(value).toLocaleString();
             }
-             return Math.round(value).toLocaleString();
+            return Math.round(value).toLocaleString();
         }
         return String(value);
     };
 
     const getRawValue = (row: any, key: string): number => {
-         return Number(row[key]) || 0;
+        return Number(row[key]) || 0;
     };
 
     const SortIcon = ({ column }: { column: string }) => {
@@ -131,7 +131,7 @@ export function CharacterStatsTable({
         );
     };
 
-     if (data.length === 0) {
+    if (data.length === 0) {
         return (
             <Card>
                 <CardContent className="py-12 text-center">
@@ -143,9 +143,9 @@ export function CharacterStatsTable({
         );
     }
 
-  return (
-    <div className="space-y-8">
-         {/* Top 3 Podium Cards */}
+    return (
+        <div className="space-y-8">
+            {/* Top 3 Podium Cards */}
             <div className="hidden lg:grid grid-cols-3 gap-6 mb-12 px-4">
                 {top3.map((char, index) => {
                     const heroRow = char as HeroStats;
@@ -154,84 +154,85 @@ export function CharacterStatsTable({
                     const role = game === 'valorant' ? agentRow.role : (game === 'mlbb' ? 'Hero' : 'Agent');
 
                     return (
-                    <Card
-                        key={`char-podium-${index}`}
-                        className={cn(
-                            'relative overflow-hidden transition-all hover:scale-[1.02] duration-300 border-border/50 bg-card/40 backdrop-blur-md shadow-xl group',
-                            index === 0 && 'lg:order-2 border-yellow-500/30 shadow-yellow-500/10 h-[380px] z-10', 
-                            index === 1 && 'lg:order-1 border-slate-400/30 shadow-slate-400/10 h-[350px] mt-auto',
-                            index === 2 && 'lg:order-3 border-orange-700/30 shadow-orange-700/10 h-[340px] mt-auto'
-                        )}
-                    >
-                         <div className={cn("absolute inset-0 opacity-[0.05] bg-gradient-to-b pointer-events-none group-hover:opacity-[0.08] transition-opacity", podiumColors[index])} />
+                        <Card
+                            key={`char-podium-${index}`}
+                            className={cn(
+                                'relative overflow-hidden transition-all hover:scale-[1.02] duration-300 border-border/50 bg-card/40 backdrop-blur-md shadow-xl group',
+                                index === 0 && 'lg:order-2 border-yellow-500/30 shadow-yellow-500/10 h-[380px] z-10',
+                                index === 1 && 'lg:order-1 border-slate-400/30 shadow-slate-400/10 h-[350px] mt-auto',
+                                index === 2 && 'lg:order-3 border-orange-700/30 shadow-orange-700/10 h-[340px] mt-auto'
+                            )}
+                        >
+                            <div className={cn("absolute inset-0 opacity-[0.05] bg-gradient-to-b pointer-events-none group-hover:opacity-[0.08] transition-opacity", podiumColors[index])} />
 
-                        {/* Rank Badge */}
-                        <div className={cn(
+                            {/* Rank Badge */}
+                            <div className={cn(
                                 'absolute top-0 right-0 px-5 py-2 rounded-bl-2xl font-black text-white shadow-lg text-lg tracking-tighter',
                                 podiumColors[index]
                             )}>
-                            #{index + 1}
-                        </div>
-
-                        <CardContent className="pt-10 pb-6 flex flex-col items-center text-center relative z-10 h-full">
-                            <div className="relative mb-6">
-                                <div className={cn("absolute -inset-4 rounded-full blur-xl opacity-30 animate-pulse", podiumColors[index])} />
-                                <div className="w-24 h-24 rounded-lg overflow-hidden border-4 border-background shadow-2xl relative z-10 bg-muted">
-                                     {char.icon_url ? (
-                                        <Image src={char.icon_url} alt={name} fill className="object-cover" />
-                                     ) : (
-                                         <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                                             <Swords className="w-8 h-8"/>
-                                         </div>
-                                     )}
-                                </div>
+                                #{index + 1}
                             </div>
 
-                            <div className="mt-2 space-y-1">
-                                <h3 className={cn(moderniz.className, "text-2xl font-bold tracking-wide uppercase truncate max-w-[200px]")}>
-                                    {name}
-                                </h3>
-                                <p className="text-sm text-muted-foreground font-medium truncate max-w-[200px] mx-auto">
-                                    {role}
-                                </p>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-3 w-full mt-auto">
-                                <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
-                                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                                        <Crosshair className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">PICKS</span>
+                            <CardContent className="pt-10 pb-6 flex flex-col items-center text-center relative z-10 h-full">
+                                <div className="relative mb-6">
+                                    <div className={cn("absolute -inset-4 rounded-full blur-xl opacity-30 animate-pulse", podiumColors[index])} />
+                                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-background shadow-2xl relative z-10 bg-muted">
+                                        {char.icon_url ? (
+                                            <Image src={char.icon_url} alt={name} fill className="object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                                                <Swords className="w-8 h-8" />
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-xl font-black">{char.games_played}</p>
                                 </div>
-                                <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
-                                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                                        <Zap className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">WIN%</span>
+
+                                <div className="mt-2 space-y-1">
+                                    <h3 className={cn(moderniz.className, "text-2xl font-bold tracking-wide uppercase truncate max-w-[200px]")}>
+                                        {name}
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground font-medium truncate max-w-[200px] mx-auto">
+                                        {role}
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 w-full mt-auto">
+                                    <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
+                                        <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
+                                            <Crosshair className="w-3.5 h-3.5" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">PICKS</span>
+                                        </div>
+                                        <p className="text-xl font-black">{char.games_played}</p>
                                     </div>
-                                    <p className="text-xl font-black">{char.win_rate.toFixed(1)}%</p>
+                                    <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
+                                        <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
+                                            <Zap className="w-3.5 h-3.5" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">WIN%</span>
+                                        </div>
+                                        <p className="text-xl font-black">{char.win_rate.toFixed(1)}%</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )})}
+                            </CardContent>
+                        </Card>
+                    )
+                })}
             </div>
 
             {/* Dense Data Table */}
             <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
                 <div className="p-4 border-b border-border/30 flex items-center justify-between bg-muted/5">
                     <div className="flex items-center gap-3">
-                         <div className={cn("p-2 rounded-lg bg-primary/10", game === 'mlbb' ? "text-blue-400" : "text-red-400")}>
-                             <Swords className="h-5 w-5" />
-                         </div>
-                         <div>
+                        <div className={cn("p-2 rounded-lg bg-primary/10", game === 'mlbb' ? "text-blue-400" : "text-red-400")}>
+                            <Swords className="h-5 w-5" />
+                        </div>
+                        <div>
                             <h3 className={cn(moderniz.className, "text-xl font-bold tracking-wide")}>
                                 {game === 'mlbb' ? 'Hero Statistics' : 'Agent Statistics'}
                             </h3>
                             <p className="text-xs text-muted-foreground font-medium">
                                 Showing all {data.length} {game === 'mlbb' ? 'heroes' : 'agents'} • Sorted by {columns.find(c => c.key === sortColumn)?.tooltip || LEADERBOARD_METRICS.find(m => m.metric === sortColumn)?.label || sortColumn}
                             </p>
-                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -265,8 +266,8 @@ export function CharacterStatsTable({
                                                         </span>
                                                     </TooltipTrigger>
                                                     {col.tooltip && (
-                                                        <TooltipContent 
-                                                            side="top" 
+                                                        <TooltipContent
+                                                            side="top"
                                                             className="bg-popover text-popover-foreground text-xs font-medium px-3 py-1.5 border border-border/50 shadow-xl"
                                                         >
                                                             <p>{col.tooltip}</p>
@@ -285,85 +286,86 @@ export function CharacterStatsTable({
                                 const agentRow = row as AgentStats;
                                 const name = game === 'mlbb' ? heroRow.hero_name : agentRow.agent_name;
                                 const role = game === 'valorant' ? agentRow.role : undefined;
-                                
+
                                 return (
-                                <tr 
-                                    key={`${name}-${idx}`}
-                                    className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[60px]"
-                                >
-                                    <td className="sticky left-0 z-10 pl-8 py-2 bg-card/95 group-hover:bg-muted/20 backdrop-blur-sm shadow-[1px_0_0_0_rgba(255,255,255,0.05)] w-[220px] md:w-[320px] max-w-[220px] md:max-w-[320px] transition-colors">
-                                        <div className="flex items-center gap-6">
-                                            <div className={cn(
-                                                "w-6 text-center font-bold text-sm flex-shrink-0",
-                                                idx < 3 ? "text-amber-400 scale-110" : "text-muted-foreground"
-                                            )}>
-                                                {idx + 1}
-                                            </div>
-
-                                            <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border/50 shadow-sm">
-                                                {row.icon_url ? (
-                                                    <Image 
-                                                        src={row.icon_url} 
-                                                        alt={name} 
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <Swords className="w-4 h-4 text-muted-foreground" />
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex flex-col min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-sm text-foreground truncate max-w-[100px] md:max-w-[140px] group-hover:text-primary transition-colors">
-                                                        {name}
-                                                    </span>
+                                    <tr
+                                        key={`${name}-${idx}`}
+                                        className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[60px]"
+                                    >
+                                        <td className="sticky left-0 z-10 pl-8 py-2 bg-card/95 group-hover:bg-muted/20 backdrop-blur-sm shadow-[1px_0_0_0_rgba(255,255,255,0.05)] w-[220px] md:w-[320px] max-w-[220px] md:max-w-[320px] transition-colors">
+                                            <div className="flex items-center gap-6">
+                                                <div className={cn(
+                                                    "w-6 text-center font-bold text-sm flex-shrink-0",
+                                                    idx < 3 ? "text-amber-400 scale-110" : "text-muted-foreground"
+                                                )}>
+                                                    {idx + 1}
                                                 </div>
-                                                 {role && (
-                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium truncate max-w-[120px] md:max-w-[160px]">
-                                                        {role}
+
+                                                <div className="w-10 h-10 relative rounded-full overflow-hidden bg-muted flex-shrink-0 border border-border/50 shadow-sm">
+                                                    {row.icon_url ? (
+                                                        <Image
+                                                            src={row.icon_url}
+                                                            alt={name}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <Swords className="w-4 h-4 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-sm text-foreground truncate max-w-[100px] md:max-w-[140px] group-hover:text-primary transition-colors">
+                                                            {name}
+                                                        </span>
                                                     </div>
-                                                )}
+                                                    {role && (
+                                                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium truncate max-w-[120px] md:max-w-[160px]">
+                                                            {role}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    {columns.map((col) => {
-                                        const rawValue = getRawValue(row, col.key);
-                                        const displayValue = formatValue(row, col.key);
-                                        const heatmapStyle = getHeatmapStyle(rawValue, col.key);
+                                        {columns.map((col) => {
+                                            const rawValue = getRawValue(row, col.key);
+                                            const displayValue = formatValue(row, col.key);
+                                            const heatmapStyle = getHeatmapStyle(rawValue, col.key);
 
-                                        return (
-                                            <td 
-                                                key={`${col.key}-${idx}`} 
-                                                className="p-0 h-full border-l border-border/10"
-                                            >
-                                                <div 
-                                                    className="w-full h-full flex items-center justify-center min-h-[60px] px-4"
-                                                    style={heatmapStyle}
+                                            return (
+                                                <td
+                                                    key={`${col.key}-${idx}`}
+                                                    className="p-0 h-full border-l border-border/10"
                                                 >
-                                                    <span className={cn(
-                                                        "text-xs font-medium tabular-nums whitespace-nowrap",
-                                                        col.key === sortColumn ? "font-bold text-foreground" : "text-muted-foreground"
-                                                    )}>
-                                                        {displayValue}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            )})}
+                                                    <div
+                                                        className="w-full h-full flex items-center justify-center min-h-[60px] px-4"
+                                                        style={heatmapStyle}
+                                                    >
+                                                        <span className={cn(
+                                                            "text-xs font-medium tabular-nums whitespace-nowrap",
+                                                            col.key === sortColumn ? "font-bold text-foreground" : "text-muted-foreground"
+                                                        )}>
+                                                            {displayValue}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
             </div>
-            
+
             <div className="text-center text-xs text-muted-foreground pb-8">
                 Showing all {game === 'mlbb' ? 'heroes' : 'agents'} • Stats aggregated across all selected stages
             </div>
-    </div>
-  );
+        </div>
+    );
 }

@@ -77,7 +77,7 @@ export default async function AboutUsPage() {
                 <div className="from-primary/20 via-primary/10 to-secondary/20 border-primary/20 rounded-3xl border bg-gradient-to-br p-8">
                   <div className="bg-muted/30 relative h-96 overflow-hidden rounded-2xl">
                     <Image
-                      src="/img/cesafi-banner.jpg"
+                      src="/img/cesafi-crowd-check-s4.jpg"
                       alt="CESAFI Esports League"
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
