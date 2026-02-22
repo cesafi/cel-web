@@ -365,20 +365,39 @@ export default function DateNavigation({
          </div>
       </div>
 
-       {/* Season Tabs Row - Kept Visible as requested */}
+       {/* Season Selector */}
        <div>
-          <FilterTabs 
-            options={[
-              { value: 'all', label: 'All' },
-              ...availableSeasons.map(season => ({
-                value: season.id.toString(),
-                label: season.name || `Season ${season.id}`
-              }))
-            ]}
-            value={selectedSeason || 'all'}
-            onChange={onSeasonChange || (() => {})}
-            className="mt-2" // Add subtle spacing
-          />
+          {/* Mobile: Dropdown */}
+          <div className="sm:hidden mt-2">
+            <select
+              value={selectedSeason || 'all'}
+              onChange={(e) => onSeasonChange?.(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border/50 text-sm font-medium text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+            >
+              <option value="all">All Seasons</option>
+              {availableSeasons.map(season => (
+                <option key={season.id} value={season.id.toString()}>
+                  {season.name || `Season ${season.id}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* Desktop: Pill Tabs */}
+          <div className="hidden sm:block">
+            <FilterTabs 
+              options={[
+                { value: 'all', label: 'All' },
+                ...availableSeasons.map(season => ({
+                  value: season.id.toString(),
+                  label: season.name || `Season ${season.id}`
+                }))
+              ]}
+              value={selectedSeason || 'all'}
+              onChange={onSeasonChange || (() => {})}
+              className="mt-2"
+            />
+          </div>
        </div>
     </div>
   );

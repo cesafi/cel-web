@@ -164,9 +164,9 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
   }
 
   return (
-    <section ref={ref} className="py-40 bg-muted/30 relative overflow-hidden">
+    <section ref={ref} className="py-16 sm:py-40 bg-muted/30 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-20 items-start">
 
           {/* Left Column - FAQ */}
           <ScrollEffects ref={ref}>
@@ -182,14 +182,14 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                 >
                   <button
                     onClick={() => toggleItem(item.id)}
-                    className="w-full p-8 text-left flex items-center justify-between hover:bg-muted/30 transition-all duration-300 group"
+                    className="w-full p-4 sm:p-8 text-left flex items-center justify-between hover:bg-muted/30 transition-all duration-300 group"
                   >
-                    <span className={`${moderniz.className} text-xl font-semibold text-foreground transition-colors duration-300 ${openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
+                    <span className={`${moderniz.className} text-base sm:text-xl font-semibold text-foreground transition-colors duration-300 pr-2 ${openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
                       }`}>
                       {item.question}
                     </span>
                     <motion.div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${openItems.includes(item.id)
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 ${openItems.includes(item.id)
                         ? 'bg-primary text-primary-foreground scale-110'
                         : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'
                         }`}
@@ -231,12 +231,12 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                         }}
                         className="overflow-hidden"
                       >
-                        <div className="px-8 pb-8">
+                        <div className="px-4 pb-4 sm:px-8 sm:pb-8">
                           <motion.p
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: 0.2 }}
-                            className={`${roboto.className} text-muted-foreground leading-relaxed mb-6 text-lg`}
+                            className={`${roboto.className} text-muted-foreground leading-relaxed mb-4 sm:mb-6 text-sm sm:text-lg`}
                           >
                             {item.answer}
                           </motion.p>
@@ -267,8 +267,8 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
             viewport={{ once: true }}
             className="relative lg:sticky lg:top-32"
           >
-            <div className="bg-background/50 backdrop-blur-sm rounded-3xl p-12 border border-border/50 shadow-xl">
-              <div className="relative h-[500px] bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 rounded-2xl overflow-hidden">
+            <div className="bg-background/50 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-6 sm:p-12 border border-border/50 shadow-xl">
+              <div className="relative h-[280px] sm:h-[500px] bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 rounded-xl sm:rounded-2xl overflow-hidden">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <motion.div
@@ -276,7 +276,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                       whileInView={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.6, delay: 0.2 }}
                       viewport={{ once: true }}
-                      className="w-40 h-40 bg-primary/20 rounded-full flex items-center justify-center mb-8 mx-auto shadow-lg p-6"
+                      className="w-24 h-24 sm:w-40 sm:h-40 bg-primary/20 rounded-full flex items-center justify-center mb-4 sm:mb-8 mx-auto shadow-lg p-4 sm:p-6"
                     >
                       <Image
                         src="/img/cesafi-logo.webp"
@@ -291,7 +291,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.4 }}
                       viewport={{ once: true }}
-                      className={`${moderniz.className} text-3xl font-bold text-foreground mb-4`}
+                      className={`${moderniz.className} text-xl sm:text-3xl font-bold text-foreground mb-2 sm:mb-4`}
                     >
                       CESAFI Excellence
                     </motion.h3>
@@ -300,7 +300,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.6 }}
                       viewport={{ once: true }}
-                      className={`${roboto.className} text-muted-foreground text-lg mb-6`}
+                      className={`${roboto.className} text-muted-foreground text-sm sm:text-lg mb-4 sm:mb-6`}
                     >
                       Celebrating athletic achievement
                     </motion.p>

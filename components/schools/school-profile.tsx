@@ -260,15 +260,15 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
         className="py-8 bg-background border-b border-border/30"
       >
         <div className="flex justify-center">
-          <div className="flex flex-wrap gap-2 p-1 bg-muted/30 rounded-lg transition-all duration-300 ease-in-out">
+          <div className="flex gap-2 p-1 bg-muted/30 rounded-lg overflow-x-auto max-w-full scrollbar-hide">
             {/* Season Buttons */}
             {seasonsLoading ? (
               <div className="flex items-center gap-2">
-                <div className="px-6 py-3 rounded-md text-sm font-medium bg-muted/30 shadow-sm border border-border/20 flex-shrink-0 w-32">
-                  <div className="h-5 w-20 bg-muted/80 rounded animate-pulse mx-auto"></div>
+                <div className="px-4 sm:px-6 py-2 sm:py-3 rounded-md text-sm font-medium bg-muted/30 shadow-sm border border-border/20 flex-shrink-0 w-28 sm:w-32">
+                  <div className="h-5 w-16 sm:w-20 bg-muted/80 rounded animate-pulse mx-auto"></div>
                 </div>
-                <div className="px-6 py-3 rounded-md text-sm font-medium bg-muted/30 shadow-sm border border-border/20 flex-shrink-0 w-32">
-                  <div className="h-5 w-20 bg-muted/80 rounded animate-pulse mx-auto"></div>
+                <div className="px-4 sm:px-6 py-2 sm:py-3 rounded-md text-sm font-medium bg-muted/30 shadow-sm border border-border/20 flex-shrink-0 w-28 sm:w-32">
+                  <div className="h-5 w-16 sm:w-20 bg-muted/80 rounded animate-pulse mx-auto"></div>
                 </div>
               </div>
             ) : displaySeasons && displaySeasons.length > 0 ? (
@@ -276,7 +276,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 <button
                   key={season.id}
                   onClick={() => handleSeasonSelect(season)}
-                  className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 flex-shrink-0 ${selectedSeason?.id === season.id
+                  className={`px-4 sm:px-6 py-2 sm:py-3 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 flex-shrink-0 whitespace-nowrap ${selectedSeason?.id === season.id
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
@@ -287,7 +287,7 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                 </button>
               ))
             ) : (
-              <div className="px-6 py-3 rounded-md text-sm font-medium bg-muted/50 shadow-sm border border-border/20 flex-shrink-0 text-muted-foreground">
+              <div className="px-4 sm:px-6 py-2 sm:py-3 rounded-md text-sm font-medium bg-muted/50 shadow-sm border border-border/20 flex-shrink-0 text-muted-foreground">
                 None
               </div>
             )}

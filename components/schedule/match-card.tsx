@@ -112,26 +112,14 @@ export default function MatchCard({ match }: MatchCardProps) {
           </div>
         )}
 
-        {/* Main Content - Slightly Taller */}
-        <div className="relative flex items-center gap-4 pl-5 pr-4 py-4">
-          {/* Play/Status Button */}
-          <div className="flex-shrink-0">
-            {isLive ? (
-              <div className="h-12 w-12 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center animate-pulse">
-                <Flame className="h-5 w-5 text-red-500" />
-              </div>
-            ) : (
-              <div className="h-12 w-12 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center group-hover:bg-muted group-hover:border-border transition-all">
-                <Play className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </div>
-            )}
-          </div>
-
+        {/* Main Content */}
+        <div className="relative flex items-center gap-2 sm:gap-4 pl-3 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-4">
           {/* Teams Section */}
-          <div className="flex-1 flex items-center justify-center gap-6">
+          <div className="flex-1 flex items-center justify-center gap-3 sm:gap-6">
             {/* Team 1 */}
-            <div className="flex items-center gap-3 min-w-0">
-              <span className={`font-mango-grotesque text-lg font-bold tracking-wide truncate ${
+            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 min-w-0">
+              {/* Abbreviation - shown inline on desktop only */}
+              <span className={`font-mango-grotesque hidden sm:inline text-lg font-bold tracking-wide truncate ${
                 team1.isWinner && isFinished ? 'text-foreground' : 'text-foreground/70'
               }`}>
                 {team1.schoolAbbreviation}
@@ -142,7 +130,7 @@ export default function MatchCard({ match }: MatchCardProps) {
                   alt={team1.schoolAbbreviation}
                   width={40}
                   height={40}
-                  className="h-10 w-10 rounded-full object-cover border-2 border-border/50"
+                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-border/50"
                 />
                 {team1.isWinner && isFinished && (
                   <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-0.5">
@@ -150,19 +138,25 @@ export default function MatchCard({ match }: MatchCardProps) {
                   </div>
                 )}
               </div>
+              {/* Abbreviation - shown below logo on mobile only */}
+              <span className={`font-mango-grotesque sm:hidden text-[10px] font-bold tracking-wide text-center leading-tight ${
+                team1.isWinner && isFinished ? 'text-foreground' : 'text-foreground/70'
+              }`}>
+                {team1.schoolAbbreviation}
+              </span>
             </div>
 
             {/* Score Section */}
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5 sm:gap-2">
               {hasScore ? (
-                <div className="flex items-center gap-3">
-                  <span className={`font-mango-grotesque text-2xl font-black ${
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className={`font-mango-grotesque text-xl sm:text-2xl font-black ${
                     team1.isWinner && isFinished ? 'text-primary' : 'text-foreground/60'
                   }`}>
                     {team1.score}
                   </span>
-                  <span className="text-muted-foreground/30 text-lg font-light">—</span>
-                  <span className={`font-mango-grotesque text-2xl font-black ${
+                  <span className="text-muted-foreground/30 text-base sm:text-lg font-light">—</span>
+                  <span className={`font-mango-grotesque text-xl sm:text-2xl font-black ${
                     team2.isWinner && isFinished ? 'text-primary' : 'text-foreground/60'
                   }`}>
                     {team2.score}
@@ -170,8 +164,8 @@ export default function MatchCard({ match }: MatchCardProps) {
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <div className="px-4 py-1.5 rounded-md bg-muted/40 border border-border/30">
-                    <span className="text-muted-foreground/40 text-sm font-medium">VS</span>
+                  <div className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-md bg-muted/40 border border-border/30">
+                    <span className="text-muted-foreground/40 text-xs sm:text-sm font-medium">VS</span>
                   </div>
                 </div>
               )}
@@ -183,14 +177,14 @@ export default function MatchCard({ match }: MatchCardProps) {
             </div>
 
             {/* Team 2 */}
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 min-w-0">
               <div className="relative flex-shrink-0">
                 <Image
                   src={team2.schoolLogo ?? '/img/cesafi-logo.webp'}
                   alt={team2.schoolAbbreviation}
                   width={40}
                   height={40}
-                  className="h-10 w-10 rounded-full object-cover border-2 border-border/50"
+                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-border/50"
                 />
                 {team2.isWinner && isFinished && (
                   <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-0.5">
@@ -198,7 +192,13 @@ export default function MatchCard({ match }: MatchCardProps) {
                   </div>
                 )}
               </div>
-              <span className={`font-mango-grotesque text-lg font-bold tracking-wide truncate ${
+              {/* Abbreviation - below logo on mobile, inline on desktop */}
+              <span className={`font-mango-grotesque sm:hidden text-[10px] font-bold tracking-wide text-center leading-tight ${
+                team2.isWinner && isFinished ? 'text-foreground' : 'text-foreground/70'
+              }`}>
+                {team2.schoolAbbreviation}
+              </span>
+              <span className={`font-mango-grotesque hidden sm:inline text-lg font-bold tracking-wide truncate ${
                 team2.isWinner && isFinished ? 'text-foreground' : 'text-foreground/70'
               }`}>
                 {team2.schoolAbbreviation}
@@ -207,7 +207,7 @@ export default function MatchCard({ match }: MatchCardProps) {
           </div>
 
           {/* Right Side - Time/Status */}
-          <div className="flex-shrink-0 text-right min-w-[80px]">
+          <div className="flex-shrink-0 text-right min-w-[50px] sm:min-w-[80px]">
             {isLive ? (
               <div className="flex items-center justify-end gap-1.5">
                 <span className="relative flex h-2 w-2">
@@ -217,39 +217,44 @@ export default function MatchCard({ match }: MatchCardProps) {
                 <span className="text-xs font-semibold uppercase tracking-wider text-red-500">Live</span>
               </div>
             ) : isFinished ? (
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">completed</span>
+              <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-muted-foreground">completed</span>
             ) : (
-              <span className="text-sm font-medium text-muted-foreground">{match.displayTime || 'TBD'}</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">{match.displayTime || 'TBD'}</span>
             )}
           </div>
         </div>
 
         {/* Bottom Info Bar */}
-        <div className="relative flex items-center justify-between px-5 py-2.5 border-t border-border/20 bg-muted/10">
+        <div className="relative flex items-center justify-between px-3 sm:px-5 py-1.5 sm:py-2.5 border-t border-border/20 bg-muted/10">
           {/* Game Info */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             {esport?.logo_url ? (
               <Image
                 src={esport.logo_url}
                 alt={esport.name}
                 width={18}
                 height={18}
-                className="h-4.5 w-4.5 object-contain"
+                className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 object-contain flex-shrink-0"
               />
             ) : (
-              <div className="h-4 w-4 rounded bg-primary/20 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-primary">{esport?.abbreviation?.[0] ?? 'E'}</span>
+              <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-[7px] sm:text-[8px] font-bold text-primary">{esport?.abbreviation?.[0] ?? 'E'}</span>
               </div>
             )}
-            <span className="text-xs text-muted-foreground">
-              {esport?.name ?? 'Unknown'} • {category?.division ?? 'Open'} • {stage}
+            <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
+              <span className="sm:hidden">{esport?.abbreviation ?? esport?.name ?? '?'} • </span>
+              <span className="hidden sm:inline">{esport?.name ?? 'Unknown'} • </span>
+              {category?.division ?? 'Open'} • {stage}
             </span>
           </div>
 
           {/* Best-of Label */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground/70 uppercase tracking-widest">Best of</span>
-            <span className="text-xs font-bold text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-widest">
+              <span className="sm:hidden">BO</span>
+              <span className="hidden sm:inline">Best of</span>
+            </span>
+            <span className="text-[10px] sm:text-xs font-bold text-muted-foreground bg-muted/50 px-1 sm:px-1.5 py-0.5 rounded">
               {match.best_of}
             </span>
           </div>

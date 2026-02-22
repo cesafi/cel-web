@@ -40,10 +40,10 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
       className="h-full"
     >
       <Card className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/30 hover:border-primary/30 transition-all duration-300 h-full">
-        <CardContent className="p-6 flex flex-col h-full">
+        <CardContent className="p-3 sm:p-6 flex flex-col h-full">
           {/* Profile Image / Avatar */}
-          <div className="relative mx-auto mb-4">
-            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-muted/50">
+          <div className="relative mx-auto mb-2 sm:mb-4">
+            <div className="relative w-14 h-14 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-muted/50">
               {volunteer.image_url && !imageError ? (
                 <>
                   {imageLoading && (
@@ -65,7 +65,7 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
               ) : (
                 // Fallback avatar with initials
                 <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                  <span className={`${roboto.className} text-xl font-semibold text-primary`}>
+                  <span className={`${roboto.className} text-sm sm:text-xl font-semibold text-primary`}>
                     {getInitials(volunteer.full_name || 'Unknown')}
                   </span>
                 </div>
@@ -74,8 +74,8 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
 
             {/* Active status indicator */}
             {volunteer.is_active !== false && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-background rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-4 h-4 sm:w-6 sm:h-6 bg-green-500 border-2 border-background rounded-full flex items-center justify-center">
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full" />
               </div>
             )}
           </div>
@@ -90,11 +90,18 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
 
               return (
                 <>
-                  <h4 className={`${roboto.className} font-semibold text-foreground text-lg leading-tight ${nickname || volunteer.title ? 'mb-0.5' : 'mb-1'}`}>
+                  <h4 className={`${roboto.className} font-semibold text-foreground text-xs sm:text-lg leading-tight ${nickname || volunteer.title ? 'mb-0.5' : 'mb-1'}`}
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical' as const,
+                      overflow: 'hidden'
+                    }}
+                  >
                     {cleanName}
                   </h4>
                   {nickname && (
-                    <p className={`${roboto.className} text-sm italic text-primary/90 font-medium ${volunteer.title ? 'mb-0' : 'mb-2'}`}>
+                    <p className={`${roboto.className} text-[10px] sm:text-sm italic text-primary/90 font-medium ${volunteer.title ? 'mb-0' : 'mb-1 sm:mb-2'}`}>
                       &ldquo;{nickname}&rdquo;
                     </p>
                   )}
@@ -102,14 +109,14 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
               );
             })()}
             {volunteer.title && (
-              <p className={`${roboto.className} text-xs text-muted-foreground/80 font-medium tracking-wide uppercase mb-2`}>
+              <p className={`${roboto.className} text-[9px] sm:text-xs text-muted-foreground/80 font-medium tracking-wide uppercase mb-1 sm:mb-2`}>
                 {volunteer.title}
               </p>
             )}
 
             {/* Joined Date */}
-            <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm mt-auto">
-              <Calendar className="h-4 w-4" />
+            <div className="flex items-center justify-center gap-1 sm:gap-2 text-muted-foreground text-[10px] sm:text-sm mt-auto">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Joined {formatDate(volunteer.created_at)}</span>
             </div>
           </div>

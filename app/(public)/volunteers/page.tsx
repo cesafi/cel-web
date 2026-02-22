@@ -68,19 +68,19 @@ export default async function VolunteersPage() {
             </p>
 
             {/* Main Stats */}
-            <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto mb-8 sm:gap-8 sm:mb-12 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid grid-cols-3 gap-3 max-w-4xl mx-auto mb-8 sm:gap-8 sm:mb-12">
               {stats.map((stat) => (
                 <div
                   key={stat.label}
                   className="flex flex-col items-center group"
                 >
-                  <div className="p-3 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors duration-300 mb-3 sm:p-4 sm:mb-4">
-                    <stat.icon className="h-6 w-6 text-primary sm:h-8 sm:w-8" />
+                  <div className="p-2 sm:p-4 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors duration-300 mb-2 sm:mb-4">
+                    <stat.icon className="h-4 w-4 sm:h-8 sm:w-8 text-primary" />
                   </div>
-                  <div className={`${moderniz.className} text-2xl font-bold text-foreground mb-1 sm:text-3xl sm:mb-2 md:text-4xl`}>
+                  <div className={`${moderniz.className} text-xl sm:text-3xl md:text-4xl font-bold text-foreground mb-0.5 sm:mb-2`}>
                     {stat.value}
                   </div>
-                  <div className={`${roboto.className} text-muted-foreground text-xs font-medium text-center sm:text-sm`}>
+                  <div className={`${roboto.className} text-muted-foreground text-[10px] sm:text-sm font-medium text-center`}>
                     {stat.label}
                   </div>
                 </div>
