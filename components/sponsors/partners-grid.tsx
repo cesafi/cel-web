@@ -63,9 +63,9 @@ export default function PartnersGrid({ sponsors }: PartnersGridProps) {
                     const config = TIER_CONFIG[tier];
 
                     return (
-                        <div key={tier} className="mb-16 last:mb-0">
+                        <div key={tier} className="mb-10 sm:mb-16 last:mb-0">
                             {/* Section Header */}
-                            <div className="text-center mb-10">
+                            <div className="text-center mb-6 sm:mb-10">
                                 <h2 className="text-2xl font-bold text-foreground mb-2 sm:text-3xl">
                                     {config.label}
                                 </h2>
@@ -75,13 +75,13 @@ export default function PartnersGrid({ sponsors }: PartnersGridProps) {
                             </div>
 
                             {/* Sponsor Cards */}
-                            <div className={`flex flex-wrap justify-center gap-6 sm:gap-8 lg:gap-10`}>
+                            <div className={`flex flex-wrap justify-center gap-4 sm:gap-8 lg:gap-10`}>
                                 {sponsorsInTier.map((sponsor) => (
                                     <div
                                         key={sponsor.id}
-                                        className={`group rounded-2xl p-6 sm:p-8 transition-all duration-300 hover:-translate-y-1 ${config.cardStyle}`}
+                                        className={`group rounded-xl sm:rounded-2xl p-4 sm:p-8 transition-all duration-300 hover:-translate-y-1 ${config.cardStyle}`}
                                     >
-                                        <div className="flex flex-col items-center text-center space-y-4">
+                                        <div className="flex flex-col items-center text-center space-y-2 sm:space-y-4">
                                             {/* Logo */}
                                             <div className={`${config.logoSize} relative transition-transform duration-300 group-hover:scale-105`}>
                                                 <img
@@ -92,7 +92,7 @@ export default function PartnersGrid({ sponsors }: PartnersGridProps) {
                                             </div>
 
                                             {/* Info */}
-                                            <div className="space-y-1 max-w-[240px]">
+                                            <div className="space-y-1 max-w-[180px] sm:max-w-[240px]">
                                                 <h3 className="text-base font-semibold text-foreground sm:text-lg">
                                                     {sponsor.title}
                                                 </h3>

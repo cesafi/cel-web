@@ -278,7 +278,7 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
   return (
     <div className="bg-background min-h-screen">
       {/* Hero Section - Always Visible */}
-      <section className="from-primary/10 via-background to-secondary/10 relative bg-gradient-to-br pt-20 pb-12 sm:pt-24 sm:pb-16">
+      <section className="from-primary/10 via-background to-secondary/10 relative bg-gradient-to-br pt-20 pb-8 sm:pt-24 sm:pb-16">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-5">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzM2YzYxIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] bg-repeat" />
@@ -304,9 +304,9 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
       </section>
 
       {/* Main Content Layout */}
-       <div className="mt-8 mb-8 flex flex-col lg:flex-row min-h-[calc(100vh-20rem)] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+       <div className="mt-4 sm:mt-8 mb-8 flex flex-col lg:flex-row min-h-[calc(100vh-20rem)] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Mobile Season Selector */}
-        <div className="lg:hidden px-4 mb-4">
+        <div className="lg:hidden mb-4">
           <div className="relative">
             <select
               className="w-full appearance-none rounded-lg border border-border bg-card px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"

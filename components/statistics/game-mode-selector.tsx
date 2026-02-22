@@ -179,8 +179,8 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                 })}
             </div>
 
-            {/* Mobile: Stacked full-width buttons */}
-            <div className="sm:hidden flex flex-col gap-3">
+            {/* Mobile: Compact side-by-side */}
+            <div className="sm:hidden grid grid-cols-2 gap-2">
                 {games.map((g) => {
                     const isActive = game === g.id;
                     return (
@@ -188,18 +188,18 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                             key={g.id}
                             onClick={() => onGameChange(g.id)}
                             className={cn(
-                                'relative w-full overflow-hidden rounded-xl p-4 transition-all duration-200',
+                                'relative w-full overflow-hidden rounded-xl p-3 transition-all duration-200',
                                 'border active:scale-[0.98]',
                                 isActive
                                     ? `${g.bgActive} border-current ${g.textActive} shadow-md backdrop-blur-md`
                                     : 'bg-card/40 backdrop-blur-md border-border/50'
                             )}
                         >
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
                                 {/* Game Logo */}
                                 <div
                                     className={cn(
-                                        'w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden',
+                                        'w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden',
                                         'bg-muted/50 backdrop-blur-sm border border-border/50',
                                         isActive && 'border-current'
                                     )}
@@ -225,7 +225,7 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                                 {/* Game Info */}
                                 <div className="text-left flex-1">
                                     <h3 className={cn(
-                                        'font-semibold transition-colors',
+                                        'font-semibold text-sm transition-colors',
                                         isActive ? 'text-foreground' : 'text-muted-foreground'
                                     )}>
                                         {g.name}

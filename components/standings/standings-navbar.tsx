@@ -60,11 +60,11 @@ export default function StandingsNavbar({
     <div className="bg-background border-b z-10 sticky top-0">
       <div className="flex flex-col">
         {/* Row 1: Filters & Context */}
-        <div className="container px-4 py-3 border-b border-border/40">
+        <div className="container px-3 sm:px-4 py-2 sm:py-3 border-b border-border/40">
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
              {/* Left: Filter Summary / Title */}
              <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                 <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">Filters:</span>
                     {availableSports?.find(s => s.id === currentFilters.sport_id)?.name || 'All Sports'}
                     <span>•</span>
@@ -146,8 +146,8 @@ export default function StandingsNavbar({
 
         {/* Row 2: Stage Tabs */}
         {navigation?.stages && navigation.stages.length > 0 && (
-          <div className="container px-4">
-            <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
+            <div className="container px-3 sm:px-4">
+              <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
                {navigation.stages.map((stage) => {
                  const isActive = currentStage === stage.id;
                  return (

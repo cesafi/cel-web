@@ -63,10 +63,10 @@ export function FilterPanel({
 
     return (
         <div className={cn("w-full bg-card/40 backdrop-blur-md border border-border/50 shadow-lg rounded-xl overflow-hidden", className)}>
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4">
                  {/* Left: Filter Summary */}
                  <div className="flex items-center gap-2">
-                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                     <div className="hidden sm:flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-medium text-foreground flex items-center gap-2">
                             <Filter className="w-4 h-4" />
                             Filters:

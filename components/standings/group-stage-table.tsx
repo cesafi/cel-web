@@ -288,7 +288,19 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
                             </div>
 
                             {/* Stats */}
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                 {/* W-D-L Record */}
+                                 <div className="flex flex-col items-center min-w-[2.5rem]">
+                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">W-D-L</span>
+                                    <div className="flex items-center gap-0.5 text-xs">
+                                        <span className="font-bold text-emerald-500">{team.wins}</span>
+                                        <span className="text-muted-foreground/30">-</span>
+                                        <span className="text-muted-foreground">{team.draws}</span>
+                                        <span className="text-muted-foreground/30">-</span>
+                                        <span className="font-bold text-red-500">{team.losses}</span>
+                                    </div>
+                                 </div>
+
                                  {isValorant && (
                                      <div className="flex flex-col items-center min-w-[2.5rem]">
                                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">RND</span>
