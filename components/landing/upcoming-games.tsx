@@ -77,8 +77,8 @@ function TeamDisplay({
 }) {
   const imgSize = size === 'large' ? 80 : 56;
   const imgClass = size === 'large'
-    ? 'h-16 w-16 sm:h-20 sm:w-20'
-    : 'h-12 w-12 sm:h-14 sm:w-14';
+    ? 'h-14 w-14 sm:h-20 sm:w-20'
+    : 'h-10 w-10 sm:h-14 sm:w-14';
 
   return (
     <div className={`flex flex-col items-center gap-3 ${align === 'right' ? 'lg:items-end' : align === 'left' ? 'lg:items-start' : 'items-center'}`}>
@@ -97,7 +97,7 @@ function TeamDisplay({
         <div className={`${moderniz.className} text-xl sm:text-2xl ${size === 'large' ? 'lg:text-3xl' : ''} font-bold text-foreground leading-tight tracking-wide`}>
           {abbreviation}
         </div>
-        <div className={`${roboto.className} text-xs sm:text-sm text-muted-foreground/60 leading-tight mt-0.5 max-w-[140px] truncate`}>
+        <div className={`${roboto.className} text-[10px] sm:text-sm text-muted-foreground/60 leading-tight mt-0.5 max-w-[100px] sm:max-w-[140px] truncate`}>
           {name}
         </div>
       </div>
@@ -285,7 +285,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
 
         {/* Other Matches - Horizontal Cards */}
         {rest.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {rest.slice(0, 3).map((game, index) => (
               <motion.div
                 key={game.id}
@@ -321,8 +321,8 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
                         </span>
                       </div>
 
-                      {/* Match display - compact */}
-                      <div className="flex items-center justify-between gap-3 mb-5">
+                      {/* Match display - compact, horizontal on mobile */}
+                      <div className="flex items-center justify-around gap-2 sm:gap-3 mb-5">
                         <TeamDisplay
                           name={game.teamA.name}
                           abbreviation={game.teamA.abbreviation}
