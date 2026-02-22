@@ -329,10 +329,10 @@ export default function TermsOfServicePage() {
                   <strong>Cebu Schools Athletic Foundation, Inc. (CESAFI)</strong>
                 </p>
                 <p className={`${roboto.className} text-sm text-muted-foreground`}>
-                  Email: info@cesafi.org
+                  Email: cesafiesportsleague@gmail.com
                 </p>
                 <p className={`${roboto.className} text-sm text-muted-foreground`}>
-                  Website: www.cesafi.org
+                  Website: www.cesafiesportsleague.com
                 </p>
                 <p className={`${roboto.className} text-sm text-muted-foreground`}>
                   Address: Cebu City, Philippines

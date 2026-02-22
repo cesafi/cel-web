@@ -38,23 +38,45 @@ export function useInfiniteSchedule(
 
   return useInfiniteQuery({
     queryKey: scheduleKeys.infinite({ limit, direction, filters: mergedFilters }),
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam, direction: fetchDirection }) =>
       getScheduleMatches({
         cursor: pageParam as string | undefined,
         limit,
-        direction,
+        direction: fetchDirection === 'backward' ? 'past' : direction,
         filters: mergedFilters
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
       if (lastPage.success && lastPage.data) {
-        return lastPage.data.nextCursor;
+        if (lastPage.data.direction === 'past') {
+          // If the page was fetched going backward, going MORE forward (if we ever do from here)
+          // means taking the newest match from that backward slice as our forward cursor.
+          return lastPage.data.matches.length > 0
+            ? lastPage.data.matches[lastPage.data.matches.length - 1].scheduled_at
+            : new Date().toISOString();
+        }
+        // Normal future scrolling uses the nextCursor directly
+        return lastPage.data.hasMore ? lastPage.data.nextCursor : undefined;
       }
       return undefined;
     },
     getPreviousPageParam: (firstPage) => {
       if (firstPage.success && firstPage.data) {
-        return firstPage.data.prevCursor;
+        if (firstPage.data.direction === 'future') {
+          // If the oldest page we have was fetched going forward, we can go backward
+          // by using the oldest match in that page as our past cursor.
+          return firstPage.data.matches.length > 0 
+            ? firstPage.data.matches[0].scheduled_at 
+            : new Date().toISOString(); 
+        }
+        if (firstPage.data.direction === 'past') {
+          // If we fetched going backward, hasMore tells us if there are even older matches.
+          // The nextCursor from a 'past' fetch is actually the cursor to go further into the past.
+          return firstPage.data.hasMore ? firstPage.data.nextCursor : undefined;
+        }
+        
+        // Fallback for older API responses without direction
+        return firstPage.data.prevCursor || new Date().toISOString();
       }
       return undefined;
     },

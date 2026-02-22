@@ -35,8 +35,8 @@ import {
 
 // Services & Hooks
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
-import { GameDraftService } from '@/services/game-draft';
 import { GameRosterService } from '@/services/game-roster';
+import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUndoLastGameDraftAction } from '@/hooks/use-game-draft';
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
 
 interface DraftPanelProps {
@@ -112,15 +112,7 @@ export function DraftPanel({
   });
 
   // 2. Fetch Draft Actions
-  const { data: actions = [], isLoading: isLoadingActions, refetch: refetchActions } = useQuery({
-    queryKey: ['game-draft-actions', gameId],
-    queryFn: async () => {
-      const result = await GameDraftService.getByGameId(gameId);
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
-    enabled: !!gameId,
-  });
+  const { data: actions = [], isLoading: isLoadingActions, refetch: refetchActions } = useGameDraftActions(gameId);
 
   // 3. Fetch Game Rosters (Pre-assigned slots)
   const { data: rosters = [], refetch: refetchRosters } = useQuery({
@@ -174,50 +166,23 @@ export function DraftPanel({
   });
 
   // 5. Mutations
-  const submitActionMutation = useMutation({
-    mutationFn: async ({ hero, type }: { hero: GameCharacter; type: 'ban' | 'pick' }) => {
-      if (!draftState.nextAction) return;
-      
-      const result = await GameDraftService.insert({
-        game_id: gameId,
-        team_id: draftState.nextAction.team === 'team1' ? team1.id : team2.id,
-        hero_name: hero.name,
-        hero_id: hero.id,
-        action_type: type,
-        sort_order: draftState.currentStepIndex + 1,
-        is_locked: true // Auto-lock for now
-      });
-
-      if (!result.success) throw new Error(result.error);
-      return result;
-    },
+  const submitActionMutation = useSubmitGameDraftAction({
     onSuccess: () => {
       refetchActions();
       toast.success('Action recorded');
-    },
-    onError: (err) => toast.error('Failed to submit action'),
-  });
-
-  const resetDraftMutation = useMutation({
-    mutationFn: async () => {
-        await GameDraftService.resetDraft(gameId);
-    },
-    onSuccess: () => {
-        refetchActions();
-        toast.success('Draft reset');
     }
   });
 
-  const undoActionMutation = useMutation({
-    mutationFn: async () => {
-        const result = await GameDraftService.undoLastAction(gameId);
-        if (!result.success) throw new Error(result.error);
-    },
+  const resetDraftMutation = useResetGameDraft({
     onSuccess: () => {
-        refetchActions();
-        toast.success('Undid last action');
-    },
-    onError: (err) => toast.error('Failed to undo action'),
+      refetchActions();
+    }
+  });
+
+  const undoActionMutation = useUndoLastGameDraftAction({
+    onSuccess: () => {
+      refetchActions();
+    }
   });
 
   // 6. Interaction Handlers
@@ -231,8 +196,13 @@ export function DraftPanel({
     }
 
     submitActionMutation.mutate({ 
-        hero: character, 
-        type: draftState.nextAction.action 
+      game_id: gameId,
+      team_id: draftState.nextAction.team === 'team1' ? team1.id : team2.id,
+      hero_name: character.name,
+      hero_id: character.id,
+      action_type: draftState.nextAction.action,
+      sort_order: draftState.currentStepIndex + 1,
+      is_locked: true
     });
   };
 
@@ -310,7 +280,7 @@ export function DraftPanel({
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => undoActionMutation.mutate()}
+              onClick={() => undoActionMutation.mutate(gameId)}
               disabled={undoActionMutation.isPending || actions.length === 0}
             >
               <Undo2 className="w-4 h-4 mr-2" />
@@ -319,7 +289,7 @@ export function DraftPanel({
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => resetDraftMutation.mutate()}
+              onClick={() => resetDraftMutation.mutate(gameId)}
               disabled={resetDraftMutation.isPending}
             >
               <RotateCcw className="w-4 h-4 mr-2" />

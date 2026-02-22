@@ -7,6 +7,7 @@ import { moderniz, roboto } from '@/lib/fonts';
 import { useAboutUsFaq } from '@/hooks/use-faq';
 import { Faq } from '@/lib/types/faq';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
 // Dynamically import scroll effects only on client side
 const ScrollEffects = dynamic(
@@ -275,9 +276,15 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                       whileInView={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.6, delay: 0.2 }}
                       viewport={{ once: true }}
-                      className="w-40 h-40 bg-primary/20 rounded-full flex items-center justify-center mb-8 mx-auto shadow-lg"
+                      className="w-40 h-40 bg-primary/20 rounded-full flex items-center justify-center mb-8 mx-auto shadow-lg p-6"
                     >
-                      <span className="text-7xl">🏆</span>
+                      <Image
+                        src="/img/cesafi-logo.webp"
+                        alt="CESAFI Logo"
+                        width={120}
+                        height={120}
+                        className="object-contain"
+                      />
                     </motion.div>
                     <motion.h3
                       initial={{ opacity: 0, y: 20 }}

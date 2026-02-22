@@ -27,8 +27,8 @@ export class PlayerSeasonService extends BaseService {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select('*, players(id, ign, first_name, last_name, photo_url, role), seasons(id, name, start_at, end_at), schools_teams(id, name, schools(id, name, abbreviation, logo_url))')
-        .eq('season_id', seasonId)
+        .select('*, players(id, ign, first_name, last_name, photo_url, role), schools_teams!inner(id, name, season_id, seasons(id, name, start_at, end_at), schools(id, name, abbreviation, logo_url))')
+        .eq('schools_teams.season_id', seasonId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -43,7 +43,7 @@ export class PlayerSeasonService extends BaseService {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select('*, players(id, ign, first_name, last_name, photo_url, role), seasons(id, name, start_at, end_at), schools_teams(id, name, schools(id, name, abbreviation, logo_url))')
+        .select('*, players(id, ign, first_name, last_name, photo_url, role), schools_teams(id, name, season_id, seasons(id, name, start_at, end_at), schools(id, name, abbreviation, logo_url))')
         .eq('player_id', playerId)
         .order('created_at', { ascending: false });
 
@@ -59,7 +59,7 @@ export class PlayerSeasonService extends BaseService {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select('*, players(id, ign, first_name, last_name, photo_url, role), seasons(id, name, start_at, end_at), schools_teams(id, name, schools(id, name, abbreviation, logo_url))')
+        .select('*, players(id, ign, first_name, last_name, photo_url, role), schools_teams(id, name, season_id, seasons(id, name, start_at, end_at), schools(id, name, abbreviation, logo_url))')
         .eq('id', id)
         .single();
 

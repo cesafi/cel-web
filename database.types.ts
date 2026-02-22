@@ -181,6 +181,13 @@ export type Database = {
           points_draw: number | null
           points_loss: number | null
           points_win: number | null
+          points_bo3_win_2_0: number | null
+          points_bo3_win_2_1: number | null
+          points_bo3_loss_1_2: number | null
+          points_bo3_loss_0_2: number | null
+          points_bo2_win_2_0: number | null
+          points_bo2_draw_1_1: number | null
+          points_bo2_loss_0_2: number | null
           season_id: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           updated_at: string
@@ -193,6 +200,13 @@ export type Database = {
           points_draw?: number | null
           points_loss?: number | null
           points_win?: number | null
+          points_bo3_win_2_0?: number | null
+          points_bo3_win_2_1?: number | null
+          points_bo3_loss_1_2?: number | null
+          points_bo3_loss_0_2?: number | null
+          points_bo2_win_2_0?: number | null
+          points_bo2_draw_1_1?: number | null
+          points_bo2_loss_0_2?: number | null
           season_id?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           updated_at?: string
@@ -205,6 +219,13 @@ export type Database = {
           points_draw?: number | null
           points_loss?: number | null
           points_win?: number | null
+          points_bo3_win_2_0?: number | null
+          points_bo3_win_2_1?: number | null
+          points_bo3_loss_1_2?: number | null
+          points_bo3_loss_0_2?: number | null
+          points_bo2_win_2_0?: number | null
+          points_bo2_draw_1_1?: number | null
+          points_bo2_loss_0_2?: number | null
           season_id?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           updated_at?: string

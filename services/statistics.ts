@@ -326,12 +326,13 @@ export class StatisticsService extends BaseService {
   static async getLeaderboard(
     game: 'mlbb' | 'valorant',
     metric: string,
-    limit: number = 5
+    limit: number = 5,
+    seasonId?: number
   ): Promise<{ success: boolean; data?: LeaderboardEntry[]; error?: string }> {
     try {
       const stats = game === 'mlbb'
-        ? await this.getMlbbPlayerStats()
-        : await this.getValorantPlayerStats();
+        ? await this.getMlbbPlayerStats(seasonId ? { season_id: seasonId } : undefined)
+        : await this.getValorantPlayerStats(seasonId ? { season_id: seasonId } : undefined);
 
       if (!stats.success) {
         return { success: false, error: stats.error };

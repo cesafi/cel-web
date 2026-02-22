@@ -67,7 +67,6 @@ export default function InfiniteSchedule({
   };
 
   const [dateGroups, setDateGroups] = useState<ScheduleDateGroup[]>([]);
-  const [currentDate, setCurrentDate] = useState(() => getValidDate(new Date()));
   const [displayedDate, setDisplayedDate] = useState(() => getValidDate(new Date())); // Date shown on left side
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [floatingButtonDirection, setFloatingButtonDirection] = useState<'up' | 'down'>('up');
@@ -256,62 +255,76 @@ export default function InfiniteSchedule({
     };
   }, [hasMorePast, hasMoreFuture, isLoading, onLoadMore]);
 
+  const scrollToDateGroup = useCallback((dateStr: string) => {
+    const element = document.getElementById(`date-group-${dateStr}`);
+    if (element) {
+      // Offset for sticky navigation headers (approx 160px for navbar + date string + filters)
+      const headerOffset = 180; 
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+      setDisplayedDate(getValidDate(dateStr));
+    }
+  }, []);
+
+  const handleDateChange = useCallback((targetDate: Date) => {
+    if (dateGroups.length === 0) return;
+
+    let targetGroup = dateGroups.find(g => g.date === safeGetDateString(targetDate));
+
+    if (!targetGroup) {
+      let minDiff = Infinity;
+      dateGroups.forEach(g => {
+        const diff = Math.abs(getValidDate(g.date).getTime() - targetDate.getTime());
+        if (diff < minDiff) {
+          minDiff = diff;
+          targetGroup = g;
+        }
+      });
+    }
+
+    if (targetGroup) {
+        scrollToDateGroup(targetGroup.date);
+    }
+  }, [dateGroups, scrollToDateGroup]);
+
   const handleDateNavigation = useCallback(
     (direction: 'previous' | 'next') => {
-      const targetDate = new Date(currentDate);
-      if (direction === 'previous') {
-        targetDate.setDate(targetDate.getDate() - 1);
-      } else {
-        targetDate.setDate(targetDate.getDate() + 1);
-      }
+      const displayedDateStr = safeGetDateString(displayedDate);
+      if (!displayedDateStr || dateGroups.length === 0) return;
 
-      // Find the date group for the target date
-      const targetDateString = targetDate.toISOString().split('T')[0];
-      const targetGroup = dateGroups.find((group) => group.date === targetDateString);
+      const currentIndex = dateGroups.findIndex(g => g.date === displayedDateStr);
+      if (currentIndex === -1) return;
+
+      let targetGroup = null;
+      if (direction === 'previous' && currentIndex > 0) {
+        targetGroup = dateGroups[currentIndex - 1];
+      } else if (direction === 'next' && currentIndex < dateGroups.length - 1) {
+        targetGroup = dateGroups[currentIndex + 1];
+      }
 
       if (targetGroup) {
-        // Scroll to the target date group
-        const element = document.getElementById(`date-group-${targetDateString}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        scrollToDateGroup(targetGroup.date);
       }
-
-      setCurrentDate(targetDate);
     },
-    [currentDate, dateGroups]
+    [displayedDate, dateGroups, scrollToDateGroup]
   );
 
   const handleFloatingButtonClick = useCallback(() => {
     const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
-    const todayGroup = dateGroups.find((group) => group.date === todayString);
-
-    if (todayGroup) {
-      const element = document.getElementById(`date-group-${todayString}`);
-      if (element) {
-        // Calculate offset to center the element in the viewport
-        const elementRect = element.getBoundingClientRect();
-        const absoluteElementTop = elementRect.top + window.scrollY;
-        const offset = window.innerHeight / 2 - elementRect.height / 2;
-        const targetPosition = absoluteElementTop - offset;
-
-        window.scrollTo({
-          top: targetPosition,
-          behavior: 'smooth'
-        });
-      }
-    }
-
-    setCurrentDate(today);
-  }, [dateGroups]);
+    handleDateChange(today);
+  }, [handleDateChange]);
 
   return (
     <div className="w-full max-w-full space-y-6">
       {/* Date Navigation */}
       <DateNavigation
         currentDate={displayedDate}
-        onDateChange={setCurrentDate}
+        onDateChange={handleDateChange}
         _hasMatches={(() => {
           const displayedDateStr = safeGetDateString(displayedDate);
           if (!displayedDateStr) return false;

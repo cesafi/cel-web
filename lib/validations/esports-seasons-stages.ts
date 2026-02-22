@@ -7,7 +7,14 @@ export const createsportsSeasonsStageSchema = z.object({
   stage_type: z.enum(['round_robin', 'single_elimination', 'double_elimination']).default('round_robin'),
   points_win: z.number().optional().nullable(),
   points_draw: z.number().optional().nullable(),
-  points_loss: z.number().optional().nullable()
+  points_loss: z.number().optional().nullable(),
+  points_bo3_win_2_0: z.number().optional().nullable(),
+  points_bo3_win_2_1: z.number().optional().nullable(),
+  points_bo3_loss_1_2: z.number().optional().nullable(),
+  points_bo3_loss_0_2: z.number().optional().nullable(),
+  points_bo2_win_2_0: z.number().optional().nullable(),
+  points_bo2_draw_1_1: z.number().optional().nullable(),
+  points_bo2_loss_0_2: z.number().optional().nullable()
 });
 
 export const updatesportsSeasonsStageSchema = z.object({
@@ -18,5 +25,12 @@ export const updatesportsSeasonsStageSchema = z.object({
   stage_type: z.enum(['round_robin', 'single_elimination', 'double_elimination']).optional(),
   points_win: z.number().optional().nullable(),
   points_draw: z.number().optional().nullable(),
-  points_loss: z.number().optional().nullable()
+  points_loss: z.number().optional().nullable(),
+  points_bo3_win_2_0: z.number().optional().nullable(),
+  points_bo3_win_2_1: z.number().optional().nullable(),
+  points_bo3_loss_1_2: z.number().optional().nullable(),
+  points_bo3_loss_0_2: z.number().optional().nullable(),
+  points_bo2_win_2_0: z.number().optional().nullable(),
+  points_bo2_draw_1_1: z.number().optional().nullable(),
+  points_bo2_loss_0_2: z.number().optional().nullable()
 });

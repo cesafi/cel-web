@@ -94,8 +94,8 @@ export default function Footer() {
             <div className="space-y-4">
               <h3 className={`${moderniz.className} text-lg font-bold`}>Contact</h3>
               <div className={`${roboto.className} text-muted-foreground space-y-2 text-sm`}>
-                <p>Email: info@cesafi.org</p>
-                <p>Phone: +63 32 123 4567</p>
+                <p>Email: cesafiesportsleague@gmail.com</p>
+                <p>Phone: (+63) 916 389 3780</p>
                 <p>Address: Cebu City, Philippines</p>
               </div>
             </div>
@@ -105,7 +105,7 @@ export default function Footer() {
               <h3 className={`${moderniz.className} text-lg font-bold`}>Follow Us</h3>
               <div className="flex justify-center md:justify-start space-x-3">
                 <a
-                  href="https://www.youtube.com/@CESAFIOfficial"
+                  href="https://www.youtube.com/@cesafiesportsleague"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-3 rounded-lg bg-muted/50 text-muted-foreground hover:text-red-500 hover:bg-muted transition-all duration-200"
@@ -127,7 +127,7 @@ export default function Footer() {
                   </svg>
                 </a>
                 <a
-                  href="https://www.facebook.com/thecesafi"
+                  href="https://www.facebook.com/CesafiEsportsLeague"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-3 rounded-lg bg-muted/50 text-muted-foreground hover:text-blue-500 hover:bg-muted transition-all duration-200"
@@ -145,6 +145,23 @@ export default function Footer() {
                     strokeLinejoin="round"
                   >
                     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://www.tiktok.com/@cesafiesportsleague"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 rounded-lg bg-muted/50 text-muted-foreground hover:text-black dark:hover:text-white hover:bg-muted transition-all duration-200"
+                  aria-label="CESAFI TikTok"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z" />
                   </svg>
                 </a>
               </div>

@@ -3,6 +3,7 @@
 import { moderniz, roboto } from '@/lib/fonts';
 import { useAllTimelineEntries } from '@/hooks/use-timeline';
 import { Timeline } from '@/lib/types/timeline';
+import Image from 'next/image';
 
 export default function CesafiTimeline() {
   const { data: timelineEvents, isLoading, error } = useAllTimelineEntries();
@@ -148,29 +149,40 @@ export default function CesafiTimeline() {
                       <div className="from-primary/20 to-secondary/20 absolute inset-0 bg-gradient-to-br via-transparent"></div>
                     </div>
 
-                    {/* Image Placeholder with Enhanced Design */}
+                    {/* Image or Placeholder with Enhanced Design */}
                     <div className="from-muted/30 via-muted/20 to-muted/40 relative h-32 overflow-hidden bg-gradient-to-br sm:h-40 lg:h-48">
-                      {/* Background Elements */}
-                      <div className="absolute inset-0">
-                        <div className="bg-primary/10 absolute top-2 right-2 h-12 w-12 rounded-full sm:top-4 sm:right-4 sm:h-20 sm:w-20" />
-                        <div className="bg-secondary/10 absolute bottom-2 left-2 h-10 w-10 rounded-full sm:bottom-4 sm:left-4 sm:h-16 sm:w-16" />
-                      </div>
-
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          {/* Icon Container */}
-                          <div className="from-primary/20 to-secondary/20 relative mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br shadow-lg sm:mb-4 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-                            <span className="text-lg sm:text-2xl lg:text-3xl">🏆</span>
+                      {event.image_url ? (
+                        <Image
+                          src={event.image_url}
+                          alt={event.title}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <>
+                          {/* Background Elements */}
+                          <div className="absolute inset-0">
+                            <div className="bg-primary/10 absolute top-2 right-2 h-12 w-12 rounded-full sm:top-4 sm:right-4 sm:h-20 sm:w-20" />
+                            <div className="bg-secondary/10 absolute bottom-2 left-2 h-10 w-10 rounded-full sm:bottom-4 sm:left-4 sm:h-16 sm:w-16" />
                           </div>
 
-                          <p className={`${roboto.className} text-muted-foreground px-2 text-xs sm:px-4 sm:text-sm`}>
-                            {event.title}
-                          </p>
-                        </div>
-                      </div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center">
+                              {/* Icon Container */}
+                              <div className="from-primary/20 to-secondary/20 relative mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br shadow-lg sm:mb-4 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                                <span className="text-lg sm:text-2xl lg:text-3xl">🏆</span>
+                              </div>
+
+                              <p className={`${roboto.className} text-muted-foreground px-2 text-xs sm:px-4 sm:text-sm`}>
+                                {event.title}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       {/* Enhanced Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     </div>
 
                     {/* Content */}
@@ -197,7 +209,7 @@ export default function CesafiTimeline() {
 
                       {/* Title */}
                       <h3
-                        className={`${moderniz.className} mb-3 text-lg font-bold sm:mb-4 sm:text-xl lg:text-2xl ${event.is_highlight ? 'text-accent' : 'text-foreground'
+                        className={`${moderniz.className} mb-3 text-lg font-bold sm:mb-4 sm:text-xl lg:text-2xl ${event.is_highlight ? 'text-accent dark:text-primary' : 'text-foreground dark:text-primary'
                           }`}
                       >
                         {event.title}

@@ -11,25 +11,25 @@ export const getPlayersTableColumns = (): TableColumn<PlayerWithTeam>[] => [
   {
     key: 'player',
     header: 'Player',
-    sortable: false,
+    sortable: true,
     width: '30%',
     render: (player: PlayerWithTeam) => (
       <div className="flex items-center space-x-3">
         <div className="flex-shrink-0">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted">
             {player.photo_url ? (
-              <Image
-                src={player.photo_url}
-                alt={player.ign}
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <span className="text-sm font-medium text-muted-foreground">
-                {player.ign.charAt(0).toUpperCase()}
-              </span>
-            )}
+               <Image
+                 src={player.photo_url}
+                 alt={player.ign}
+                 width={40}
+                 height={40}
+                 className="h-10 w-10 rounded-full object-cover"
+               />
+             ) : (
+               <span className="text-sm font-medium text-muted-foreground">
+                 {player.ign.charAt(0).toUpperCase()}
+               </span>
+             )}
           </div>
         </div>
         <div className="min-w-0 flex-1">
@@ -46,7 +46,7 @@ export const getPlayersTableColumns = (): TableColumn<PlayerWithTeam>[] => [
   {
     key: 'team',
     header: 'Latest Team',
-    sortable: false,
+    sortable: true,
     width: '25%',
     render: (player: PlayerWithTeam) => (
       <div className="text-sm">

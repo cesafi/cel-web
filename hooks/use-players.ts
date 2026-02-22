@@ -171,8 +171,8 @@ export function useUpdatePlayer(
     onSuccess: (result, variables, context) => {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: playerKeys.all });
-        if (variables.id) {
-          queryClient.invalidateQueries({ queryKey: playerKeys.details(variables.id) });
+        if (variables.data.id) {
+          queryClient.invalidateQueries({ queryKey: playerKeys.details(variables.data.id) });
         }
         toast.success('Player updated successfully');
       } else {

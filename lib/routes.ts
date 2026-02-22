@@ -32,7 +32,7 @@ export const PUBLIC_ROUTES = [
   '/volunteers',
   '/sponsors',
   '/statistics',
-
+  '/matches/[matchId]',
 
   // Error pages
   '/not-found',
@@ -116,6 +116,7 @@ export const ROUTE_PATTERNS = {
     /^\/schools\/[^\/]+$/, // /schools/[slug]
     /^\/volunteers$/,
     /^\/sponsors$/,
+    /^\/matches\/[^\/]+$/, // /matches/[matchId]
     /^\/not-found$/,
     /^\/no-access$/,
     /^\/lobby\/[^\/]+$/ // /lobby/[matchId]

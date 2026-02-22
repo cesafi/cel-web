@@ -45,7 +45,14 @@ export function LeagueStageModal({
     stage_type: 'round_robin',
     points_win: 3,
     points_draw: 1,
-    points_loss: 0
+    points_loss: 0,
+    points_bo3_win_2_0: 3,
+    points_bo3_win_2_1: 2,
+    points_bo3_loss_1_2: 1,
+    points_bo3_loss_0_2: 0,
+    points_bo2_win_2_0: 3,
+    points_bo2_draw_1_1: 1,
+    points_bo2_loss_0_2: 0
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedCreating = useRef(false);
@@ -70,7 +77,14 @@ export function LeagueStageModal({
           stage_type: stage.stage_type as "round_robin" | "single_elimination" | "double_elimination",
           points_win: stage.points_win ?? 3,
           points_draw: stage.points_draw ?? 1,
-          points_loss: stage.points_loss ?? 0
+          points_loss: stage.points_loss ?? 0,
+          points_bo3_win_2_0: stage.points_bo3_win_2_0 ?? 3,
+          points_bo3_win_2_1: stage.points_bo3_win_2_1 ?? 2,
+          points_bo3_loss_1_2: stage.points_bo3_loss_1_2 ?? 1,
+          points_bo3_loss_0_2: stage.points_bo3_loss_0_2 ?? 0,
+          points_bo2_win_2_0: stage.points_bo2_win_2_0 ?? 3,
+          points_bo2_draw_1_1: stage.points_bo2_draw_1_1 ?? 1,
+          points_bo2_loss_0_2: stage.points_bo2_loss_0_2 ?? 0
         });
       } else {
         setFormData({
@@ -80,7 +94,14 @@ export function LeagueStageModal({
           stage_type: 'round_robin',
           points_win: 3,
           points_draw: 1,
-          points_loss: 0
+          points_loss: 0,
+          points_bo3_win_2_0: 3,
+          points_bo3_win_2_1: 2,
+          points_bo3_loss_1_2: 1,
+          points_bo3_loss_0_2: 0,
+          points_bo2_win_2_0: 3,
+          points_bo2_draw_1_1: 1,
+          points_bo2_loss_0_2: 0
         });
       }
       setErrors({});
@@ -191,7 +212,7 @@ export function LeagueStageModal({
                 id="competition_stage"
                 value={formData.competition_stage || ''}
                 onChange={(e) => handleInputChange('competition_stage', e.target.value)}
-                placeholder="e.g., Group Stage, Playoffs, Finals"
+                placeholder="e.g., Groupstage, Play-ins, Playoffs"
                 className={errors.competition_stage ? 'border-red-500' : ''}
               />
               {errors.competition_stage && <p className="text-sm text-red-500">{errors.competition_stage}</p>}
@@ -223,13 +244,13 @@ export function LeagueStageModal({
             {formData.stage_type === 'round_robin' && (
               <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
                 <div className="flex items-center gap-2 mb-2">
-                   <h4 className="text-sm font-medium">Point Configuration</h4>
+                   <h4 className="text-sm font-medium">Standard Point Configuration</h4>
                    <p className="text-xs text-muted-foreground">(Optional)</p>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="points_win" className="text-xs">Win (3)</Label>
+                    <Label htmlFor="points_win" className="text-xs">Win</Label>
                     <Input
                       id="points_win"
                       type="number"
@@ -239,7 +260,7 @@ export function LeagueStageModal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="points_draw" className="text-xs">Draw (1)</Label>
+                    <Label htmlFor="points_draw" className="text-xs">Draw</Label>
                     <Input
                       id="points_draw"
                       type="number"
@@ -249,7 +270,7 @@ export function LeagueStageModal({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="points_loss" className="text-xs">Loss (0)</Label>
+                    <Label htmlFor="points_loss" className="text-xs">Loss</Label>
                     <Input
                       id="points_loss"
                       type="number"
@@ -257,6 +278,106 @@ export function LeagueStageModal({
                       onChange={(e) => handleInputChange('points_loss', parseInt(e.target.value) || 0)}
                       placeholder="0"
                     />
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h4 className="text-sm font-medium">Advanced Scoring (Best-of-Series)</h4>
+                    <p className="text-xs text-muted-foreground">Overrides standard points</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* BO3 Settings */}
+                    <div className="space-y-3">
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">Best of 3 (BO3)</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo3_win_2_0" className="text-[10px]">2-0 Win</Label>
+                          <Input
+                            id="points_bo3_win_2_0"
+                            type="number"
+                            value={formData.points_bo3_win_2_0 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo3_win_2_0', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="3"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo3_win_2_1" className="text-[10px]">2-1 Win</Label>
+                          <Input
+                            id="points_bo3_win_2_1"
+                            type="number"
+                            value={formData.points_bo3_win_2_1 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo3_win_2_1', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="2"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo3_loss_1_2" className="text-[10px]">1-2 Loss</Label>
+                          <Input
+                            id="points_bo3_loss_1_2"
+                            type="number"
+                            value={formData.points_bo3_loss_1_2 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo3_loss_1_2', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="1"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo3_loss_0_2" className="text-[10px]">0-2 Loss</Label>
+                          <Input
+                            id="points_bo3_loss_0_2"
+                            type="number"
+                            value={formData.points_bo3_loss_0_2 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo3_loss_0_2', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BO2 Settings */}
+                    <div className="space-y-3">
+                      <Label className="text-xs font-semibold uppercase text-muted-foreground">Best of 2 (BO2)</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo2_win_2_0" className="text-[10px]">2-0 Win</Label>
+                          <Input
+                            id="points_bo2_win_2_0"
+                            type="number"
+                            value={formData.points_bo2_win_2_0 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo2_win_2_0', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="3"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo2_draw_1_1" className="text-[10px]">1-1 Draw</Label>
+                          <Input
+                            id="points_bo2_draw_1_1"
+                            type="number"
+                            value={formData.points_bo2_draw_1_1 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo2_draw_1_1', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="1"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="points_bo2_loss_0_2" className="text-[10px]">0-2 Loss</Label>
+                          <Input
+                            id="points_bo2_loss_0_2"
+                            type="number"
+                            value={formData.points_bo2_loss_0_2 ?? ''}
+                            onChange={(e) => handleInputChange('points_bo2_loss_0_2', parseInt(e.target.value) || 0)}
+                            className="h-8 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

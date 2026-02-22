@@ -37,18 +37,18 @@ export const groupMatchesByDate = (matches: ScheduleMatch[]): ScheduleDateGroup[
         matchDate = new Date();
       }
 
-      const date = match.displayDate ?? matchDate.toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = {
-          date: date,
-          displayDate: formatDate(matchDate),
+      const dateKey = match.localIsoDate || matchDate.toISOString().split('T')[0];
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          date: dateKey,
+          displayDate: match.displayDate || formatDate(matchDate),
           isToday: match.isToday ?? false,
           isYesterday: isYesterday(matchDate),
           isPast: match.isPast ?? false,
           matches: []
         };
       }
-      acc[date].matches.push(match);
+      acc[dateKey].matches.push(match);
       return acc;
     },
     {} as Record<string, ScheduleDateGroup>

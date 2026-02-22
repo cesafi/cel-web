@@ -48,21 +48,45 @@ export class MatchesService extends BaseService {
 
   /**
    * Helper to add schedule display fields to matches
+   * Dates are generated as standard Date objects to let the component
+   * render them dynamically via the browser's timezone.
    */
   private static enrichMatchWithScheduleFields(match: any): ScheduleMatch {
     const now = new Date();
     const scheduledAt = match.scheduled_at ? new Date(match.scheduled_at) : null;
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const matchDate = scheduledAt ? new Date(scheduledAt.getFullYear(), scheduledAt.getMonth(), scheduledAt.getDate()) : null;
+
+    let isToday = false;
+    let isPast = false;
+    let displayTime = 'TBD';
+    let displayDate = 'TBD';
+    let localIsoDate = '';
+
+    if (scheduledAt) {
+      isPast = scheduledAt < now;
+      
+      // Formatting fallback if SSR occurs before client hydration
+      // Using standard JS Dates means the browser automatically adjusts to the user's timezone when rendered.
+      displayTime = scheduledAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      displayDate = scheduledAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      
+      // Zero out the time to ensure reliable grouping regardless of timezone shifts
+      const localDate = new Date(scheduledAt.getFullYear(), scheduledAt.getMonth(), scheduledAt.getDate());
+      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      localIsoDate = localDate.toISOString().split('T')[0];
+      isToday = localDate.getTime() === todayDate.getTime();
+    }
 
     return {
       ...match,
-      isToday: matchDate?.getTime() === today.getTime(),
-      isPast: scheduledAt ? scheduledAt < now : false,
-      displayTime: scheduledAt ? scheduledAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'TBD',
-      displayDate: scheduledAt ? scheduledAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'TBD'
+      isToday,
+      isPast,
+      displayTime,
+      displayDate,
+      localIsoDate
     };
   }
+
 
   /**
    * Get a single match by ID with all details
@@ -380,6 +404,7 @@ export class MatchesService extends BaseService {
         nextCursor,
         prevCursor: cursor || null,
         hasMore,
+        direction,
         totalCount: count || 0
       };
 

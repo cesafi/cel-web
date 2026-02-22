@@ -240,6 +240,13 @@ export class StandingsService extends BaseService {
             points_win, 
             points_draw, 
             points_loss,
+            points_bo3_win_2_0,
+            points_bo3_win_2_1,
+            points_bo3_loss_1_2,
+            points_bo3_loss_0_2,
+            points_bo2_win_2_0,
+            points_bo2_draw_1_1,
+            points_bo2_loss_0_2,
             esports_categories!inner (
                 esports!inner (
                     name
@@ -268,6 +275,7 @@ export class StandingsService extends BaseService {
           id,
           status,
           group_name,
+          best_of,
           match_participants (
             id,
             team_id,
@@ -387,29 +395,81 @@ export class StandingsService extends BaseService {
           // Determine winner/loser
           if (score1 > score2) {
             stats1.wins++;
-            stats1.points += POINTS_WIN;
             stats1.head_to_head[p2.team_id].wins++;
             
             stats2.losses++;
-            stats2.points += POINTS_LOSS;
             stats2.head_to_head[p1.team_id].losses++;
+
+            // Advanced BO3 / BO2 Scoring
+            if (match.best_of === 3) {
+              if (score1 === 2 && score2 === 0) {
+                 stats1.points += stage.points_bo3_win_2_0 ?? POINTS_WIN;
+                 stats2.points += stage.points_bo3_loss_0_2 ?? POINTS_LOSS;
+              } else if (score1 === 2 && score2 === 1) {
+                 stats1.points += stage.points_bo3_win_2_1 ?? (POINTS_WIN - 1);
+                 stats2.points += stage.points_bo3_loss_1_2 ?? (POINTS_LOSS + 1);
+              } else {
+                 stats1.points += POINTS_WIN;
+                 stats2.points += POINTS_LOSS;
+              }
+            } else if (match.best_of === 2) {
+              if (score1 === 2 && score2 === 0) {
+                 stats1.points += stage.points_bo2_win_2_0 ?? POINTS_WIN;
+                 stats2.points += stage.points_bo2_loss_0_2 ?? POINTS_LOSS;
+              } else {
+                 stats1.points += POINTS_WIN;
+                 stats2.points += POINTS_LOSS;
+              }
+            } else {
+               stats1.points += POINTS_WIN;
+               stats2.points += POINTS_LOSS;
+            }
           } else if (score2 > score1) {
             stats2.wins++;
-            stats2.points += POINTS_WIN;
             stats2.head_to_head[p1.team_id].wins++;
 
             stats1.losses++;
-            stats1.points += POINTS_LOSS;
             stats1.head_to_head[p2.team_id].losses++;
+
+            // Advanced BO3 / BO2 Scoring
+            if (match.best_of === 3) {
+              if (score2 === 2 && score1 === 0) {
+                 stats2.points += stage.points_bo3_win_2_0 ?? POINTS_WIN;
+                 stats1.points += stage.points_bo3_loss_0_2 ?? POINTS_LOSS;
+              } else if (score2 === 2 && score1 === 1) {
+                 stats2.points += stage.points_bo3_win_2_1 ?? (POINTS_WIN - 1);
+                 stats1.points += stage.points_bo3_loss_1_2 ?? (POINTS_LOSS + 1);
+              } else {
+                 stats2.points += POINTS_WIN;
+                 stats1.points += POINTS_LOSS;
+              }
+            } else if (match.best_of === 2) {
+              if (score2 === 2 && score1 === 0) {
+                 stats2.points += stage.points_bo2_win_2_0 ?? POINTS_WIN;
+                 stats1.points += stage.points_bo2_loss_0_2 ?? POINTS_LOSS;
+              } else {
+                 stats2.points += POINTS_WIN;
+                 stats1.points += POINTS_LOSS;
+              }
+            } else {
+               stats2.points += POINTS_WIN;
+               stats1.points += POINTS_LOSS;
+            }
           } else {
             // Draw
             stats1.draws++;
-            stats1.points += POINTS_DRAW;
             stats1.head_to_head[p2.team_id].draws++;
 
             stats2.draws++;
-            stats2.points += POINTS_DRAW;
             stats2.head_to_head[p1.team_id].draws++;
+
+            if (match.best_of === 2 && score1 === 1 && score2 === 1) {
+               stats1.points += stage.points_bo2_draw_1_1 ?? POINTS_DRAW;
+               stats2.points += stage.points_bo2_draw_1_1 ?? POINTS_DRAW;
+            } else {
+               stats1.points += POINTS_DRAW;
+               stats2.points += POINTS_DRAW;
+            }
           }
 
           // --- Advanced Stats Parsing ---

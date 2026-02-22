@@ -33,6 +33,8 @@ export default function PlayersManagementPage() {
   // Client-side pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
   // Get current season from context
   const { currentSeason } = useSeason();
@@ -42,13 +44,48 @@ export default function PlayersManagementPage() {
   const updateMutation = useUpdatePlayer();
   const deleteMutation = useDeletePlayer();
 
-  // Filter players by selected season (via their team's season)
-  // Note: If players don't have a direct season_id, we show all players
-  // This can be adjusted based on your data model
+  // Filter and sort players locally
   const filteredPlayers = useMemo(() => {
-    // For now, show all players - adjust filtering logic based on your schema
-    return players;
-  }, [players]);
+    let result = [...players];
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((player) => {
+        const fullName = `${player.first_name || ''} ${player.last_name || ''}`.toLowerCase();
+        const ign = (player.ign || '').toLowerCase();
+        const teamName = (player.schools_teams?.name || '').toLowerCase();
+        
+        return fullName.includes(query) || ign.includes(query) || teamName.includes(query);
+      });
+    }
+
+    if (sortConfig) {
+      result.sort((a, b) => {
+        if (sortConfig.key === 'player') {
+            const aName = (a.ign || a.first_name || '').toLowerCase();
+            const bName = (b.ign || b.first_name || '').toLowerCase();
+            return sortConfig.direction === 'asc' 
+                ? aName.localeCompare(bName) 
+                : bName.localeCompare(aName);
+        } else if (sortConfig.key === 'team') {
+            const aTeam = (a.schools_teams?.name || '').toLowerCase();
+            const bTeam = (b.schools_teams?.name || '').toLowerCase();
+            return sortConfig.direction === 'asc' 
+                ? aTeam.localeCompare(bTeam) 
+                : bTeam.localeCompare(aTeam);
+        } else if (sortConfig.key === 'role') {
+            const aRole = (a.role || '').toLowerCase();
+            const bRole = (b.role || '').toLowerCase();
+            return sortConfig.direction === 'asc' 
+                ? aRole.localeCompare(bRole) 
+                : bRole.localeCompare(aRole);
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [players, searchQuery, sortConfig]);
 
   // Calculate pagination using filtered data
   const totalCount = filteredPlayers.length;
@@ -107,8 +144,8 @@ export default function PlayersManagementPage() {
         pageSize={pageSize}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
-        onSortChange={() => { }}
-        onSearchChange={() => { }}
+        onSortChange={(key, direction) => setSortConfig({ key, direction })}
+        onSearchChange={setSearchQuery}
         onFiltersChange={() => { }}
         title="Players Management"
         subtitle="Manage esports players across all teams."

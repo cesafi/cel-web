@@ -13,15 +13,16 @@ export interface PlayerSeasonWithDetails extends PlayerSeason {
     photo_url: string | null;
     role: string | null;
   } | null;
-  seasons: {
-    id: number;
-    name?: string | null;
-    start_at: string;
-    end_at: string;
-  } | null;
   schools_teams: {
     id: string;
     name: string;
+    season_id: number;
+    seasons: {
+      id: number;
+      name?: string | null;
+      start_at: string;
+      end_at: string;
+    } | null;
     schools: {
       id: string;
       name: string;

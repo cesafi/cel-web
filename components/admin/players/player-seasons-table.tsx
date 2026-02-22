@@ -111,7 +111,7 @@ export function PlayerSeasonsTable({ playerId, playerName }: PlayerSeasonsTableP
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {entry.seasons?.name || `Season ${entry.season_id}`}
+                        {entry.schools_teams?.seasons?.name || `Season ${entry.schools_teams?.season_id || 'Unknown'}`}
                       </div>
                     </div>
                     <Badge 
@@ -165,7 +165,7 @@ export function PlayerSeasonsTable({ playerId, playerName }: PlayerSeasonsTableP
         onConfirm={confirmDelete}
         type="delete"
         title="Delete Team History Entry"
-        message={`Are you sure you want to delete this entry for ${entryToDelete?.seasons?.name || `Season ${entryToDelete?.season_id}`}?`}
+        message={`Are you sure you want to delete this entry for ${entryToDelete?.schools_teams?.seasons?.name || `Season ${entryToDelete?.schools_teams?.season_id || 'Unknown'}`}?`}
         confirmText="Delete"
         cancelText="Cancel"
         destructive={true}

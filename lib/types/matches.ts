@@ -53,6 +53,7 @@ export interface ScheduleMatch extends MatchWithFullDetails {
   isPast?: boolean;
   displayTime?: string;
   displayDate?: string;
+  localIsoDate?: string;
 }
 
 export interface ScheduleFilters {
@@ -110,6 +111,7 @@ export interface ScheduleResponse {
   nextCursor: string | null;
   prevCursor: string | null;
   hasMore: boolean;
+  direction?: 'future' | 'past';
   totalCount?: number;
 }
 

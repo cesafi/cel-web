@@ -22,6 +22,7 @@ import {
 import { ZodError } from 'zod';
 import { useSeason } from '@/components/contexts/season-provider';
 import { useAllEsports, useAllEsportCategories } from '@/hooks/use-esports';
+import { useAllSchools } from '@/hooks/use-schools';
 import { formatCategoryName } from '@/lib/utils/esports';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -47,6 +48,7 @@ export function SchoolTeamModal({
   const { currentSeason, availableSeasons } = useSeason();
   const { data: sports } = useAllEsports();
   const { data: sportCategories } = useAllEsportCategories();
+  const { data: schools } = useAllSchools();
 
   const [formData, setFormData] = useState<SchoolsTeamInsert | SchoolsTeamUpdate>(() => {
     if (mode === 'edit' && team) {
@@ -233,23 +235,46 @@ export function SchoolTeamModal({
               />
               {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
+
+            {/* School Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="school_id">School *</Label>
+              <Select
+                value={formData.school_id?.toString()}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, school_id: value }))}
+              >
+                <SelectTrigger className={errors.school_id ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Select a school" />
+                </SelectTrigger>
+                <SelectContent>
+                  {schools
+                    ?.filter((school) => school.name !== 'To be decided')
+                    .map((school) => (
+                      <SelectItem key={school.id} value={school.id}>
+                        {school.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {errors.school_id && <p className="text-sm text-red-500">{errors.school_id}</p>}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Sport Configuration */}
+        {/* Esport Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              Sport Configuration
+              Esport Configuration
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Sport Selection */}
+            {/* Esport Selection */}
             <div className="space-y-2">
-              <Label htmlFor="sport">Sport *</Label>
+              <Label htmlFor="sport">Esport *</Label>
               <Select value={selectedSportId?.toString()} onValueChange={handleSportChange}>
                 <SelectTrigger className={errors.esport_category_id ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Select a sport" />
+                  <SelectValue placeholder="Select an esport" />
                 </SelectTrigger>
                 <SelectContent>
                   {sports?.map((sport) => (
@@ -264,9 +289,9 @@ export function SchoolTeamModal({
               )}
             </div>
 
-            {/* Sport Category Selection */}
+            {/* Esport Category Selection */}
             <div className="space-y-2">
-              <Label htmlFor="sportCategory">Sport Category *</Label>
+              <Label htmlFor="sportCategory">Esport Category *</Label>
               <Select
                 value={formData.esport_category_id?.toString()}
                 onValueChange={handleSportCategoryChange}
@@ -274,7 +299,7 @@ export function SchoolTeamModal({
               >
                 <SelectTrigger className={errors.esport_category_id ? 'border-red-500' : ''}>
                   <SelectValue
-                    placeholder={selectedSportId ? 'Select a category' : 'Select a sport first'}
+                    placeholder={selectedSportId ? 'Select a category' : 'Select an esport first'}
                   />
                 </SelectTrigger>
                 <SelectContent>

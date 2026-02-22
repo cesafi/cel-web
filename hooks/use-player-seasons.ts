@@ -72,7 +72,6 @@ export function useCreatePlayerSeason() {
     onSuccess: (result, variables) => {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: playerSeasonKeys.all });
-        queryClient.invalidateQueries({ queryKey: playerSeasonKeys.bySeason(variables.season_id) });
         queryClient.invalidateQueries({ queryKey: playerSeasonKeys.byPlayer(variables.player_id) });
         toast.success('Player season created successfully');
       } else {

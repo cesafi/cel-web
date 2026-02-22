@@ -63,7 +63,7 @@ export function PlayerSeasonModal({
         setFormData({
           id: playerSeason.id,
           player_id: playerSeason.player_id,
-          season_id: playerSeason.season_id,
+          season_id: playerSeason.schools_teams?.season_id || 0,
           team_id: playerSeason.team_id,
           is_active: playerSeason.is_active ?? true
         });
@@ -105,14 +105,12 @@ export function PlayerSeasonModal({
       if (mode === 'edit' && formData.id) {
         onSubmit({
           id: formData.id,
-          season_id: formData.season_id,
           team_id: formData.team_id,
           is_active: formData.is_active
         });
       } else {
         onSubmit({
           player_id: formData.player_id,
-          season_id: formData.season_id,
           team_id: formData.team_id,
           is_active: formData.is_active
         });
@@ -221,7 +219,7 @@ export function PlayerSeasonModal({
                 <SelectContent>
                   {filteredTeams.map((team) => (
                     <SelectItem key={team.id} value={team.id}>
-                      {team.name} {team.esports ? `(${team.esports.name} - ${team.category})` : team.category && `(${team.category})`}
+                      {team.name} {team.esports_categories?.esports ? `(${team.esports_categories.esports.name} - ${team.esports_categories.division})` : team.esports_categories?.division && `(${team.esports_categories.division})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
