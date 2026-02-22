@@ -312,7 +312,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
                               className="h-4 w-4 object-contain"
                             />
                           )}
-                          <span className={`${roboto.className} text-xs text-muted-foreground`}>
+                          <span className={`${roboto.className} text-xs text-muted-foreground sm:hidden lg:inline`}>
                             {game.esport?.name || 'Esports'} • {game.stage}
                           </span>
                         </div>
@@ -321,23 +321,50 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
                         </span>
                       </div>
 
-                      {/* Match display - compact, horizontal on mobile */}
-                      <div className="flex items-center justify-around gap-2 sm:gap-3 mb-5">
-                        <TeamDisplay
-                          name={game.teamA.name}
-                          abbreviation={game.teamA.abbreviation}
-                          logoUrl={game.teamA.logo}
-                        />
+                      {/* Match display - compact row */}
+                      <div className="flex items-center justify-center gap-4 mb-5">
+                        {/* Team A */}
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1 justify-end">
+                          <div className="text-right min-w-0">
+                            <div className={`${moderniz.className} text-lg lg:text-xl font-bold text-foreground leading-tight tracking-wide truncate sm:hidden lg:block`}>
+                              {game.teamA.abbreviation}
+                            </div>
+                            <div className={`${roboto.className} text-[10px] text-muted-foreground/50 truncate max-w-[100px] ml-auto sm:hidden lg:block`}>
+                              {game.teamA.name}
+                            </div>
+                          </div>
+                          <Image
+                            src={game.teamA.logo ?? '/img/cesafi-logo.webp'}
+                            alt={game.teamA.abbreviation}
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-full object-cover border border-border/50 flex-shrink-0"
+                          />
+                        </div>
 
-                        <div className={`${moderniz.className} text-lg font-black text-muted-foreground/30 flex-shrink-0`}>
+                        {/* VS */}
+                        <div className={`${moderniz.className} text-base font-black text-muted-foreground/30 flex-shrink-0`}>
                           VS
                         </div>
 
-                        <TeamDisplay
-                          name={game.teamB.name}
-                          abbreviation={game.teamB.abbreviation}
-                          logoUrl={game.teamB.logo}
-                        />
+                        {/* Team B */}
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <Image
+                            src={game.teamB.logo ?? '/img/cesafi-logo.webp'}
+                            alt={game.teamB.abbreviation}
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-full object-cover border border-border/50 flex-shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className={`${moderniz.className} text-lg lg:text-xl font-bold text-foreground leading-tight tracking-wide truncate sm:hidden lg:block`}>
+                              {game.teamB.abbreviation}
+                            </div>
+                            <div className={`${roboto.className} text-[10px] text-muted-foreground/50 truncate max-w-[100px] sm:hidden lg:block`}>
+                              {game.teamB.name}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Bottom: date + venue */}
