@@ -9,10 +9,10 @@ export default function Footer() {
 
   return (
     <footer className="bg-card text-card-foreground border-border border-t">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          {/* About Column */}
-          <div className="space-y-4 text-center md:text-left">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 gap-6 sm:gap-8 lg:grid-cols-4 lg:gap-12">
+          {/* About Column - Full width on mobile */}
+          <div className="col-span-2 lg:col-span-1 space-y-4 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start space-x-3">
               <Image src="/img/cesafi-logo.webp" alt="CESAFI Logo" width={40} height={40} className="h-8 w-8" />
               <span className={`${moderniz.className} text-lg font-bold`}>CESAFI</span>
@@ -24,11 +24,11 @@ export default function Footer() {
           </div>
 
           {/* Navigation Column 1: Season & Community */}
-          <div className="text-center md:text-left space-y-8">
+          <div className="text-center md:text-left space-y-6 lg:space-y-8">
             {/* Season */}
-            <div className="space-y-4">
-              <h3 className={`${moderniz.className} text-lg font-bold`}>Season</h3>
-              <ul className="space-y-2">
+            <div className="space-y-3 lg:space-y-4">
+              <h3 className={`${moderniz.className} text-base lg:text-lg font-bold`}>Season</h3>
+              <ul className="space-y-1.5 lg:space-y-2">
                 {navItems.find(i => i.name === 'Season')?.children?.map((item) => (
                   <li key={item.name}>
                     <Link href={item.href} className="text-muted-foreground hover:text-foreground transition-colors text-sm">
@@ -38,11 +38,11 @@ export default function Footer() {
                 ))}
               </ul>
             </div>
-            
+
             {/* Community */}
-            <div className="space-y-4">
-              <h3 className={`${moderniz.className} text-lg font-bold`}>Community</h3>
-              <ul className="space-y-2">
+            <div className="space-y-3 lg:space-y-4">
+              <h3 className={`${moderniz.className} text-base lg:text-lg font-bold`}>Community</h3>
+              <ul className="space-y-1.5 lg:space-y-2">
                 {navItems.find(i => i.name === 'Community')?.children?.map((item) => (
                   <li key={item.name}>
                     <Link href={item.href} className="text-muted-foreground hover:text-foreground transition-colors text-sm">
@@ -55,11 +55,11 @@ export default function Footer() {
           </div>
 
           {/* Navigation Column 2: General & Info */}
-          <div className="text-center md:text-left space-y-8">
+          <div className="text-center md:text-left space-y-6 lg:space-y-8">
             {/* General */}
-            <div className="space-y-4">
-              <h3 className={`${moderniz.className} text-lg font-bold`}>General</h3>
-              <ul className="space-y-2">
+            <div className="space-y-3 lg:space-y-4">
+              <h3 className={`${moderniz.className} text-base lg:text-lg font-bold`}>General</h3>
+              <ul className="space-y-1.5 lg:space-y-2">
                 <li>
                   <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
                     Home
@@ -74,9 +74,9 @@ export default function Footer() {
             </div>
 
             {/* Info */}
-            <div className="space-y-4">
-              <h3 className={`${moderniz.className} text-lg font-bold`}>Info</h3>
-              <ul className="space-y-2">
+            <div className="space-y-3 lg:space-y-4">
+              <h3 className={`${moderniz.className} text-base lg:text-lg font-bold`}>Info</h3>
+              <ul className="space-y-1.5 lg:space-y-2">
                 {navItems.find(i => i.name === 'Info')?.children?.map((item) => (
                   <li key={item.name}>
                     <Link href={item.href} className="text-muted-foreground hover:text-foreground transition-colors text-sm">
@@ -89,11 +89,11 @@ export default function Footer() {
           </div>
 
           {/* Contact + Follow Us Column */}
-          <div className="space-y-6 text-center md:text-left">
+          <div className="col-span-2 sm:col-span-1 space-y-6 text-center md:text-left">
             {/* Contact Section */}
-            <div className="space-y-4">
-              <h3 className={`${moderniz.className} text-lg font-bold`}>Contact</h3>
-              <div className={`${roboto.className} text-muted-foreground space-y-2 text-sm`}>
+            <div className="space-y-3 lg:space-y-4">
+              <h3 className={`${moderniz.className} text-base lg:text-lg font-bold`}>Contact</h3>
+              <div className={`${roboto.className} text-muted-foreground space-y-1.5 lg:space-y-2 text-sm`}>
                 <p>Email: cesafiesportsleague@gmail.com</p>
                 <p>Phone: (+63) 916 389 3780</p>
                 <p>Address: Cebu City, Philippines</p>
@@ -101,8 +101,8 @@ export default function Footer() {
             </div>
 
             {/* Follow Us Section */}
-            <div className="space-y-4">
-              <h3 className={`${moderniz.className} text-lg font-bold`}>Follow Us</h3>
+            <div className="space-y-3 lg:space-y-4">
+              <h3 className={`${moderniz.className} text-base lg:text-lg font-bold`}>Follow Us</h3>
               <div className="flex justify-center md:justify-start space-x-3">
                 <a
                   href="https://www.youtube.com/@cesafiesportsleague"
@@ -173,25 +173,25 @@ export default function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-border mt-12 border-t pt-8">
-          <div className="flex flex-col items-center justify-between space-y-4 text-center md:flex-row md:space-y-0">
-            <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
-              <p className={`${roboto.className} text-muted-foreground text-sm`}>
+        <div className="border-border mt-8 sm:mt-12 border-t pt-6 sm:pt-8">
+          <div className="flex flex-col items-center justify-between space-y-3 text-center sm:flex-row sm:space-y-0">
+            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <p className={`${roboto.className} text-muted-foreground text-xs sm:text-sm`}>
                 © {currentYear} Cebu Schools Athletic Foundation. All rights reserved.
               </p>
-              <div className="hidden md:block w-px h-4 bg-border" />
+              <div className="hidden sm:block w-px h-4 bg-border" />
               <RealTimeClock className="text-muted-foreground" showIcon={true} showTimezone={false} size="sm" />
             </div>
             <div className="flex space-x-6">
               <Link
                 href="/privacy-policy"
-                className={`${roboto.className} text-muted-foreground hover:text-foreground text-sm transition-colors`}
+                className={`${roboto.className} text-muted-foreground hover:text-foreground text-xs sm:text-sm transition-colors`}
               >
                 Privacy Policy
               </Link>
               <Link
                 href="/terms-of-service"
-                className={`${roboto.className} text-muted-foreground hover:text-foreground text-sm transition-colors`}
+                className={`${roboto.className} text-muted-foreground hover:text-foreground text-xs sm:text-sm transition-colors`}
               >
                 Terms of Service
               </Link>

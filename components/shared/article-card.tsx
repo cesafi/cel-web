@@ -58,16 +58,18 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                 <p className={`${roboto.className} text-muted-foreground leading-relaxed`}>
                   {article.excerpt}
                 </p>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    {article.author}
+                    <User className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{article.author}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {formatSmartDate(article.publishedAt)}
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4 flex-shrink-0" />
+                      {formatSmartDate(article.publishedAt)}
+                    </div>
+                    {article.readTime && <span>{article.readTime}</span>}
                   </div>
-                  {article.readTime && <span>{article.readTime}</span>}
                 </div>
                 <Link href={`/news/${article.slug}`}>
                   <Button className="w-full sm:w-auto">
@@ -139,13 +141,13 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
             </p>
           </div>
           <div className="space-y-4 mt-4">
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                {article.author}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 min-w-0">
+                <User className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{article.author}</span>
               </div>
               <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
+                <Calendar className="h-3 w-3 flex-shrink-0" />
                 {formatSmartDate(article.publishedAt)}
               </div>
             </div>

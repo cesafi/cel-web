@@ -180,8 +180,8 @@ export class MatchesService extends BaseService {
 
       if (error) throw error;
 
-      return { 
-        success: true as const, 
+      return {
+        success: true as const,
         data: {
           matches: data as unknown as MatchWithFullDetails[],
           totalCount: count || 0,
@@ -272,7 +272,7 @@ export class MatchesService extends BaseService {
       // If filtering by season_id, sport_id, division, category_id, OR stage_name, we need to get the matching stage_ids first
       // because Supabase doesn't support filtering on embedded relations directly
       let stageIdsToFilter: number[] | null = null;
-      
+
       if (filters.season_id || filters.sport_id || filters.division || filters.category_id || filters.stage_name) {
         let stageQuery = supabase
           .from('esports_seasons_stages')
@@ -288,35 +288,35 @@ export class MatchesService extends BaseService {
               )
             )
           `);
-        
+
         if (filters.season_id) {
           stageQuery = stageQuery.eq('season_id', filters.season_id);
         }
-        
+
         if (filters.stage_name) {
           stageQuery = stageQuery.eq('competition_stage', filters.stage_name);
         }
-        
+
         if (filters.sport_id) {
           stageQuery = stageQuery.eq('esports_categories.esports.id', filters.sport_id);
         }
-        
+
         if (filters.division) {
           stageQuery = stageQuery.eq('esports_categories.division', filters.division);
         }
-        
+
         if (filters.category_id) {
           stageQuery = stageQuery.eq('esports_categories.id', filters.category_id);
         }
-        
+
         const { data: stageData, error: stageError } = await stageQuery;
-        
+
         if (stageError) {
           console.error('Error fetching stages for filter:', stageError);
           // Fall through to return all matches if stage query fails
         } else {
           stageIdsToFilter = stageData?.map(s => s.id) || [];
-          
+
           // If no stages match the filter, return empty results
           if (stageIdsToFilter.length === 0) {
             const response: ScheduleResponse = {
@@ -411,15 +411,11 @@ export class MatchesService extends BaseService {
       const supabase = await this.getClient();
       const { totalLimit = 20, filters = {} } = options;
       const referenceDate = options.referenceDate || new Date().toISOString();
-      
-      console.log('[MatchesService] getScheduleMatchesAroundDate called');
-      console.log('[MatchesService] Reference date:', referenceDate);
-      console.log('[MatchesService] Total limit:', totalLimit);
-      console.log('[MatchesService] Filters:', JSON.stringify(filters));
-      
+
+
       // If filtering by season_id, sport_id, division, category_id, OR stage_name, we need to get the matching stage_ids first
       let stageIdsToFilter: number[] | null = null;
-      
+
       if (filters.season_id || filters.sport_id || filters.division || filters.category_id || filters.stage_name) {
         let stageQuery = supabase
           .from('esports_seasons_stages')
@@ -435,39 +431,38 @@ export class MatchesService extends BaseService {
               )
             )
           `);
-        
+
         if (filters.season_id) {
           stageQuery = stageQuery.eq('season_id', filters.season_id);
         }
-        
+
         if (filters.stage_name) {
           stageQuery = stageQuery.eq('competition_stage', filters.stage_name);
         }
-        
+
         if (filters.sport_id) {
           stageQuery = stageQuery.eq('esports_categories.esports.id', filters.sport_id);
         }
-        
+
         if (filters.division) {
           stageQuery = stageQuery.eq('esports_categories.division', filters.division);
         }
-        
+
         if (filters.category_id) {
           stageQuery = stageQuery.eq('esports_categories.id', filters.category_id);
         }
-        
+
         const { data: stageData, error: stageError } = await stageQuery;
-        
+
         if (stageError) {
           console.error('Error fetching stages for filter:', stageError);
         } else {
           stageIdsToFilter = stageData?.map(s => s.id) || [];
-          console.log('[MatchesService] Stage IDs to filter:', stageIdsToFilter);
-          
+
           // If no stages match the filter, return empty results
           if (stageIdsToFilter.length === 0) {
-            return { 
-              success: true as const, 
+            return {
+              success: true as const,
               data: {
                 matches: [] as ScheduleMatch[],
                 pastCursor: null,
@@ -480,10 +475,10 @@ export class MatchesService extends BaseService {
           }
         }
       }
-      
+
       // Calculate initial split - try to get half from each direction
       const halfLimit = Math.ceil(totalLimit / 2);
-      
+
       // Build base query conditions
       const buildQuery = (direction: 'future' | 'past', limit: number) => {
         let query = supabase
@@ -513,46 +508,46 @@ export class MatchesService extends BaseService {
 
         // Limit + 1 to check if there are more
         query = query.limit(limit + 1);
-        
+
         return query;
       };
 
       // Fetch future matches first
       const futureQuery = buildQuery('future', halfLimit);
       const { data: futureData, error: futureError, count: futureCount } = await futureQuery;
-      console.log('[MatchesService] Future query result - count:', futureCount, 'data length:', futureData?.length, 'error:', futureError);
+
       if (futureError) throw futureError;
 
       const futureMatches = (futureData || []).slice(0, halfLimit);
       const hasMoreFuture = (futureData?.length || 0) > halfLimit;
-      
+
       // Calculate how many past matches we need
       // If we got fewer future matches than half, allocate more to past
       const remainingSlots = totalLimit - futureMatches.length;
-      console.log('[MatchesService] Future matches found:', futureMatches.length, 'Remaining slots for past:', remainingSlots);
-      
+
+
       // Fetch past matches
       const pastQuery = buildQuery('past', remainingSlots);
       const { data: pastData, error: pastError, count: pastCount } = await pastQuery;
-      console.log('[MatchesService] Past query result - count:', pastCount, 'data length:', pastData?.length, 'error:', pastError);
+
       if (pastError) throw pastError;
 
       const pastMatches = (pastData || []).slice(0, remainingSlots);
       const hasMorePast = (pastData?.length || 0) > remainingSlots;
-      console.log('[MatchesService] Past matches found:', pastMatches.length, 'Has more past:', hasMorePast);
+
 
       // Combine: past (reversed to chronological) + future
       const pastMatchesChronological = [...pastMatches].reverse();
       const allMatches = [...pastMatchesChronological, ...futureMatches];
-      console.log('[MatchesService] Total matches combined:', allMatches.length);
-      
+
+
       // Enrich all matches
       const enrichedMatches = allMatches.map(m => this.enrichMatchWithScheduleFields(m));
 
       // Generate cursors
       const oldestMatch = pastMatches[pastMatches.length - 1]; // In desc order, this is the oldest
       const newestFutureMatch = futureMatches[futureMatches.length - 1];
-      
+
       const response = {
         matches: enrichedMatches as ScheduleMatch[],
         pastCursor: hasMorePast && oldestMatch?.scheduled_at ? oldestMatch.scheduled_at : null,
@@ -605,10 +600,10 @@ export class MatchesService extends BaseService {
         division: cat.division,
         levels: cat.levels,
         esport: cat.esports ? {
-            id: cat.esports.id,
-            name: cat.esports.name,
-            logo_url: cat.esports.logo_url,
-            abbreviation: cat.esports.abbreviation
+          id: cat.esports.id,
+          name: cat.esports.name,
+          logo_url: cat.esports.logo_url,
+          abbreviation: cat.esports.abbreviation
         } : null,
         full_name: cat.esports ? `${cat.esports.name} - ${cat.division}` : `Category ${cat.id}`
       })).filter((c: any) => c.esport !== null);
@@ -753,7 +748,7 @@ export class MatchesService extends BaseService {
       if (!data) return { success: false, error: 'Invalid token' };
 
       const match = data as unknown as MatchWithFullDetails;
-      
+
       // Determine which team the token belongs to
       let teamId: string | undefined;
       let teamSide: 'team1' | 'team2' | undefined;
@@ -761,19 +756,19 @@ export class MatchesService extends BaseService {
       if (match.team1_veto_token === token) {
         teamSide = 'team1';
         // Find team1 ID from participants
-        teamId = match.match_participants?.[0]?.team_id; 
+        teamId = match.match_participants?.[0]?.team_id;
       } else if (match.team2_veto_token === token) {
         teamSide = 'team2';
         teamId = match.match_participants?.[1]?.team_id;
       }
 
-      return { 
-        success: true as const, 
-        data: { 
-          match, 
+      return {
+        success: true as const,
+        data: {
+          match,
           teamId,
           teamSide
-        } 
+        }
       };
     } catch (error) {
       return this.formatError(error, 'Failed to fetch match by token');

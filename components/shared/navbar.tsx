@@ -10,7 +10,7 @@ import LiveIndicator from '@/components/live-indicator'
 import { useCurrentActiveHeroSection } from '@/hooks/use-hero-section'
 import Image from 'next/image'
 import { navItems, NavItem } from '@/lib/constants/navigation'
-import { RealTimeClock, CompactClock } from '@/components/real-time-clock'
+import { RealTimeClock } from '@/components/real-time-clock'
 
 // Icon mapping for navigation items - verifying imports
 const iconMap: Record<string, LucideIcon> = {
@@ -183,9 +183,8 @@ export default function Navbar() {
             <ThemeSwitcher />
           </div>
 
-          {/* Mobile Right Side - Clock, Live Indicator, Theme Switcher & Menu Button */}
-          <div className="flex lg:hidden items-center space-x-3">
-            <CompactClock className="text-muted-foreground" />
+          {/* Mobile Right Side - Live Indicator, Theme Switcher & Menu Button */}
+          <div className="flex lg:hidden items-center space-x-2">
             <LiveIndicator
               isLive={heroData?.data?.is_active || false}
               liveUrl={heroData?.data?.video_link}
@@ -193,41 +192,6 @@ export default function Navbar() {
               timeRemaining={heroData?.data?.time_remaining}
               variant="compact"
             />
-            <a
-              href="https://www.youtube.com/@cesafiesportsleague"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 transition-colors"
-              aria-label="CESAFI YouTube"
-            >
-              <Youtube size={18} />
-            </a>
-            <a
-              href="https://www.facebook.com/CesafiEsportsLeague"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 transition-colors"
-              aria-label="CESAFI Facebook"
-            >
-              <Facebook size={18} />
-            </a>
-            <a
-              href="https://www.tiktok.com/@cesafiesportsleague"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-black dark:hover:text-white transition-colors"
-              aria-label="CESAFI TikTok"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z" />
-              </svg>
-            </a>
             <ThemeSwitcher />
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -261,68 +225,87 @@ export default function Navbar() {
               className="lg:hidden fixed top-0 right-0 h-screen w-80 bg-background border-l border-border shadow-2xl z-[70]"
             >
               <div className="flex flex-col h-full bg-background">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-border">
+                {/* Header with logo and clock */}
+                <div className="flex items-center justify-between p-5 border-b border-border">
                   <div className="flex items-center space-x-3">
                     <Image
                       src="/img/cesafi-logo.webp"
                       alt="CESAFI Logo"
-                      width={32}
-                      height={32}
-                      className="w-8 h-8 object-contain"
+                      width={36}
+                      height={36}
+                      className="w-9 h-9 object-contain"
                     />
+                    <div className="flex flex-col">
+                      <span className={`${roboto.className} text-sm font-bold text-foreground`}>CESAFI</span>
+                      <RealTimeClock className="text-muted-foreground" showIcon={false} showTimezone={false} size="sm" />
+                    </div>
                   </div>
                   <button
                     onClick={() => setIsMenuOpen(false)}
                     className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-200"
                   >
-                    <X size={24} />
+                    <X size={20} />
                   </button>
                 </div>
 
+                {/* Accent gradient bar */}
+                <div className="h-0.5 bg-gradient-to-r from-primary via-primary/60 to-transparent" />
+
                 {/* Navigation Links */}
-                <div className="flex-1 px-6 py-8 overflow-y-auto">
-                  <div className="space-y-2">
+                <div className="flex-1 px-4 py-5 overflow-y-auto">
+                  <div className="space-y-1">
                     {navItems.map((item, index) => (
                       <div key={item.name}>
                         {item.children ? (
-                          <div className="space-y-1">
-                            <div className="px-4 py-2 font-semibold text-muted-foreground/70 text-sm uppercase tracking-wider">
+                          <div className="space-y-0.5 mb-3">
+                            <motion.div
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.08 }}
+                              className="px-3 py-2 font-semibold text-muted-foreground/60 text-xs uppercase tracking-widest"
+                            >
                               {item.name}
-                            </div>
-                            <div className="pl-4 space-y-1">
-                              {item.children.map((child, childIndex) => (
-                                <motion.div
-                                  key={child.name}
-                                  initial={{ opacity: 0, x: 20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: index * 0.1 + childIndex * 0.05 }}
-                                >
-                                  <Link
-                                    href={child.href}
-                                    onClick={() => setIsMenuOpen(false)}
-                                    className={`${roboto.className} flex items-center space-x-3 text-foreground hover:text-foreground py-3 px-4 rounded-xl hover:bg-muted/50 font-medium transition-all duration-200 group`}
+                            </motion.div>
+                            <div className="space-y-0.5">
+                              {item.children.map((child, childIndex) => {
+                                const Icon = iconMap[child.name] || Circle;
+                                return (
+                                  <motion.div
+                                    key={child.name}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.08 + childIndex * 0.04 }}
                                   >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors duration-200" />
-                                    <span className="text-lg">{child.name}</span>
-                                  </Link>
-                                </motion.div>
-                              ))}
+                                    <Link
+                                      href={child.href}
+                                      onClick={() => setIsMenuOpen(false)}
+                                      className={`${roboto.className} flex items-center gap-3 text-foreground hover:text-foreground py-2.5 px-3 rounded-xl hover:bg-muted/50 font-medium transition-all duration-200 group`}
+                                    >
+                                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-colors duration-200 flex-shrink-0">
+                                        <Icon className="w-4 h-4" />
+                                      </div>
+                                      <span className="text-sm">{child.name}</span>
+                                    </Link>
+                                  </motion.div>
+                                );
+                              })}
                             </div>
                           </div>
                         ) : (
                           <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
+                            transition={{ delay: index * 0.08 }}
                           >
                             <Link
                               href={item.href!}
                               onClick={() => setIsMenuOpen(false)}
-                              className={`${roboto.className} flex items-center space-x-3 text-foreground hover:text-foreground py-4 px-4 rounded-xl hover:bg-muted/50 font-medium transition-all duration-200 group`}
+                              className={`${roboto.className} flex items-center gap-3 text-foreground hover:text-foreground py-2.5 px-3 rounded-xl hover:bg-muted/50 font-medium transition-all duration-200 group`}
                             >
-                              <div className="w-2 h-2 rounded-full bg-primary/50 group-hover:bg-primary transition-colors duration-200" />
-                              <span className="text-lg">{item.name}</span>
+                              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-colors duration-200 flex-shrink-0">
+                                <Circle className="w-4 h-4" />
+                              </div>
+                              <span className="text-sm">{item.name}</span>
                             </Link>
                           </motion.div>
                         )}
@@ -331,15 +314,51 @@ export default function Navbar() {
                   </div>
                 </div>
 
-                {/* Footer - Optional branding or info */}
-                <div className="p-6 border-t border-border">
+                {/* Social Links & Branding Footer */}
+                <div className="border-t border-border">
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="text-center text-sm text-muted-foreground"
+                    className="p-5 space-y-4"
                   >
-                    Cebu Schools Athletics Foundation, Inc.
+                    <p className={`${roboto.className} text-xs font-semibold uppercase tracking-widest text-muted-foreground/60`}>
+                      Connect With Us
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <a
+                        href="https://www.youtube.com/@cesafiesportsleague"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/50 text-muted-foreground hover:bg-red-500/15 hover:text-red-500 transition-all duration-200"
+                        aria-label="CESAFI YouTube Channel"
+                      >
+                        <Youtube size={18} />
+                      </a>
+                      <a
+                        href="https://www.facebook.com/CesafiEsportsLeague"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/50 text-muted-foreground hover:bg-blue-500/15 hover:text-blue-500 transition-all duration-200"
+                        aria-label="CESAFI Facebook Page"
+                      >
+                        <Facebook size={18} />
+                      </a>
+                      <a
+                        href="https://www.tiktok.com/@cesafiesportsleague"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-muted/50 text-muted-foreground hover:bg-foreground/10 hover:text-foreground transition-all duration-200"
+                        aria-label="CESAFI TikTok"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z" />
+                        </svg>
+                      </a>
+                    </div>
+                    <p className={`${roboto.className} text-[11px] text-muted-foreground/50`}>
+                      Cebu Schools Athletics Foundation, Inc.
+                    </p>
                   </motion.div>
                 </div>
               </div>

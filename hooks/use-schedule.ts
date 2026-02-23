@@ -48,48 +48,62 @@ export function useInfiniteSchedule(
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
       if (lastPage.success && lastPage.data) {
-        if (lastPage.data.direction === 'past') {
+        const pageData = lastPage.data as ScheduleResponse;
+        if (pageData.direction === 'past') {
           // If the page was fetched going backward, going MORE forward (if we ever do from here)
           // means taking the newest match from that backward slice as our forward cursor.
-          return lastPage.data.matches.length > 0
-            ? lastPage.data.matches[lastPage.data.matches.length - 1].scheduled_at
+          return pageData.matches.length > 0
+            ? pageData.matches[pageData.matches.length - 1].scheduled_at
             : new Date().toISOString();
         }
         // Normal future scrolling uses the nextCursor directly
-        return lastPage.data.hasMore ? lastPage.data.nextCursor : undefined;
+        return pageData.hasMore ? pageData.nextCursor : undefined;
       }
       return undefined;
     },
     getPreviousPageParam: (firstPage) => {
       if (firstPage.success && firstPage.data) {
-        if (firstPage.data.direction === 'future') {
+        const pageData = firstPage.data as ScheduleResponse;
+        if (pageData.direction === 'future') {
           // If the oldest page we have was fetched going forward, we can go backward
           // by using the oldest match in that page as our past cursor.
-          return firstPage.data.matches.length > 0 
-            ? firstPage.data.matches[0].scheduled_at 
-            : new Date().toISOString(); 
+          return pageData.matches.length > 0
+            ? pageData.matches[0].scheduled_at
+            : new Date().toISOString();
         }
-        if (firstPage.data.direction === 'past') {
+        if (pageData.direction === 'past') {
           // If we fetched going backward, hasMore tells us if there are even older matches.
           // The nextCursor from a 'past' fetch is actually the cursor to go further into the past.
-          return firstPage.data.hasMore ? firstPage.data.nextCursor : undefined;
+          return pageData.hasMore ? pageData.nextCursor : undefined;
         }
-        
+
         // Fallback for older API responses without direction
-        return firstPage.data.prevCursor || new Date().toISOString();
+        return pageData.prevCursor || new Date().toISOString();
       }
       return undefined;
     },
-    select: (data) => ({
-      pages: data.pages,
-      pageParams: data.pageParams,
-      matches: data.pages.flatMap((page) => (page.success && page.data ? page.data.matches : [])),
-      hasNextPage: data.pages[data.pages.length - 1]?.success
-        ? (data.pages[data.pages.length - 1] as { success: true; data: ScheduleResponse }).data?.hasMore ?? false
-        : false,
-      hasPreviousPage: data.pages[0]?.success ? (data.pages[0] as { success: true; data: ScheduleResponse }).data?.hasMore ?? false : false,
-      totalCount: data.pages[0]?.success ? (data.pages[0] as { success: true; data: ScheduleResponse }).data?.totalCount ?? 0 : 0
-    })
+    select: (data) => {
+      // Deduplicate matches by id — cursor-based pagination with gte/lte can include
+      // boundary matches in both adjacent pages when they share a scheduled_at timestamp
+      const allMatches = data.pages.flatMap((page) => (page.success && page.data ? page.data.matches : []));
+      const seen = new Set<number>();
+      const uniqueMatches = allMatches.filter((match) => {
+        if (seen.has(match.id)) return false;
+        seen.add(match.id);
+        return true;
+      });
+
+      return {
+        pages: data.pages,
+        pageParams: data.pageParams,
+        matches: uniqueMatches,
+        hasNextPage: data.pages[data.pages.length - 1]?.success
+          ? (data.pages[data.pages.length - 1] as { success: true; data: ScheduleResponse }).data?.hasMore ?? false
+          : false,
+        hasPreviousPage: data.pages[0]?.success ? (data.pages[0] as { success: true; data: ScheduleResponse }).data?.hasMore ?? false : false,
+        totalCount: data.pages[0]?.success ? (data.pages[0] as { success: true; data: ScheduleResponse }).data?.totalCount ?? 0 : 0
+      };
+    }
   });
 }
 
@@ -216,7 +230,7 @@ export function useTodayMatches(filters: ScheduleFilters = {}) {
  */
 export function useThisWeekMatches(filters: ScheduleFilters = {}) {
   const { currentSeason } = useSeason();
-  
+
   const today = useMemo(() => new Date(), []);
   const endOfWeek = useMemo(() => {
     const endDate = new Date(today);

@@ -105,13 +105,13 @@ export default function InfiniteSchedule({
   const hasScrolledRef = useRef(false);
   useEffect(() => {
     if (dateGroups.length === 0 || hasScrolledRef.current) return;
-    
+
     const today = new Date();
     const todayString = today.toISOString().split('T')[0];
-    
+
     // Find today's group or the nearest future date
     let targetGroup = dateGroups.find(g => g.date === todayString);
-    
+
     if (!targetGroup) {
       // Find nearest date (closest to today)
       let closestIndex = 0;
@@ -126,11 +126,11 @@ export default function InfiniteSchedule({
       });
       targetGroup = dateGroups[closestIndex];
     }
-    
+
     if (targetGroup) {
       // Update the displayed date to the target group's date
       setDisplayedDate(getValidDate(targetGroup.date));
-      
+
       // Delay slightly to ensure DOM is ready
       setTimeout(() => {
         const element = document.getElementById(`date-group-${targetGroup!.date}`);
@@ -216,11 +216,12 @@ export default function InfiniteSchedule({
 
     topObserverRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMorePast && !isLoading) {
+        // Only load past if user has actually scrolled near the top (not on initial page load)
+        if (entries[0].isIntersecting && hasMorePast && !isLoading && window.scrollY > 200) {
           onLoadMore?.('past');
         }
       },
-      { threshold: 0.1 }
+      { threshold: 1.0, rootMargin: '-100px 0px 0px 0px' }
     );
 
     if (topLoadMoreRef.current) {
@@ -259,10 +260,10 @@ export default function InfiniteSchedule({
     const element = document.getElementById(`date-group-${dateStr}`);
     if (element) {
       // Offset for sticky navigation headers (approx 160px for navbar + date string + filters)
-      const headerOffset = 180; 
+      const headerOffset = 180;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - headerOffset;
-      
+
       window.scrollTo({
         top: offsetPosition,
         behavior: 'smooth'
@@ -288,7 +289,7 @@ export default function InfiniteSchedule({
     }
 
     if (targetGroup) {
-        scrollToDateGroup(targetGroup.date);
+      scrollToDateGroup(targetGroup.date);
     }
   }, [dateGroups, scrollToDateGroup]);
 
