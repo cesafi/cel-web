@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ChevronDown, Youtube, Facebook, Calendar, Trophy, GraduationCap, HeartHandshake, Info, HelpCircle, Mail, Circle, Activity, LucideIcon } from 'lucide-react'
+import { Menu, X, ChevronDown, Youtube, Facebook, Calendar, Trophy, GraduationCap, HeartHandshake, Info, HelpCircle, Mail, Circle, Activity, LucideIcon, Newspaper, Home } from 'lucide-react'
 import Link from 'next/link'
 import { roboto } from '@/lib/fonts'
 import ThemeSwitcher from '@/components/theme-switcher'
@@ -23,6 +23,8 @@ const iconMap: Record<string, LucideIcon> = {
   'Contact Us': Mail,
   'Statistics': Activity,
   'Sponsors': HeartHandshake,
+  'News': Newspaper,
+  'Home': Home
 }
 
 // Subtitle mapping for navigation items
@@ -36,6 +38,8 @@ const subtitleMap: Record<string, string> = {
   'FAQ': 'Frequently asked questions',
   'Contact Us': 'Get in touch with us',
   'Sponsors': 'Supporting organizations',
+  'News': 'Latest news and updates',
+  'Home': 'Back to homepage'
 }
 
 // Custom Dropdown Component
