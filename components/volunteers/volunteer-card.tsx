@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { roboto } from '@/lib/fonts';
+import { roboto, moderniz } from '@/lib/fonts';
 import type { Volunteer } from '@/lib/types/volunteers';
 
 interface VolunteerCardProps {
@@ -81,44 +81,42 @@ export default function VolunteerCard({ volunteer }: VolunteerCardProps) {
           </div>
 
           {/* Volunteer Info */}
-          <div className="text-center flex-1 flex flex-col">
+          <div className="text-center flex-1 flex flex-col items-center justify-center pt-1 sm:pt-2 pb-1">
             {(() => {
               const name = volunteer.full_name || 'Unknown Volunteer';
               const match = name.match(/^(.*?)\s*"([^"]+)"\s*(.*)$/);
               const cleanName = match ? `${match[1]}${match[3]}`.replace(/\s{2,}/g, ' ').trim() : name;
               const nickname = match ? match[2] : null;
 
+              if (nickname) {
+                return (
+                  <div className="flex flex-col items-center w-full gap-0.5 sm:gap-1 mb-2 sm:mb-3">
+                    <h4 className={`${moderniz.className} text-sm sm:text-base text-foreground truncate w-full`} title={nickname}>
+                      {nickname}
+                    </h4>
+                    <p className={`${roboto.className} text-[10px] sm:text-xs text-muted-foreground font-medium truncate w-full`} title={cleanName}>
+                      {cleanName}
+                    </p>
+                  </div>
+                );
+              }
+
               return (
-                <>
-                  <h4 className={`${roboto.className} font-semibold text-foreground text-xs sm:text-lg leading-tight ${nickname || volunteer.title ? 'mb-0.5' : 'mb-1'}`}
-                    style={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical' as const,
-                      overflow: 'hidden'
-                    }}
-                  >
+                <div className="flex flex-col items-center justify-center w-full min-h-[36px] sm:min-h-[44px] mb-2 sm:mb-3">
+                  <h4 className={`${roboto.className} text-xs sm:text-sm font-bold text-foreground line-clamp-2 w-full`} title={cleanName}>
                     {cleanName}
                   </h4>
-                  {nickname && (
-                    <p className={`${roboto.className} text-[10px] sm:text-sm italic text-primary/90 font-medium ${volunteer.title ? 'mb-0' : 'mb-1 sm:mb-2'}`}>
-                      &ldquo;{nickname}&rdquo;
-                    </p>
-                  )}
-                </>
+                </div>
               );
             })()}
-            {volunteer.title && (
-              <p className={`${roboto.className} text-[9px] sm:text-xs text-muted-foreground/80 font-medium tracking-wide uppercase mb-1 sm:mb-2`}>
-                {volunteer.title}
-              </p>
-            )}
 
-            {/* Joined Date */}
-            <div className="flex items-center justify-center gap-1 sm:gap-2 text-muted-foreground text-[10px] sm:text-sm mt-auto">
-              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span>Joined {formatDate(volunteer.created_at)}</span>
-            </div>
+            {volunteer.title && (
+              <div className="mt-auto">
+                <span className={`inline-flex items-center rounded-md bg-primary/10 border border-primary/20 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[8.5px] sm:text-[10px] font-semibold text-primary uppercase tracking-wider ${roboto.className}`}>
+                  {volunteer.title}
+                </span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
