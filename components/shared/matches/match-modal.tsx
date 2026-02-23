@@ -40,7 +40,7 @@ export function MatchModal({
 }: MatchModalProps) {
   const { data: stages } = useAllEsportsSeasonsStages();
   const { data: availableTeams = [], isLoading: teamsLoading } = useStageTeams(selectedStageId || 0);
-  
+
   const [formData, setFormData] = useState<MatchInsert | MatchUpdate>({
     name: '',
     description: '',
@@ -54,7 +54,7 @@ export function MatchModal({
   });
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const hasStartedCreating = useRef(false);
   const hasStartedUpdating = useRef(false);
 
@@ -69,11 +69,11 @@ export function MatchModal({
   useEffect(() => {
     if (mode === 'add' && selectedTeamIds.length > 0 && availableTeams.length > 0) {
       const selectedTeams = availableTeams.filter(team => selectedTeamIds.includes(team.id));
-      
+
       if (selectedTeams.length > 0 && selectedStage) {
         // Filter out teams without schools data
         const teamsWithSchools = selectedTeams.filter(team => team.schools != null);
-        
+
         const matchParticipants = teamsWithSchools.map(team => ({
           id: team.id,
           name: team.name,
@@ -87,7 +87,7 @@ export function MatchModal({
         const sportName = selectedStage.esports_categories?.esports?.name || 'Unknown Sport';
         const division = selectedStage.esports_categories?.division || 'mixed';
         const level = selectedStage.esports_categories?.levels || 'college';
-        
+
         const generatedName = generateMatchName(matchParticipants);
         const generatedDescription = generateMatchDescription(
           matchParticipants,
@@ -229,9 +229,9 @@ export function MatchModal({
           <Button type="button" variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            form="match-form" 
+          <Button
+            type="submit"
+            form="match-form"
             variant="primary"
             disabled={isSubmitting}
           >
@@ -272,7 +272,7 @@ export function MatchModal({
             </CardHeader>
             <CardContent className="space-y-4">
 
-              
+
               {teamsLoading ? (
                 <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
                   Loading available teams...
@@ -291,7 +291,7 @@ export function MatchModal({
                         onCheckedChange={(checked) => handleTeamSelection(team.id, checked as boolean)}
                       />
                       <Label htmlFor={`team-${team.id}`} className="flex-1 cursor-pointer">
-                        <div className="font-medium">{team.schools!.abbreviation} {team.name}</div>
+                        <div className="font-medium">{team.name}</div>
                         <div className="text-sm text-muted-foreground">{team.schools!.name}</div>
                       </Label>
                     </div>
@@ -313,60 +313,42 @@ export function MatchModal({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Auto-generated Match Name - Display Only */}
-            {mode === 'add' && formData.name && (
-              <div className="space-y-2">
-                <Label>Generated Match Name</Label>
-                <div className="p-3 bg-muted rounded-lg text-sm">
-                  <div className="font-medium">{formData.name}</div>
-                </div>
-              </div>
-            )}
+            {/* Match Name */}
+            <div className="space-y-2">
+              <Label htmlFor="matchName">Match Name *</Label>
+              <Input
+                id="matchName"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder={mode === 'add' ? 'Auto-generated when teams are selected' : 'Enter match name'}
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {mode === 'add' && formData.name && (
+                <p className="text-xs text-muted-foreground">Auto-generated from selected teams. You can edit this.</p>
+              )}
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name}</p>
+              )}
+            </div>
 
-            {/* Match Name - Editable for Edit Mode */}
-            {mode === 'edit' && (
-              <div className="space-y-2">
-                <Label htmlFor="matchName">Match Name *</Label>
-                <Input
-                  id="matchName"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter match name"
-                  className={errors.name ? 'border-red-500' : ''}
-                />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name}</p>
-                )}
-              </div>
-            )}
-
-            {/* Auto-generated Description - Display Only */}
-            {mode === 'add' && formData.description && (
-              <div className="space-y-2">
-                <Label>Generated Description</Label>
-                <div className="p-3 bg-muted rounded-lg text-sm">
-                  {formData.description}
-                </div>
-              </div>
-            )}
-
-            {/* Match Description - Editable for Edit Mode */}
-            {mode === 'edit' && (
-              <div className="space-y-2">
-                <Label htmlFor="matchDescription">Description *</Label>
-                <Textarea
-                  id="matchDescription"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter match description"
-                  className={errors.description ? 'border-red-500' : ''}
-                  rows={3}
-                />
-                {errors.description && (
-                  <p className="text-sm text-red-500">{errors.description}</p>
-                )}
-              </div>
-            )}
+            {/* Match Description */}
+            <div className="space-y-2">
+              <Label htmlFor="matchDescription">Description *</Label>
+              <Textarea
+                id="matchDescription"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder={mode === 'add' ? 'Auto-generated when teams are selected' : 'Enter match description'}
+                className={errors.description ? 'border-red-500' : ''}
+                rows={2}
+              />
+              {mode === 'add' && formData.description && (
+                <p className="text-xs text-muted-foreground">Auto-generated from selected teams. You can edit this.</p>
+              )}
+              {errors.description && (
+                <p className="text-sm text-red-500">{errors.description}</p>
+              )}
+            </div>
 
             {/* Venue */}
             <div className="space-y-2">
@@ -426,7 +408,7 @@ export function MatchModal({
               </div>
             </div>
             <p className="text-muted-foreground mt-2 text-xs">
-              Match start and end times will be set when the match actually begins and ends. 
+              Match start and end times will be set when the match actually begins and ends.
               These can be updated later during match management.
             </p>
           </CardContent>

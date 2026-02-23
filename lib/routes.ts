@@ -35,8 +35,11 @@ export const PUBLIC_ROUTES = [
   '/matches/[matchId]',
 
   // Error pages
-  '/not-found',
   '/no-access',
+
+  // API Routes
+  '/api/image-proxy',
+  '/api/games/draft/[gameId]',
 
   // Lobby
   '/lobby/[matchId]'
@@ -56,6 +59,7 @@ export const PROTECTED_ROUTES = [
   '/admin/league-stage',
   '/admin/matches',
   '/admin/matches/[id]',
+  '/admin/matches/[id]/games/[gameId]',
   '/admin/photo-gallery',
   '/admin/school-teams',
   '/admin/schools',
@@ -79,6 +83,7 @@ export const PROTECTED_ROUTES = [
   '/league-operator',
   '/league-operator/matches',
   '/league-operator/matches/[id]',
+  '/league-operator/matches/[id]/games/[gameId]',
 
   // Writer routes
   '/writer',
@@ -119,6 +124,8 @@ export const ROUTE_PATTERNS = {
     /^\/matches\/[^\/]+$/, // /matches/[matchId]
     /^\/not-found$/,
     /^\/no-access$/,
+    /^\/api\/image-proxy(\?.*)?$/,
+    /^\/api\/games\/draft\/[^\/]+$/, // /api/games/draft/[gameId]
     /^\/lobby\/[^\/]+$/ // /lobby/[matchId]
   ],
 
@@ -136,7 +143,7 @@ export const ROUTE_PATTERNS = {
     /^\/admin\/league-stage$/,
     /^\/admin\/matches$/,
     /^\/admin\/matches\/[^\/]+$/, // /admin/matches/[id]
-    /^\/admin\/matches\/[^\/]+\/manage$/, // /admin/matches/[id]/manage
+    /^\/admin\/matches\/[^\/]+\/games\/[^\/]+$/, // /admin/matches/[id]/games/[gameId]
     /^\/admin\/photo-gallery$/,
     /^\/admin\/school-teams$/,
     /^\/admin\/schools$/,
@@ -160,6 +167,7 @@ export const ROUTE_PATTERNS = {
     /^\/league-operator$/,
     /^\/league-operator\/matches$/,
     /^\/league-operator\/matches\/[^\/]+$/, // /league-operator/matches/[id]
+    /^\/league-operator\/matches\/[^\/]+\/games\/[^\/]+$/, // /league-operator/matches/[id]/games/[gameId]
 
     // Writer routes
     /^\/writer$/,

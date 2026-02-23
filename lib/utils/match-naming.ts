@@ -8,8 +8,8 @@ export interface MatchParticipant {
 }
 
 /**
- * Generates a consistent match name based on participating teams
- * Format: "ABBREV Team vs ABBREV Team"
+ * Generates a match name using school abbreviations
+ * Format: "USJ-R vs UCMN"
  */
 export function generateMatchName(participants: MatchParticipant[]): string {
   if (participants.length === 0) {
@@ -17,56 +17,68 @@ export function generateMatchName(participants: MatchParticipant[]): string {
   }
 
   if (participants.length === 1) {
-    const team = participants[0];
-    return `${team.schools.abbreviation} ${team.name} vs TBD`;
+    return `${participants[0].schools.abbreviation} vs TBD`;
   }
 
   if (participants.length === 2) {
     const [team1, team2] = participants;
-    return `${team1.schools.abbreviation} ${team1.name} vs ${team2.schools.abbreviation} ${team2.name}`;
+    return `${team1.schools.abbreviation} vs ${team2.schools.abbreviation}`;
   }
 
   // For more than 2 teams (multi-team matches)
-  const teamNames = participants.map((p) => `${p.schools.abbreviation} ${p.name}`);
-  return teamNames.join(' vs ');
+  const abbrevs = participants.map((p) => p.schools.abbreviation);
+  return abbrevs.join(' vs ');
 }
 
 /**
- * Generates a match description based on participating teams and competition details
+ * Generates a match description with score placeholders and stage info
+ * Format: "USJ-R (0) vs (0) UCMN - VALO Groupstage"
  */
 export function generateMatchDescription(
   participants: MatchParticipant[],
   competitionStage: string,
   sportName: string,
-  division: string,
-  level: string
+  _division: string,
+  _level: string
 ): string {
   const stageFormatted = competitionStage
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (l) => l.toUpperCase());
-  const divisionFormatted = division.charAt(0).toUpperCase() + division.slice(1);
-  const levelFormatted = level.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+  // Shorten common sport names for the description
+  const sportShort = shortenSportName(sportName);
 
   if (participants.length === 0) {
-    return `${stageFormatted} match in ${sportName} (${divisionFormatted} ${levelFormatted})`;
+    return `TBD (0) vs (0) TBD - ${sportShort} ${stageFormatted}`;
   }
 
   if (participants.length === 1) {
-    const team = participants[0];
-    return `${stageFormatted} match featuring ${team.schools.name} ${team.name} in ${sportName} (${divisionFormatted} ${levelFormatted})`;
+    return `${participants[0].schools.abbreviation} (0) vs (0) TBD - ${sportShort} ${stageFormatted}`;
   }
 
   if (participants.length === 2) {
     const [team1, team2] = participants;
-    return `${stageFormatted} match between ${team1.schools.name} ${team1.name} and ${team2.schools.name} ${team2.name} in ${sportName} (${divisionFormatted} ${levelFormatted})`;
+    return `${team1.schools.abbreviation} (0) vs (0) ${team2.schools.abbreviation} - ${sportShort} ${stageFormatted}`;
   }
 
   // For more than 2 teams
-  const schoolNames = participants.map((p) => `${p.schools.name} ${p.name}`);
-  const lastTeam = schoolNames.pop();
-  const otherTeams = schoolNames.join(', ');
+  const abbrevs = participants.map((p) => `${p.schools.abbreviation} (0)`);
+  return `${abbrevs.join(' vs ')} - ${sportShort} ${stageFormatted}`;
+}
 
-  return `${stageFormatted} match between ${otherTeams} and ${lastTeam} in ${sportName} (${divisionFormatted} ${levelFormatted})`;
+/**
+ * Shortens common sport names for compact display
+ */
+function shortenSportName(name: string): string {
+  const shortNames: Record<string, string> = {
+    'Mobile Legends: Bang Bang': 'MLBB',
+    'VALORANT': 'VALO',
+    'Valorant': 'VALO',
+    'League of Legends': 'LoL',
+    'League of Legends: Wild Rift': 'WR',
+    'Call of Duty: Mobile': 'CODM',
+  };
+  return shortNames[name] || name;
 }
 
 /**
@@ -78,8 +90,7 @@ export function generateMatchTitle(participants: MatchParticipant[]): string {
   }
 
   if (participants.length === 1) {
-    const team = participants[0];
-    return `${team.schools.abbreviation} vs TBD`;
+    return `${participants[0].schools.abbreviation} vs TBD`;
   }
 
   if (participants.length === 2) {
@@ -92,3 +103,4 @@ export function generateMatchTitle(participants: MatchParticipant[]): string {
   const lastTeam = participants[participants.length - 1];
   return `${firstTeam.schools.abbreviation} vs ${lastTeam.schools.abbreviation} (+${participants.length - 2})`;
 }
+

@@ -48,4 +48,22 @@ export class GameRosterService extends BaseService {
       return this.formatError(err, `Failed to update roster entry.`);
     }
   }
+
+  /**
+   * Remove a roster entry (unassign a player from a specific slot).
+   */
+  static async deleteBySlot(gameId: number, teamId: string, sortOrder: number): Promise<ServiceResponse<void>> {
+    try {
+      const supabase = await this.getClient();
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .delete()
+        .match({ game_id: gameId, team_id: teamId, sort_order: sortOrder });
+
+      if (error) throw error;
+      return { success: true, data: undefined as any };
+    } catch (err) {
+      return this.formatError(err, `Failed to remove roster entry.`);
+    }
+  }
 }

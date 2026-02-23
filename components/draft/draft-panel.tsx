@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { LazyImage } from '@/components/draft/lazy-image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,29 +9,32 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Search, 
-  Ban, 
-  Users, 
-  RotateCcw,
-  Play,
-  Pause,
-  Timer,
-  Check,
-  Lock,
-  Undo2
+import {
+    Search,
+    Ban,
+    RotateCcw,
+    Timer,
+    Check,
+    Lock,
+    Undo2,
+    Wand2,
+    ChevronDown,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import Image from 'next/image';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 
 // Types
 import { GameCharacter } from '@/lib/types/game-characters';
-import { 
-  GameDraftAction, 
-  calculateDraftState,
-  DraftState,
-  MLBB_DRAFT_SEQUENCE
+import {
+    GameDraftAction,
+    calculateDraftState,
+    MLBB_DRAFT_SEQUENCE
 } from '@/lib/types/game-draft';
 
 // Services & Hooks
@@ -40,405 +44,807 @@ import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUn
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
 
 interface DraftPanelProps {
-  gameId: number;
-  matchId: number;
-  esportId: number;
-  team1: {
-    id: string;
-    name: string;
-    abbreviation: string;
-    logoUrl?: string | null;
-  };
-  team2: {
-    id: string;
-    name: string;
-    abbreviation: string;
-    logoUrl?: string | null;
-  };
-  team1Players?: { id: string; ign: string; role: string | null }[];
-  team2Players?: { id: string; ign: string; role: string | null }[];
-  isAdmin?: boolean;
-}
-
-interface AssignedPlayer {
-    player_id: string;
-    player_role: string;
-    sort_order: number;
+    gameId: number;
+    matchId: number;
+    esportId: number;
+    team1: {
+        id: string;
+        name: string;
+        abbreviation: string;
+        logoUrl?: string | null;
+    };
+    team2: {
+        id: string;
+        name: string;
+        abbreviation: string;
+        logoUrl?: string | null;
+    };
+    team1Players?: { id: string; ign: string; role: string | null }[];
+    team2Players?: { id: string; ign: string; role: string | null }[];
+    isAdmin?: boolean;
+    isValorant?: boolean;
 }
 
 // Role colors for visual distinction
 const roleColors: Record<string, string> = {
-  'Tank': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  'Fighter': 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-  'Assassin': 'bg-red-500/10 text-red-500 border-red-500/20',
-  'Mage': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  'Marksman': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-  'Support': 'bg-green-500/10 text-green-500 border-green-500/20',
+    // MLBB
+    'Tank': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    'Fighter': 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+    'Assassin': 'bg-red-500/10 text-red-500 border-red-500/20',
+    'Mage': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+    'Marksman': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+    'Support': 'bg-green-500/10 text-green-500 border-green-500/20',
+    // VALO
+    'Duelist': 'bg-red-500/10 text-red-500 border-red-500/20',
+    'Controller': 'bg-green-500/10 text-green-500 border-green-500/20',
+    'Initiator': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    'Sentinel': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
 };
 
 const roleTextColors: Record<string, string> = {
-  'Tank': 'text-blue-500',
-  'Fighter': 'text-orange-500',
-  'Assassin': 'text-red-500',
-  'Mage': 'text-purple-500',
-  'Marksman': 'text-yellow-500',
-  'Support': 'text-green-500',
+    'Tank': 'text-blue-500',
+    'Fighter': 'text-orange-500',
+    'Assassin': 'text-red-500',
+    'Mage': 'text-purple-500',
+    'Marksman': 'text-yellow-500',
+    'Support': 'text-green-500',
+    'Duelist': 'text-red-500',
+    'Controller': 'text-green-500',
+    'Initiator': 'text-blue-500',
+    'Sentinel': 'text-yellow-500',
 };
 
+// Standard MLBB role mapping for auto-fill
+const MLBB_SLOT_ROLES = ['Fighter', 'Marksman', 'Mage', 'Assassin', 'Tank'];
+const MLBB_SLOT_LABELS = ['EXP', 'GOLD', 'MID', 'JUNGLE', 'ROAM'];
+
 export function DraftPanel({
-  gameId,
-  matchId,
-  esportId,
-  team1,
-  team2,
-  team1Players,
-  team2Players,
-  isAdmin = false,
+    gameId,
+    matchId,
+    esportId,
+    team1,
+    team2,
+    team1Players,
+    team2Players,
+    isAdmin = false,
+    isValorant = false,
 }: DraftPanelProps) {
-  const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [timer, setTimer] = useState(30);
+    const queryClient = useQueryClient();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedRole, setSelectedRole] = useState<string | null>(null);
+    const [timer, setTimer] = useState(30);
 
-  // 1. Fetch Characters
-  const { data: characters = [], isLoading: isLoadingCharacters } = useQuery({
-    queryKey: ['game-characters', esportId],
-    queryFn: async () => {
-      const result = await getGameCharactersByEsportId(esportId);
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
-    enabled: !!esportId,
-  });
-
-  // 2. Fetch Draft Actions
-  const { data: actions = [], isLoading: isLoadingActions, refetch: refetchActions } = useGameDraftActions(gameId);
-
-  // 3. Fetch Game Rosters (Pre-assigned slots)
-  const { data: rosters = [], refetch: refetchRosters } = useQuery({
-    queryKey: ['game-rosters', gameId],
-    queryFn: async () => {
-        const result = await GameRosterService.getByGameId(gameId);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
-    },
-    enabled: !!gameId
-  });
-
-  // 4. Realtime Subscription
-
-  // 3. Realtime Subscription
-  useRealtimeDraft(gameId, (payload) => {
-    // Optimistic updates could go here, but refetch is safer for sequence consistency
-    refetchActions();
-    refetchRosters();
-    setTimer(30); // Reset timer on new action
-  });
-
-  // 4. Derive State
-  const draftState = useMemo(() => 
-    calculateDraftState(gameId, matchId, team1.id, team2.id, actions),
-    [gameId, matchId, team1.id, team2.id, actions]
-  );
-  
-  // Filter rosters by team
-  const team1Roster = useMemo(() => rosters.filter(r => r.team_id === team1.id), [rosters, team1.id]);
-  const team2Roster = useMemo(() => rosters.filter(r => r.team_id === team2.id), [rosters, team2.id]);
-  
-  // Mutation for assigning player
-  const assignPlayerMutation = useMutation({
-      mutationFn: async (data: { teamId: string, playerId: string, role: string, sortOrder: number }) => {
-          const result = await GameRosterService.upsert({
-              game_id: gameId,
-              team_id: data.teamId,
-              player_id: data.playerId,
-              player_role: data.role,
-              sort_order: data.sortOrder
-          });
-          if (!result.success) throw new Error(result.error);
-          return result;
-      },
-      onSuccess: () => {
-          refetchRosters();
-          toast.success("Player assigned");
-      },
-      onError: () => toast.error("Failed to assign player")
-  });
-
-  // 5. Mutations
-  const submitActionMutation = useSubmitGameDraftAction({
-    onSuccess: () => {
-      refetchActions();
-      toast.success('Action recorded');
-    }
-  });
-
-  const resetDraftMutation = useResetGameDraft({
-    onSuccess: () => {
-      refetchActions();
-    }
-  });
-
-  const undoActionMutation = useUndoLastGameDraftAction({
-    onSuccess: () => {
-      refetchActions();
-    }
-  });
-
-  // 6. Interaction Handlers
-  const handleCharacterSelect = (character: GameCharacter) => {
-    if (!draftState.nextAction || !isAdmin) return;
-    
-    // Check if already taken
-    if (actions.some(a => a.hero_name === character.name)) {
-        toast.error('Hero already selected or banned');
-        return;
-    }
-
-    submitActionMutation.mutate({ 
-      game_id: gameId,
-      team_id: draftState.nextAction.team === 'team1' ? team1.id : team2.id,
-      hero_name: character.name,
-      hero_id: character.id,
-      action_type: draftState.nextAction.action,
-      sort_order: draftState.currentStepIndex + 1,
-      is_locked: true
+    // 1. Fetch Characters
+    const { data: characters = [], isLoading: isLoadingCharacters } = useQuery({
+        queryKey: ['game-characters', esportId],
+        queryFn: async () => {
+            const result = await getGameCharactersByEsportId(esportId);
+            if (!result.success) throw new Error(result.error);
+            return result.data;
+        },
+        enabled: !!esportId,
     });
-  };
 
-  // 7. Timer Logic
-  useEffect(() => {
-    if (draftState.isComplete || timer <= 0) return;
-    const interval = setInterval(() => setTimer(t => t - 1), 1000);
-    return () => clearInterval(interval);
-  }, [timer, draftState.isComplete]);
+    // 2. Fetch Draft Actions
+    const { data: actions = [], isLoading: isLoadingActions, refetch: refetchActions } = useGameDraftActions(gameId);
 
-
-  // Filtering
-  const filteredCharacters = useMemo(() => {
-    return characters.filter(char => {
-      const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRole = !selectedRole || char.role === selectedRole;
-      return matchesSearch && matchesRole;
+    // 3. Fetch Game Rosters
+    const { data: rosters = [], refetch: refetchRosters } = useQuery({
+        queryKey: ['game-rosters', gameId],
+        queryFn: async () => {
+            const result = await GameRosterService.getByGameId(gameId);
+            if (!result.success) throw new Error(result.error);
+            return result.data;
+        },
+        enabled: !!gameId
     });
-  }, [characters, searchQuery, selectedRole]);
 
-  const uniqueRoles = useMemo(() => 
-    [...new Set(characters.map(char => char.role))].sort(),
-    [characters]
-  );
+    // 4. Realtime
+    useRealtimeDraft(gameId, () => {
+        refetchActions();
+        refetchRosters();
+        setTimer(30);
+    });
 
-  if (isLoadingCharacters || isLoadingActions) {
-    return <DraftPanelSkeleton />;
-  }
+    // 5. Derive State (MLBB only)
+    const draftState = useMemo(() =>
+        calculateDraftState(gameId, matchId, team1.id, team2.id, actions),
+        [gameId, matchId, team1.id, team2.id, actions]
+    );
 
-  const currentAction = draftState.nextAction;
-  const activeTeam = currentAction?.team === 'team1' ? team1 : team2;
-  const isBanPhase = currentAction?.action === 'ban';
+    const team1Roster = useMemo(() => rosters.filter(r => r.team_id === team1.id), [rosters, team1.id]);
+    const team2Roster = useMemo(() => rosters.filter(r => r.team_id === team2.id), [rosters, team2.id]);
 
-  return (
-    <div className="space-y-6 pb-20">
-      {/* Draft Header */}
-      <Card className="flex flex-col md:flex-row items-center justify-between gap-4 p-4">
-        
-        {/* Status Badge */}
-        <div className="flex items-center gap-4">
-          {!draftState.isComplete ? (
-               <Badge 
-               variant="outline" 
-               className={cn(
-                 'text-lg px-6 py-2 border-2',
-                 isBanPhase
-                   ? 'border-red-500/50 text-red-500 bg-red-500/10' 
-                   : 'border-blue-500/50 text-blue-500 bg-blue-500/10'
-               )}
-             >
-                 <div className="flex items-center gap-2">
-                     {isBanPhase ? <Ban className="w-5 h-5" /> : <Check className="w-5 h-5" />}
-                     <span className="font-bold">
-                        {isBanPhase ? 'BAN PHASE' : 'PICK PHASE'}
-                     </span>
-                     <span className="opacity-50 mx-2">|</span>
-                     <span>{activeTeam?.abbreviation} Turn</span>
-                 </div>
-             </Badge>
-          ) : (
-                <Badge className="text-lg px-6 py-2 bg-green-500 text-white">Draft Complete</Badge>
-          )}
+    // Mutations
+    const assignPlayerMutation = useMutation({
+        mutationFn: async (data: { teamId: string, playerId: string, role: string, sortOrder: number }) => {
+            const result = await GameRosterService.upsert({
+                game_id: gameId,
+                team_id: data.teamId,
+                player_id: data.playerId,
+                player_role: data.role,
+                sort_order: data.sortOrder
+            });
+            if (!result.success) throw new Error(result.error);
+            return result;
+        },
+        onSuccess: () => {
+            refetchRosters();
+            toast.success("Player assigned");
+        },
+        onError: () => toast.error("Failed to assign player")
+    });
 
-          {!draftState.isComplete && (
-            <div className="flex items-center gap-2 font-mono text-xl font-bold text-amber-500">
-                <Timer className="w-5 h-5" />
-                {timer}s
-            </div>
-          )}
-        </div>
+    const unassignPlayerMutation = useMutation({
+        mutationFn: async (data: { teamId: string, sortOrder: number }) => {
+            const result = await GameRosterService.deleteBySlot(gameId, data.teamId, data.sortOrder);
+            if (!result.success) throw new Error(result.error);
+            return result;
+        },
+        onSuccess: () => {
+            refetchRosters();
+            toast.success("Player removed");
+        },
+        onError: () => toast.error("Failed to remove player")
+    });
 
-        {/* Admin Controls */}
-        {isAdmin && (
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => undoActionMutation.mutate(gameId)}
-              disabled={undoActionMutation.isPending || actions.length === 0}
-            >
-              <Undo2 className="w-4 h-4 mr-2" />
-              Undo Last
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => resetDraftMutation.mutate(gameId)}
-              disabled={resetDraftMutation.isPending}
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset Draft
-            </Button>
-          </div>
-        )}
-      </Card>
+    const submitActionMutation = useSubmitGameDraftAction({
+        onSuccess: () => {
+            refetchActions();
+            toast.success('Action recorded');
+        }
+    });
 
-      {/* Main Draft Area */}
-      <div className="grid grid-cols-12 gap-6">
-          
-          {/* Team 1 Panel */}
-          <div className="col-span-12 md:col-span-3 space-y-4">
-               <TeamDraftColumn 
-                team={team1}
-                bans={draftState.team1Bans}
-                picks={draftState.team1Picks}
-                roster={team1Roster}
-                players={team1Players || []}
-                onAssignPlayer={(playerId, role, sortOrder) => assignPlayerMutation.mutate({ 
-                    teamId: team1.id, playerId, role, sortOrder 
-                })}
-                isActive={currentAction?.team === 'team1'}
-                characters={characters}
-                isAdmin={isAdmin}
-               />
-          </div>
+    const resetDraftMutation = useResetGameDraft({
+        onSuccess: () => refetchActions()
+    });
 
-          {/* Hero Pool */}
-          <div className="col-span-12 md:col-span-6">
-            <Card className="h-full">
-                <CardHeader className="pb-2">
-                    <div className="flex gap-2 mb-4">
-                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search heroes..." 
-                                className="pl-10"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                         </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                        <Button 
-                            variant={selectedRole === null ? "default" : "ghost"} 
-                            size="sm" 
-                            className="h-7 text-xs"
-                            onClick={() => setSelectedRole(null)}
-                        >
-                            All
-                        </Button>
-                        {uniqueRoles.map(role => (
-                             <Button 
-                                key={role}
-                                variant={selectedRole === role ? "default" : "ghost"}
-                                size="sm" 
-                                className={cn("h-7 text-xs", selectedRole !== role && roleTextColors[role])}
-                                onClick={() => setSelectedRole(role)}
-                             >
-                                {role}
+    const undoActionMutation = useUndoLastGameDraftAction({
+        onSuccess: () => refetchActions()
+    });
+
+    // MLBB handler
+    const handleCharacterSelect = (character: GameCharacter) => {
+        if (!draftState.nextAction || !isAdmin) return;
+        if (actions.some(a => a.hero_name === character.name)) {
+            toast.error('Hero already selected or banned');
+            return;
+        }
+        submitActionMutation.mutate({
+            game_id: gameId,
+            team_id: draftState.nextAction.team === 'team1' ? team1.id : team2.id,
+            hero_name: character.name,
+            hero_id: character.id,
+            action_type: draftState.nextAction.action,
+            sort_order: draftState.currentStepIndex + 1,
+            is_locked: true
+        });
+    };
+
+    // VALO free-pick handler
+    const handleValorantPick = (teamId: string, character: GameCharacter, slotIndex: number) => {
+        if (!isAdmin) return;
+        // Record as a pick action
+        const existingTeamPicks = actions.filter(a => a.team_id === teamId && a.action_type === 'pick');
+        const sortOrder = existingTeamPicks.length + 1;
+
+        submitActionMutation.mutate({
+            game_id: gameId,
+            team_id: teamId,
+            hero_name: character.name,
+            hero_id: character.id,
+            action_type: 'pick',
+            sort_order: (teamId === team1.id ? 0 : 100) + sortOrder,
+            is_locked: true
+        });
+    };
+
+    // Smart Auto-Fill
+    const handleAutoFill = async (teamId: string, players: { id: string; ign: string; role: string | null }[]) => {
+        if (!isAdmin || !players.length) return;
+
+        const existingRoster = rosters.filter(r => r.team_id === teamId);
+        const filledSlots = new Set(existingRoster.map(r => r.sort_order));
+        const assignedPlayerIds = new Set(existingRoster.map(r => r.player_id));
+
+        let filled = 0;
+        const slotRoles = isValorant ? ['Duelist', 'Duelist', 'Controller', 'Initiator', 'Sentinel'] : MLBB_SLOT_ROLES;
+
+        for (let i = 0; i < 5; i++) {
+            if (filledSlots.has(i)) continue; // Skip already filled
+
+            const targetRole = slotRoles[i];
+            // Find a player with matching role that isn't already assigned
+            const matchingPlayer = players.find(p =>
+                !assignedPlayerIds.has(p.id) &&
+                p.role?.toLowerCase() === targetRole.toLowerCase()
+            );
+
+            if (matchingPlayer) {
+                try {
+                    await GameRosterService.upsert({
+                        game_id: gameId,
+                        team_id: teamId,
+                        player_id: matchingPlayer.id,
+                        player_role: isValorant ? (matchingPlayer.role || targetRole) : (MLBB_SLOT_LABELS[i] || targetRole),
+                        sort_order: i
+                    });
+                    assignedPlayerIds.add(matchingPlayer.id);
+                    filled++;
+                } catch {
+                    // Continue filling other slots
+                }
+            }
+        }
+
+        // Fill remaining with any unassigned players
+        const remainingPlayers = players.filter(p => !assignedPlayerIds.has(p.id));
+        let remainingIdx = 0;
+        for (let i = 0; i < 5; i++) {
+            if (filledSlots.has(i) || assignedPlayerIds.has('slot_' + i)) continue;
+            // Check if we already filled this slot above
+            const alreadyFilled = rosters.some(r => r.team_id === teamId && r.sort_order === i) || filled > 0;
+            if (alreadyFilled) continue;
+
+            if (remainingIdx < remainingPlayers.length) {
+                const player = remainingPlayers[remainingIdx++];
+                try {
+                    await GameRosterService.upsert({
+                        game_id: gameId,
+                        team_id: teamId,
+                        player_id: player.id,
+                        player_role: isValorant ? (player.role || 'Flex') : (MLBB_SLOT_LABELS[i] || 'Flex'),
+                        sort_order: i
+                    });
+                    filled++;
+                } catch {
+                    // Continue
+                }
+            }
+        }
+
+        refetchRosters();
+        toast.success(`Auto-filled ${filled} player slot${filled !== 1 ? 's' : ''}`);
+    };
+
+    // Timer (MLBB only)
+    useEffect(() => {
+        if (isValorant || draftState.isComplete || timer <= 0) return;
+        const interval = setInterval(() => setTimer(t => t - 1), 1000);
+        return () => clearInterval(interval);
+    }, [timer, draftState.isComplete, isValorant]);
+
+    // Filtering
+    const filteredCharacters = useMemo(() => {
+        return characters.filter(char => {
+            const matchesSearch = char.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesRole = !selectedRole || char.role === selectedRole;
+            return matchesSearch && matchesRole;
+        });
+    }, [characters, searchQuery, selectedRole]);
+
+    const uniqueRoles = useMemo(() =>
+        [...new Set(characters.map(char => char.role))].sort(),
+        [characters]
+    );
+
+    // Already-taken character names
+    const takenCharacters = useMemo(() => new Set(actions.map(a => a.hero_name)), [actions]);
+
+    if (isLoadingCharacters || isLoadingActions) {
+        return <DraftPanelSkeleton />;
+    }
+
+    // ── VALORANT Free-Pick Mode ──
+    if (isValorant) {
+        return (
+            <div className="space-y-6 pb-10">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-sm px-4 py-1.5 border-primary/30 text-primary">
+                        Agent Select — Free Pick
+                    </Badge>
+                    {isAdmin && (
+                        <div className="flex gap-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => undoActionMutation.mutate(gameId)}
+                                disabled={undoActionMutation.isPending || actions.length === 0}
+                            >
+                                <Undo2 className="w-3.5 h-3.5 mr-1.5" />
+                                Undo
                             </Button>
-                        ))}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[500px] pr-4">
-                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-6 gap-2">
-                            {filteredCharacters.map(char => {
-                                const isTaken = actions.some(a => a.hero_name === char.name);
-                                return (
-                                    <CharacterCard
-                                        key={char.id}
-                                        character={char}
-                                        isTaken={isTaken}
-                                        isSelectable={!isTaken && isAdmin && !draftState.isComplete}
-                                        onClick={() => handleCharacterSelect(char)}
-                                    />
-                                );
-                            })}
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => resetDraftMutation.mutate(gameId)}
+                                disabled={resetDraftMutation.isPending}
+                            >
+                                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                                Reset
+                            </Button>
                         </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
-          </div>
+                    )}
+                </div>
 
-          {/* Team 2 Panel */}
-          <div className="col-span-12 md:col-span-3 space-y-4">
-               <TeamDraftColumn 
-                team={team2}
-                bans={draftState.team2Bans}
-                picks={draftState.team2Picks}
-                roster={team2Roster}
-                players={team2Players || []}
-                onAssignPlayer={(playerId, role, sortOrder) => assignPlayerMutation.mutate({ 
-                    teamId: team2.id, playerId, role, sortOrder 
-                })}
-                isActive={currentAction?.team === 'team2'}
-                characters={characters}
-                isRightSide
-                isAdmin={isAdmin}
-               />
-          </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Team 1 */}
+                    <ValorantTeamPanel
+                        team={team1}
+                        teamId={team1.id}
+                        picks={actions.filter(a => a.team_id === team1.id && a.action_type === 'pick')}
+                        roster={team1Roster}
+                        players={team1Players || []}
+                        characters={characters}
+                        takenCharacters={takenCharacters}
+                        isAdmin={isAdmin}
+                        onPickAgent={(char, slot) => handleValorantPick(team1.id, char, slot)}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
+                    />
+                    {/* Team 2 */}
+                    <ValorantTeamPanel
+                        team={team2}
+                        teamId={team2.id}
+                        picks={actions.filter(a => a.team_id === team2.id && a.action_type === 'pick')}
+                        roster={team2Roster}
+                        players={team2Players || []}
+                        characters={characters}
+                        takenCharacters={takenCharacters}
+                        isAdmin={isAdmin}
+                        onPickAgent={(char, slot) => handleValorantPick(team2.id, char, slot)}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
+                    />
+                </div>
+            </div>
+        );
+    }
 
-      </div>
-    </div>
-  );
+    // ── MLBB Sequential Draft Mode ──
+    const currentAction = draftState.nextAction;
+    const activeTeam = currentAction?.team === 'team1' ? team1 : team2;
+    const isBanPhase = currentAction?.action === 'ban';
+
+    return (
+        <div className="space-y-6 pb-10">
+            {/* Draft Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-4">
+                    {!draftState.isComplete ? (
+                        <Badge
+                            variant="outline"
+                            className={cn(
+                                'text-sm px-4 py-1.5 border-2',
+                                isBanPhase
+                                    ? 'border-red-500/50 text-red-500 bg-red-500/10'
+                                    : 'border-blue-500/50 text-blue-500 bg-blue-500/10'
+                            )}
+                        >
+                            <span className="flex items-center gap-2">
+                                {isBanPhase ? <Ban className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                                {isBanPhase ? 'BAN' : 'PICK'} — {activeTeam?.abbreviation}
+                            </span>
+                        </Badge>
+                    ) : (
+                        <Badge className="text-sm px-4 py-1.5 bg-green-500 text-white">Draft Complete</Badge>
+                    )}
+
+                    {!draftState.isComplete && (
+                        <span className="font-mono text-lg font-bold text-amber-500 flex items-center gap-1.5">
+                            <Timer className="w-4 h-4" />
+                            {timer}s
+                        </span>
+                    )}
+                </div>
+
+                {isAdmin && (
+                    <div className="flex gap-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => undoActionMutation.mutate(gameId)}
+                            disabled={undoActionMutation.isPending || actions.length === 0}
+                        >
+                            <Undo2 className="w-3.5 h-3.5 mr-1.5" />
+                            Undo
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => resetDraftMutation.mutate(gameId)}
+                            disabled={resetDraftMutation.isPending}
+                        >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                            Reset
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {/* Main Draft Area */}
+            <div className="grid grid-cols-12 gap-4">
+                {/* Team 1 */}
+                <div className="col-span-12 md:col-span-3">
+                    <MlbbTeamColumn
+                        team={team1}
+                        bans={draftState.team1Bans}
+                        picks={draftState.team1Picks}
+                        roster={team1Roster}
+                        players={team1Players || []}
+                        characters={characters}
+                        isActive={currentAction?.team === 'team1'}
+                        isAdmin={isAdmin}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
+                    />
+                </div>
+
+                {/* Hero Pool */}
+                <div className="col-span-12 md:col-span-6">
+                    <div className="rounded-xl border bg-card h-full">
+                        <div className="p-4 border-b space-y-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search heroes..."
+                                    className="pl-10"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                                <Button
+                                    variant={selectedRole === null ? "default" : "ghost"}
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => setSelectedRole(null)}
+                                >
+                                    All
+                                </Button>
+                                {uniqueRoles.map(role => (
+                                    <Button
+                                        key={role}
+                                        variant={selectedRole === role ? "default" : "ghost"}
+                                        size="sm"
+                                        className={cn("h-7 text-xs", selectedRole !== role && roleTextColors[role])}
+                                        onClick={() => setSelectedRole(role)}
+                                    >
+                                        {role}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                        <ScrollArea className="h-[500px] p-4">
+                            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2">
+                                {filteredCharacters.map(char => {
+                                    const isTaken = takenCharacters.has(char.name);
+                                    return (
+                                        <CharacterCard
+                                            key={char.id}
+                                            character={char}
+                                            isTaken={isTaken}
+                                            isSelectable={!isTaken && isAdmin && !draftState.isComplete}
+                                            onClick={() => handleCharacterSelect(char)}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                </div>
+
+                {/* Team 2 */}
+                <div className="col-span-12 md:col-span-3">
+                    <MlbbTeamColumn
+                        team={team2}
+                        bans={draftState.team2Bans}
+                        picks={draftState.team2Picks}
+                        roster={team2Roster}
+                        players={team2Players || []}
+                        characters={characters}
+                        isActive={currentAction?.team === 'team2'}
+                        isRightSide
+                        isAdmin={isAdmin}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
+                    />
+                </div>
+            </div>
+        </div>
+    );
 }
 
-// Sub-components
+// ══════════════════════════════════
+// VALORANT Team Panel (Free-Pick)
+// ══════════════════════════════════
 
-function TeamDraftColumn({ 
-    team, bans, picks, roster, players, onAssignPlayer, isActive, characters, isRightSide = false, isAdmin = false 
+function ValorantTeamPanel({
+    team, teamId, picks, roster, players, characters, takenCharacters, isAdmin,
+    onPickAgent, onAssignPlayer, onUnassignPlayer, onAutoFill
 }: {
-    team: DraftPanelProps['team1'],
-    bans: GameDraftAction[],
-    picks: GameDraftAction[],
-    roster: any[], // content of game_rosters
-    players: { id: string; ign: string; role: string | null }[],
-    onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void,
-    isActive: boolean;
+    team: DraftPanelProps['team1'];
+    teamId: string;
+    picks: GameDraftAction[];
+    roster: any[];
+    players: { id: string; ign: string; role: string | null }[];
     characters: GameCharacter[];
-    isRightSide?: boolean;
-    isAdmin?: boolean;
+    takenCharacters: Set<string>;
+    isAdmin: boolean;
+    onPickAgent: (char: GameCharacter, slotIndex: number) => void;
+    onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void;
+    onUnassignPlayer: (sortOrder: number) => void;
+    onAutoFill: () => void;
 }) {
-    // 5 Picks per team usually
+    const slots = Array.from({ length: 5 });
+
+    const getHeroIcon = (name: string) => characters.find(c => c.name === name)?.icon_url;
+
+    return (
+        <div className="rounded-xl border bg-card overflow-hidden">
+            {/* Team Header */}
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-background border overflow-hidden flex items-center justify-center shrink-0">
+                        {team.logoUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={team.logoUrl} alt={team.abbreviation} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-xs font-bold text-muted-foreground">{team.abbreviation.substring(0, 2)}</span>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="font-bold">{team.abbreviation}</h3>
+                        <p className="text-xs text-muted-foreground">{team.name}</p>
+                    </div>
+                </div>
+                {isAdmin && players.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={onAutoFill} className="text-xs">
+                        <Wand2 className="w-3.5 h-3.5 mr-1" />
+                        Auto-Fill
+                    </Button>
+                )}
+            </div>
+
+            {/* Agent Slots */}
+            <div className="p-4 space-y-2">
+                {slots.map((_, i) => {
+                    const pick = picks[i];
+                    const icon = pick ? getHeroIcon(pick.hero_name) : null;
+                    const rosterEntry = roster.find(r => r.sort_order === i);
+                    const playerDetails = rosterEntry ? players.find(p => p.id === rosterEntry.player_id) : null;
+                    const heroRole = pick ? characters.find(c => c.name === pick.hero_name)?.role : null;
+
+                    return (
+                        <div key={i} className="flex items-center gap-2">
+                            {/* Agent pick */}
+                            <div className="flex-1">
+                                {pick ? (
+                                    <div className={cn(
+                                        "flex items-center gap-3 p-2.5 rounded-lg border",
+                                        heroRole ? roleColors[heroRole]?.replace('/10', '/5') : 'bg-muted/30'
+                                    )}>
+                                        <LazyImage src={icon} alt={pick.hero_name} className="w-10 h-10 rounded-md" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-sm truncate">{pick.hero_name}</p>
+                                            {heroRole && (
+                                                <Badge variant="outline" className={cn("text-[10px] h-4 px-1", roleColors[heroRole])}>
+                                                    {heroRole}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <AgentPickerPopover
+                                        slotIndex={i}
+                                        characters={characters}
+                                        takenCharacters={takenCharacters}
+                                        isAdmin={isAdmin}
+                                        onPick={(char) => onPickAgent(char, i)}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Player assignment */}
+                            <div className="w-32 shrink-0">
+                                {playerDetails ? (
+                                    <div className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-md bg-muted/50 group relative">
+                                        <span className="font-medium truncate flex-1">{playerDetails.ign}</span>
+                                        {rosterEntry?.player_role && (
+                                            <Badge variant="outline" className={cn("text-[9px] h-3.5 px-1 shrink-0", roleColors[rosterEntry.player_role])}>
+                                                {rosterEntry.player_role.substring(0, 3)}
+                                            </Badge>
+                                        )}
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => onUnassignPlayer(i)}
+                                                className="absolute -right-2 -top-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity shadow-sm hover:scale-110"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    isAdmin && (
+                                        <PlayerPickerPopover
+                                            players={players}
+                                            slotIndex={i}
+                                            roster={roster}
+                                            onAssign={onAssignPlayer}
+                                        />
+                                    )
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════
+// Agent Picker Popover (VALO)
+// ══════════════════════════════════
+
+function AgentPickerPopover({
+    slotIndex, characters, takenCharacters, isAdmin, onPick
+}: {
+    slotIndex: number;
+    characters: GameCharacter[];
+    takenCharacters: Set<string>;
+    isAdmin: boolean;
+    onPick: (char: GameCharacter) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+
+    const filtered = characters.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) && !takenCharacters.has(c.name)
+    );
+
+    if (!isAdmin) {
+        return (
+            <div className="flex items-center justify-center p-3 rounded-lg border border-dashed text-xs text-muted-foreground">
+                Slot {slotIndex + 1} — Waiting
+            </div>
+        );
+    }
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button className="w-full flex items-center justify-between p-2.5 rounded-lg border border-dashed hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm text-muted-foreground">
+                    <span>Select Agent {slotIndex + 1}</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="start">
+                <div className="p-2 border-b">
+                    <Input
+                        placeholder="Search agents..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="h-8 text-sm"
+                    />
+                </div>
+                <ScrollArea className="max-h-64">
+                    <div className="grid grid-cols-4 gap-1 p-2">
+                        {filtered.map(char => (
+                            <button
+                                key={char.id}
+                                onClick={() => { onPick(char); setOpen(false); setSearch(''); }}
+                                className="aspect-square rounded-md overflow-hidden border hover:ring-2 hover:ring-primary transition-all relative group"
+                            >
+                                <LazyImage src={char.icon_url} alt={char.name} className="w-full h-full" />
+                                <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-sm px-0.5 py-0.5">
+                                    <p className="text-[8px] text-center truncate font-medium">{char.name}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+// ══════════════════════════════════
+// Player Picker Popover
+// ══════════════════════════════════
+
+function PlayerPickerPopover({
+    players, slotIndex, roster, onAssign
+}: {
+    players: { id: string; ign: string; role: string | null }[];
+    slotIndex: number;
+    roster: any[];
+    onAssign: (playerId: string, role: string, sortOrder: number) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const assignedIds = new Set(roster.map((r: any) => r.player_id));
+    const available = players.filter(p => !assignedIds.has(p.id));
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button className="w-full text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md border border-dashed hover:border-primary/30 transition-colors">
+                    Assign Player
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1" align="end">
+                <p className="text-[10px] font-semibold text-muted-foreground px-2 py-1">Select Player</p>
+                <ScrollArea className="max-h-40">
+                    {available.length > 0 ? available.map(p => (
+                        <button
+                            key={p.id}
+                            className="w-full text-left text-xs px-2 py-1.5 hover:bg-muted rounded-md flex items-center justify-between"
+                            onClick={() => {
+                                onAssign(p.id, p.role || 'Flex', slotIndex);
+                                setOpen(false);
+                            }}
+                        >
+                            <span className="font-medium">{p.ign}</span>
+                            {p.role && (
+                                <Badge variant="outline" className={cn("text-[9px] h-3.5 px-1", roleColors[p.role])}>
+                                    {p.role.substring(0, 3)}
+                                </Badge>
+                            )}
+                        </button>
+                    )) : (
+                        <p className="text-[10px] text-muted-foreground px-2 py-2">No players available</p>
+                    )}
+                </ScrollArea>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+// ══════════════════════════════════
+// MLBB Team Column (Sequential Draft)  
+// ══════════════════════════════════
+
+function MlbbTeamColumn({
+    team, bans, picks, roster, players, characters, isActive, isRightSide = false, isAdmin,
+    onAssignPlayer, onUnassignPlayer, onAutoFill
+}: {
+    team: DraftPanelProps['team1'];
+    bans: GameDraftAction[];
+    picks: GameDraftAction[];
+    roster: any[];
+    players: { id: string; ign: string; role: string | null }[];
+    characters: GameCharacter[];
+    isActive: boolean;
+    isRightSide?: boolean;
+    isAdmin: boolean;
+    onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void;
+    onUnassignPlayer: (sortOrder: number) => void;
+    onAutoFill: () => void;
+}) {
     const pickSlots = Array.from({ length: 5 });
-    // 5 Bans per team usually
     const banSlots = Array.from({ length: 5 });
 
     const getHeroIcon = (name: string) => characters.find(c => c.name === name)?.icon_url;
 
     return (
-        <div className={cn("space-y-6", isRightSide ? "text-right" : "text-left")}>
+        <div className={cn("space-y-4", isRightSide ? "text-right" : "text-left")}>
+            {/* Team Header */}
             <div className={cn(
-                "relative p-4 rounded-xl border transition-all duration-300 overflow-hidden",
-                isActive 
-                    ? "bg-primary/5 border-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]" 
+                "relative p-3 rounded-xl border transition-all overflow-hidden",
+                isActive
+                    ? "bg-primary/5 border-primary shadow-[0_0_12px_rgba(var(--primary),0.2)]"
                     : "bg-card border-border"
             )}>
-                 {/* Active Indicator Overlay (Border Glow) */}
-                 {isActive && (
+                {isActive && (
                     <div className="absolute inset-0 border-2 border-primary rounded-xl animate-pulse pointer-events-none" />
-                 )}
-
-                 <div className={cn("flex items-center gap-4", isRightSide ? "flex-row-reverse" : "flex-row")}>
-                     {/* Team Logo */}
-                     <div className="relative w-12 h-12 shrink-0 bg-background rounded-full overflow-hidden border border-border">
+                )}
+                <div className={cn("flex items-center gap-3", isRightSide ? "flex-row-reverse" : "flex-row")}>
+                    <div className="w-10 h-10 shrink-0 bg-background rounded-full overflow-hidden border">
                         {team.logoUrl ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img src={team.logoUrl} alt={team.abbreviation} className="w-full h-full object-cover" />
@@ -447,217 +853,176 @@ function TeamDraftColumn({
                                 {team.abbreviation.substring(0, 2)}
                             </div>
                         )}
-                     </div>
-
-                     <div className="min-w-0">
-                         <h2 className="text-2xl font-bold tracking-tight leading-none">
-                            {team.abbreviation}
-                         </h2>
-                         <p className="text-muted-foreground text-sm truncate mt-1">{team.name}</p>
-                     </div>
-                 </div>
+                    </div>
+                    <div className="min-w-0">
+                        <h2 className="text-xl font-bold leading-none">{team.abbreviation}</h2>
+                        <p className="text-muted-foreground text-xs truncate mt-0.5">{team.name}</p>
+                    </div>
+                </div>
             </div>
 
+            {/* Auto-Fill */}
+            {isAdmin && players.length > 0 && (
+                <Button variant="outline" size="sm" onClick={onAutoFill} className={cn("text-xs w-full")}>
+                    <Wand2 className="w-3.5 h-3.5 mr-1" />
+                    Auto-Fill Players
+                </Button>
+            )}
+
             {/* Picks */}
-            <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Picks</h3>
-                <div className="flex flex-col gap-2">
-                    {pickSlots.map((_, i) => {
-                        const pick = picks[i];
-                        const icon = pick ? getHeroIcon(pick.hero_name) : null;
-                        // Find assigned player for this slot (sort_order i corresponds to 0-4 index, but we might want to map it to draft sequence if complex)
-                        // For simplicity, let's assume mapping 0->Slot 1, etc.
-                        const assignedPlayer = roster.find(r => r.sort_order === i);
-                        const playerDetails = assignedPlayer ? players.find(p => p.id === assignedPlayer.player_id) : null;
-                        
-                        return (
-                            <div key={i} className={cn(
-                                "flex flex-col gap-1"
+            <div className="space-y-1.5">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Picks</h3>
+                {pickSlots.map((_, i) => {
+                    const pick = picks[i];
+                    const icon = pick ? getHeroIcon(pick.hero_name) : null;
+                    const rosterEntry = roster.find(r => r.sort_order === i);
+                    const playerDetails = rosterEntry ? players.find(p => p.id === rosterEntry.player_id) : null;
+
+                    return (
+                        <div key={i} className="space-y-0.5">
+                            <div className={cn(
+                                "h-14 relative rounded-lg border flex items-center overflow-hidden transition-colors",
+                                pick ? "border-border bg-muted/20" : "border-border border-dashed bg-muted/10",
+                                isActive && !pick && "border-primary/50 bg-primary/5"
                             )}>
-                                {/* Pick Card */}
-                                <div className={cn(
-                                    "h-16 relative rounded-lg border flex items-center overflow-hidden bg-muted/30 transition-colors",
-                                    pick ? "border-border" : "border-border border-dashed",
-                                    isActive && !pick && "border-primary/50 bg-primary/5" // Highlight active empty slot? Complex logic needed to know EXACT slot
-                                )}>
-                                    {pick ? (
-                                        <>
-                                            {icon && (
-                                                /* eslint-disable-next-line @next/next/no-img-element */
-                                                <img src={icon} alt={pick.hero_name} className="w-16 h-16 object-cover opacity-60 absolute left-0 top-0" />
-                                            )}
-                                            <div className={cn(
-                                                "absolute inset-0 flex items-center px-4 font-bold text-lg drop-shadow-md z-10",
-                                                isRightSide ? "justify-end" : "justify-start"
-                                            )}>
-                                                {pick.hero_name}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="w-full text-center text-muted-foreground text-xs">Pick {i + 1}</div>
-                                    )}
-                                </div>
-                                
-                                {/* Player Assignment Sub-row */}
-                                <div className={cn("flex items-center justify-between text-xs px-1", isRightSide && "flex-row-reverse")}>
-                                   {playerDetails ? (
-                                       <div className={cn("flex items-center gap-2", isRightSide && "flex-row-reverse")}>
-                                           <Badge variant="outline" className={cn("text-[10px] h-5 px-1 py-0", roleColors[assignedPlayer.player_role])}>
-                                               {assignedPlayer.player_role.toUpperCase()}
-                                           </Badge>
-                                           <span className="text-muted-foreground font-medium truncate max-w-[100px]">{playerDetails.ign}</span>
-                                           
-                                           {isAdmin && (
-                                                <button 
-                                                    onClick={() => onAssignPlayer(assignedPlayer.player_id, assignedPlayer.player_role, i)} // Re-open selection? Using simple dropdown below might be better
-                                                    className="text-[10px] text-muted-foreground hover:text-foreground underline ml-1"
-                                                >
-                                                    Edit
-                                                </button>
-                                           )}
-                                       </div>
-                                   ) : (
-                                       <div className="text-muted-foreground italic text-[10px]">No Player Assigned</div>
-                                   )}
-                                   
-                                   {/* Edit Control (Only if admin and no player or editing) */}
-                                   {!playerDetails && isAdmin && (
-                                       <PlayerAssignmentDialog 
-                                            players={players} 
-                                            slotIndex={i} 
-                                            onAssign={(pid, role) => onAssignPlayer(pid, role, i)} 
-                                       />
-                                   )}
-                                </div>
+                                {pick ? (
+                                    <>
+                                        {icon && (
+                                            <LazyImage src={icon} alt={pick.hero_name} className="w-14 h-14 opacity-60 absolute left-0 top-0" />
+                                        )}
+                                        <div className={cn(
+                                            "absolute inset-0 flex items-center px-3 font-bold text-sm drop-shadow-md z-10",
+                                            isRightSide ? "justify-end" : "justify-start",
+                                            icon ? "pl-16" : ""
+                                        )}>
+                                            {pick.hero_name}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-full text-center text-muted-foreground text-xs">
+                                        {MLBB_SLOT_LABELS[i] || `Pick ${i + 1}`}
+                                    </div>
+                                )}
                             </div>
-                        )
-                    })}
-                </div>
+
+                            {/* Player row */}
+                            <div className={cn("flex items-center justify-between text-[10px] px-1 relative group", isRightSide && "flex-row-reverse")}>
+                                {playerDetails ? (
+                                    <div className={cn("flex items-center gap-1.5 flex-1 relative", isRightSide && "flex-row-reverse")}>
+                                        <Badge variant="outline" className={cn("text-[9px] h-4 px-1 shrink-0", roleColors[rosterEntry.player_role])}>
+                                            {rosterEntry.player_role}
+                                        </Badge>
+                                        <span className="text-muted-foreground font-medium truncate flex-1 overflow-hidden" style={{ maxWidth: "80px" }}>
+                                            {playerDetails.ign}
+                                        </span>
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => onUnassignPlayer(i)}
+                                                className={cn(
+                                                    "absolute top-0 w-4 h-4 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity shadow-sm hover:scale-110",
+                                                    isRightSide ? "left-0" : "right-0"
+                                                )}
+                                            >
+                                                <X className="w-2.5 h-2.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span className="italic text-muted-foreground">No Player</span>
+                                )}
+                                {!playerDetails && isAdmin && (
+                                    <PlayerPickerPopover
+                                        players={players}
+                                        slotIndex={i}
+                                        roster={roster}
+                                        onAssign={onAssignPlayer}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Bans */}
-            <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bans</h3>
-                <div className={cn("flex flex-wrap gap-2", isRightSide ? "justify-end" : "justify-start")}>
-                     {banSlots.map((_, i) => {
-                         const ban = bans[i];
-                         const icon = ban ? getHeroIcon(ban.hero_name) : null;
-
-                         return (
-                             <div key={i} className={cn(
-                                 "w-10 h-10 relative rounded border flex items-center justify-center bg-muted/50 overflow-hidden",
-                                 ban ? "border-destructive/50" : "border-border border-dashed"
-                             )}>
-                                 {ban ? (
-                                     <>
+            <div className="space-y-1.5">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bans</h3>
+                <div className={cn("flex flex-wrap gap-1.5", isRightSide ? "justify-end" : "justify-start")}>
+                    {banSlots.map((_, i) => {
+                        const ban = bans[i];
+                        const icon = ban ? getHeroIcon(ban.hero_name) : null;
+                        return (
+                            <div key={i} className={cn(
+                                "w-10 h-10 relative rounded-md border flex items-center justify-center overflow-hidden",
+                                ban ? "border-destructive/40 bg-destructive/5" : "border-border border-dashed bg-muted/30"
+                            )}>
+                                {ban ? (
+                                    <>
                                         {icon && (
-                                            /* eslint-disable-next-line @next/next/no-img-element */
-                                            <img src={icon} alt={ban.hero_name} className="w-full h-full object-cover grayscale opacity-50 absolute inset-0" />
+                                            <LazyImage src={icon} alt={ban.hero_name} className="w-full h-full grayscale opacity-40 absolute inset-0" />
                                         )}
-                                        <Ban className="w-6 h-6 text-destructive z-10" />
-                                     </>
-                                 ) : (
-                                     <span className="text-[10px] text-muted-foreground">{i + 1}</span>
-                                 )}
-                             </div>
-                         )
-                     })}
+                                        <Ban className="w-5 h-5 text-destructive z-10" />
+                                    </>
+                                ) : (
+                                    <span className="text-[9px] text-muted-foreground">{i + 1}</span>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
-function CharacterCard({ character, isTaken, isSelectable, onClick }: { 
-    character: GameCharacter, 
-    isTaken: boolean, 
-    isSelectable: boolean, 
-    onClick: () => void 
+// ══════════════════════════════════
+// Character Card (Hero Pool)
+// ══════════════════════════════════
+
+function CharacterCard({ character, isTaken, isSelectable, onClick }: {
+    character: GameCharacter;
+    isTaken: boolean;
+    isSelectable: boolean;
+    onClick: () => void;
 }) {
     return (
         <button
             onClick={onClick}
             disabled={isTaken || !isSelectable}
             className={cn(
-                "aspect-square relative rounded-lg overflow-hidden border  transition-all",
+                "aspect-square relative rounded-lg overflow-hidden border transition-all",
                 "bg-card hover:bg-accent",
-                isTaken ? "opacity-40 grayscale border-border" : "hover:scale-105 hover:ring-2 hover:ring-primary border-border",
-                roleColors[character.role] && !isTaken && "border-opacity-50"
+                isTaken ? "opacity-30 grayscale border-border" : "hover:scale-105 hover:ring-2 hover:ring-primary border-border/50",
             )}
         >
-            {character.icon_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={character.icon_url} alt={character.name} className="w-full h-full object-cover" />
-            ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
-                    {character.name.substring(0, 2)}
-                </div>
-            )}
-            
-            <div className="absolute inset-x-0 bottom-0 bg-background/80 p-1 backdrop-blur-sm">
-                <p className="text-[10px] text-foreground truncate text-center font-medium">{character.name}</p>
+            <LazyImage src={character.icon_url} alt={character.name} className="w-full h-full" />
+
+            <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-sm p-0.5">
+                <p className="text-[9px] text-foreground truncate text-center font-medium">{character.name}</p>
             </div>
 
             {isTaken && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                    <Lock className="w-6 h-6 text-muted-foreground" />
+                    <Lock className="w-5 h-5 text-muted-foreground" />
                 </div>
             )}
         </button>
     );
 }
 
-function PlayerAssignmentDialog({ 
-    players, 
-    slotIndex, 
-    onAssign 
-}: { 
-    players: { id: string, ign: string, role: string | null }[], 
-    slotIndex: number, 
-    onAssign: (pid: string, role: string) => void 
-}) {
-    const [isOpen, setIsOpen] = useState(false);
-    
-    // Auto-select standard role based on slot index if available?
-    // EXP -> GOLD -> MID -> JUNGLE -> ROAM (standard)
-    const standardRoles = ['Fighter', 'Marksman', 'Mage', 'Assassin', 'Tank']; // Mapping closely to standard MPL roles
-    const displayRoles = ['EXP', 'GOLD', 'MID', 'JUNGLE', 'ROAM'];
-    
-    return (
-        <div className="relative">
-             <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => setIsOpen(!isOpen)}>
-                Assign Player
-             </Button>
-             
-             {isOpen && (
-                 <div className="absolute top-6 left-0 z-50 w-48 bg-popover border border-border rounded-md shadow-md p-2 space-y-2">
-                     <p className="text-[10px] font-bold text-muted-foreground">Select Player for Pick {slotIndex + 1}</p>
-                     <ScrollArea className="h-32">
-                        {players.map(p => (
-                            <button
-                                key={p.id}
-                                className="w-full text-left text-xs p-1 hover:bg-muted rounded flex items-center justify-between"
-                                onClick={() => {
-                                    // Default role assignment logic or ask for role?
-                                    // For now, let's just pick 'EXP' as placeholder or use their preferred role
-                                    const role = p.role || 'EXP'; // Fallback
-                                    onAssign(p.id, role);
-                                    setIsOpen(false);
-                                }}
-                            >
-                                <span>{p.ign}</span>
-                                <span className="text-[10px] text-muted-foreground">{p.role?.substring(0,3)}</span>
-                            </button>
-                        ))}
-                     </ScrollArea>
-                     <Button size="sm" variant="secondary" className="w-full h-6 text-[10px]" onClick={() => setIsOpen(false)}>Cancel</Button>
-                 </div>
-             )}
-        </div>
-    )
-}
+// ══════════════════════════════════
+// Skeleton
+// ══════════════════════════════════
 
 function DraftPanelSkeleton() {
-  return <div className="p-8"><Skeleton className="h-96 w-full" /></div>;
+    return (
+        <div className="space-y-6">
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <div className="grid grid-cols-12 gap-4">
+                <Skeleton className="col-span-3 h-96 rounded-xl" />
+                <Skeleton className="col-span-6 h-96 rounded-xl" />
+                <Skeleton className="col-span-3 h-96 rounded-xl" />
+            </div>
+        </div>
+    );
 }
-
