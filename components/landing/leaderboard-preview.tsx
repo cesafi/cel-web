@@ -1,7 +1,7 @@
 import { LeaderboardCard } from '@/components/statistics/leaderboard-card';
 import { getLeaderboard } from '@/actions/statistics';
 import { getCurrentSeason } from '@/actions/seasons';
-import { TrendingUp } from 'lucide-react';
+import { ArrowRight, TrendingUp } from 'lucide-react';
 import { moderniz, roboto } from '@/lib/fonts';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -34,10 +34,6 @@ export default async function LeaderboardPreview() {
       <div className="container relative mx-auto px-4 z-10">
         {/* Section Header */}
         <div className="text-center mb-16 md:mb-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6 border border-primary/20 backdrop-blur-sm">
-            <TrendingUp className="w-4 h-4 animate-pulse" />
-            <span className="text-sm font-medium tracking-wide">Live Rankings</span>
-          </div>
           <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
             Top <span className="text-gradient-cel">Performers</span>
           </h2>
@@ -90,14 +86,16 @@ export default async function LeaderboardPreview() {
         </div>
 
         {/* View All Button */}
-        <div className="text-center mt-10 md:mt-12">
-          <Link
-            href="/statistics"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25"
-          >
-            View Full Statistics
-            <TrendingUp className="w-4 h-4" />
-          </Link>
+        <div className="text-center mt-10 md:mt-12 flex flex-col gap-3 sm:gap-4 justify-center">
+          <Link href="/statistics">
+              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-5 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+                View Full Statistics
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+            <p className={`${roboto.className} text-sm text-muted-foreground`}>
+            Explore comprehensive player stats, team standings, and match data
+          </p>
         </div>
       </div>
     </section>

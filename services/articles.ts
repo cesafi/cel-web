@@ -14,7 +14,7 @@ export class ArticleService extends BaseService {
     selectQuery: string = '*'
   ): Promise<ServiceResponse<PaginatedResponse<Article>>> {
     try {
-      const searchableFields = ['title', 'content', 'status'];
+      const searchableFields = ['title', 'status'];
       const optionsWithSearchableFields = {
         ...options,
         searchableFields

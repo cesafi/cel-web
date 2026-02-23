@@ -20,7 +20,6 @@ export const PUBLIC_ROUTES = [
 
   // Public content pages
   '/about-us',
-  '/articles',
   '/contact',
   '/faq',
   '/news',

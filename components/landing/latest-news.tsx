@@ -7,6 +7,7 @@ import { Article } from '@/lib/types/articles';
 import { extractPlainText } from '@/lib/utils/content-renderer';
 import { calculateSportsReadTime } from '@/lib/utils/read-time';
 import { ArticleCard } from '@/components/shared';
+import { ArrowRight } from 'lucide-react';
 
 interface LatestNewsProps {
   initialArticles: Article[];
@@ -77,11 +78,17 @@ export default function LatestNews({ initialArticles }: LatestNewsProps) {
           viewport={{ once: true }}
           className="text-center mt-16"
         >
+          <div className="text-center mt-10 md:mt-12 flex flex-col gap-3 sm:gap-4 justify-center">
           <Link href="/news">
-            <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-10 py-5 rounded-2xl font-semibold text-xl uppercase tracking-wide transition-all duration-300 hover:scale-105 shadow-lg`}>
-              View All News
-            </button>
-          </Link>
+              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-5 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+                View Full News
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+            <p className={`${roboto.className} text-sm text-muted-foreground`}>
+            Read the latest updates, announcements, and match recaps
+          </p>
+        </div>
         </motion.div>
       </div>
     </section>

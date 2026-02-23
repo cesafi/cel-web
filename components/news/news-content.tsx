@@ -9,7 +9,7 @@ import NewsSearch from './news-search';
 import NewsPagination from './news-pagination';
 import { Article } from '@/lib/types/articles';
 import { moderniz, roboto } from '@/lib/fonts';
-import { extractPlainText } from '@/lib/utils/content-renderer';
+import { extractSmartExcerpt } from '@/lib/utils/content-renderer';
 import { calculateSportsReadTime } from '@/lib/utils/read-time';
 
 interface NewsContentProps {
@@ -57,8 +57,8 @@ export default function NewsContent({
       id: article.id.toString(),
       title: article.title,
       slug: article.slug,
-      excerpt: (article.content as { excerpt?: string })?.excerpt || extractPlainText(article.content, 150),
-      author: article.authored_by || 'CESAFI Media Team',
+      excerpt: (article.content as { excerpt?: string })?.excerpt || extractSmartExcerpt(article.content, 150),
+      author: article.authored_by || 'CEL Writers Department',
       publishedAt: article.published_at || article.created_at,
       category: (article.content as { category?: string })?.category || 'General',
       readTime: readTimeResult.formattedTime,
@@ -134,9 +134,6 @@ export default function NewsContent({
               <h3 className={`${moderniz.className} text-xl font-semibold text-destructive mb-2`}>
                 Unable to Load Articles
               </h3>
-              <p className={`${roboto.className} text-muted-foreground`}>
-                {error.message || 'Please try again later.'}
-              </p>
             </div>
           </div>
         ) : filteredArticles.length === 0 && currentPage === 1 ? (

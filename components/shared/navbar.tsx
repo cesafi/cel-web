@@ -258,7 +258,9 @@ export default function Navbar() {
                 {/* Navigation Links */}
                 <div className="flex-1 px-4 py-5 overflow-y-auto">
                   <div className="space-y-1">
-                    {navItems.map((item, index) => (
+                    {navItems.map((item, index) => {
+                      const TopLevelIcon = iconMap[item.name] || Circle;
+                      return (
                       <div key={item.name}>
                         {item.children ? (
                           <div className="space-y-0.5 mb-3">
@@ -307,14 +309,14 @@ export default function Navbar() {
                               className={`${roboto.className} flex items-center gap-3 text-foreground hover:text-foreground py-2.5 px-3 rounded-xl hover:bg-muted/50 font-medium transition-all duration-200 group`}
                             >
                               <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center transition-colors duration-200 flex-shrink-0">
-                                <Circle className="w-4 h-4" />
+                                <TopLevelIcon className="w-4 h-4" />
                               </div>
                               <span className="text-sm">{item.name}</span>
                             </Link>
                           </motion.div>
                         )}
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
 

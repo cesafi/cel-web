@@ -801,9 +801,17 @@ function extractTextFromChildren(children: LexicalNode[]): string {
 
   for (const child of children) {
     if (child.type === 'text') {
-      text += child.text || '';
+      const childText = child.text || '';
+      if (text && childText && !text.match(/\s$/) && !childText.match(/^\s/)) {
+        text += ' ';
+      }
+      text += childText;
     } else if ('children' in child && child.children) {
-      text += extractTextFromChildren(child.children);
+      const childText = extractTextFromChildren(child.children);
+      if (text && childText && !text.match(/\s$/) && !childText.match(/^\s/)) {
+        text += ' ';
+      }
+      text += childText;
     }
   }
 

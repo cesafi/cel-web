@@ -168,10 +168,6 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
           transition={{ duration: 0.8 }}
           className="text-center mb-14 md:mb-20"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6 border border-primary/20 backdrop-blur-sm">
-            <Gamepad2 className="w-4 h-4 animate-pulse" />
-            <span className="text-sm font-medium tracking-wide">Match Schedule</span>
-          </div>
           <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
             Upcoming <span className="text-gradient-cel">Games</span>
           </h2>
@@ -393,13 +389,17 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-center mt-10 md:mt-14"
         >
-          <Link
-            href="/schedule"
-            className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all duration-300 hover:scale-105 shadow-lg shadow-primary/25 group/btn"
-          >
-            <span className="uppercase tracking-wide text-sm">View Full Schedule</span>
-            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
-          </Link>
+          <div className="text-center mt-10 md:mt-12 flex flex-col gap-3 sm:gap-4 justify-center">
+          <Link href="/schedule">
+              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-5 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+                View Full Schedule
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+            <p className={`${roboto.className} text-sm text-muted-foreground`}>
+            Check out the complete season matches and tournament brackets
+          </p>
+        </div>
         </motion.div>
       </div>
     </section>
