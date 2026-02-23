@@ -329,14 +329,14 @@ function ToolbarPlugin({
   const insertImage = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = 'image/jpeg, image/png, image/webp';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         try {
-          // Validate file size (10MB max)
-          if (file.size > 10 * 1024 * 1024) {
-            toast.error('Image size must be less than 10MB');
+          // Validate file size (150KB max for strict SEO)
+          if (file.size > 150 * 1024) {
+            toast.error('Inline image size must be less than 150KB');
             return;
           }
 
@@ -615,7 +615,7 @@ function ToolbarPlugin({
           <PopoverContent className="w-80" align="end">
             <div className="space-y-4">
               <h4 className="font-semibold text-sm">Keyboard Shortcuts</h4>
-              
+
               <div className="space-y-3 text-xs">
                 <div>
                   <h5 className="font-medium mb-1">Text Formatting</h5>

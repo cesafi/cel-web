@@ -17,7 +17,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 5 * 1024 * 1024, // 5MB
+    maxFileSize: 200 * 1024, // 200KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   SCHOOL_LOGO: {
@@ -27,7 +27,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFileSize: 100 * 1024, // 100KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
   },
   ARTICLE_COVER: {
@@ -37,7 +37,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 16 / 9,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFileSize: 300 * 1024, // 300KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   TIMELINE: {
@@ -47,7 +47,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 3 / 2,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 8 * 1024 * 1024, // 8MB
+    maxFileSize: 300 * 1024, // 300KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   SPONSOR_LOGO: {
@@ -57,7 +57,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 2,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 3 * 1024 * 1024, // 3MB
+    maxFileSize: 150 * 1024, // 150KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
   },
   ESPORT_LOGO: {
@@ -67,7 +67,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFileSize: 100 * 1024, // 100KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
   },
   GAME_CHARACTER: {
@@ -77,7 +77,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 1 * 1024 * 1024, // 1MB
+    maxFileSize: 50 * 1024, // 50KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   PLAYER_PHOTO: {
@@ -87,7 +87,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 2 * 1024 * 1024, // 2MB
+    maxFileSize: 100 * 1024, // 100KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   GENERAL: {
@@ -97,7 +97,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 16 / 9,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFileSize: 300 * 1024, // 300KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   }
 } as const;
@@ -144,26 +144,26 @@ export function ImageUpload({
   const [isDragOver, setIsDragOver] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { uploadImage, isUploading, uploadError } = useCloudinary();
-  
+
   // Get the effective preset configuration
-  const effectivePreset = useMemo(() => 
+  const effectivePreset = useMemo(() =>
     customPreset ? { ...UPLOAD_PRESETS.GENERAL, ...customPreset } : UPLOAD_PRESETS[preset],
     [customPreset, preset]
   );
-  
+
   const handleFileValidation = useCallback((file: File): string | null => {
     // Check file size
     if (file.size > effectivePreset.maxFileSize) {
       return `File size must be less than ${Math.round(effectivePreset.maxFileSize / (1024 * 1024))}MB`;
     }
-    
+
     // Check file type
     if (!effectivePreset.acceptedTypes.includes(file.type as any)) { // eslint-disable-line @typescript-eslint/no-explicit-any
       return `File type must be one of: ${effectivePreset.acceptedTypes.map(type => type.split('/')[1].toUpperCase()).join(', ')}`;
     }
-    
+
     return null;
   }, [effectivePreset]);
 
@@ -177,12 +177,12 @@ export function ImageUpload({
 
     try {
       onUploadStart?.();
-      
+
       // Generate unique filename
       const timestamp = Date.now();
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-');
       const filename = `${sanitizedName.split('.')[0]}-${timestamp}`;
-      
+
       const result = await uploadImage(file, {
         folder: effectivePreset.folder,
         public_id: filename,
@@ -230,9 +230,9 @@ export function ImageUpload({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     if (disabled) return;
-    
+
     const file = e.dataTransfer.files[0];
     if (file) {
       handleFileUpload(file);
@@ -292,13 +292,12 @@ export function ImageUpload({
         {/* Upload Area */}
         {!displayImageUrl && (
           <div
-            className={`relative rounded-lg border-2 border-dashed transition-colors duration-200 ${
-              isDragOver
-                ? 'border-primary bg-primary/10'
-                : error
+            className={`relative rounded-lg border-2 border-dashed transition-colors duration-200 ${isDragOver
+              ? 'border-primary bg-primary/10'
+              : error
                 ? 'border-red-500 hover:border-red-400'
                 : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -306,14 +305,12 @@ export function ImageUpload({
           >
             <div className="flex flex-col items-center justify-center p-6 text-center">
               <ImageIcon
-                className={`h-12 w-12 mb-4 transition-colors duration-200 ${
-                  isDragOver ? 'text-primary' : 'text-muted-foreground'
-                }`}
+                className={`h-12 w-12 mb-4 transition-colors duration-200 ${isDragOver ? 'text-primary' : 'text-muted-foreground'
+                  }`}
               />
               <div className="space-y-2">
-                <p className={`text-sm font-medium transition-colors duration-200 ${
-                  isDragOver ? 'text-primary' : 'text-foreground'
-                }`}>
+                <p className={`text-sm font-medium transition-colors duration-200 ${isDragOver ? 'text-primary' : 'text-foreground'
+                  }`}>
                   {isDragOver ? 'Drop your image here' : placeholder}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -377,7 +374,7 @@ export function ImageUpload({
           </p>
           <p>
             Recommended: {effectivePreset.maxWidth}×{effectivePreset.maxHeight}px
-            {effectivePreset.aspectRatio !== 16/9 && ` (${effectivePreset.aspectRatio}:1 ratio)`}
+            {effectivePreset.aspectRatio !== 16 / 9 && ` (${effectivePreset.aspectRatio}:1 ratio)`}
           </p>
           <p>
             Formats: {effectivePreset.acceptedTypes.map(type => type.split('/')[1].toUpperCase()).join(', ')}
