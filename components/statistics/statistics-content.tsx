@@ -41,6 +41,8 @@ export function StatisticsContent() {
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
   
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(100); // Show more items by default
@@ -162,6 +164,16 @@ export function StatisticsContent() {
     fetchTeams();
   }, [selectedSeason, game]);
 
+  // Handle Debounce for Search Query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setDebouncedSearchQuery(searchQuery);
+        setPage(1); // Reset page when search term actually changes
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Fetch data based on current game and view
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -174,6 +186,7 @@ export function StatisticsContent() {
             stage_id: selectedStage || undefined,
             team_id: selectedTeam || undefined,
             category_id: selectedCategory || undefined,
+            search_query: debouncedSearchQuery || undefined,
             page,
             limit
           }),
@@ -199,6 +212,7 @@ export function StatisticsContent() {
             stage_id: selectedStage || undefined,
             team_id: selectedTeam || undefined,
             category_id: selectedCategory || undefined,
+            search_query: debouncedSearchQuery || undefined,
             page,
             limit
           }),
@@ -225,7 +239,7 @@ export function StatisticsContent() {
     } finally {
       setLoading(false);
     }
-  }, [game, selectedSeason, selectedStage, selectedCategory, selectedTeam, page, limit]);
+  }, [game, selectedSeason, selectedStage, selectedCategory, selectedTeam, debouncedSearchQuery, page, limit]);
 
   useEffect(() => {
     fetchData();
@@ -309,6 +323,8 @@ export function StatisticsContent() {
     setSelectedStage(null);
     setSelectedCategory(null);
     setSelectedTeam(null);
+    setSearchQuery('');
+    setDebouncedSearchQuery('');
   };
 
   // Get current player data based on game
@@ -319,6 +335,17 @@ export function StatisticsContent() {
     if (loading) {
       return <StatisticsLoading />;
     }
+
+    // Local filtering for non-paginated stats
+    const filterLocal = <T extends Record<string, any>>(data: T[]): T[] => {
+        if (!debouncedSearchQuery) return data;
+        const lower = debouncedSearchQuery.toLowerCase();
+        return data.filter(item => {
+            return Object.values(item).some(val => 
+                typeof val === 'string' && val.toLowerCase().includes(lower)
+            );
+        });
+    };
 
     switch (activeView) {
       case 'players':
@@ -341,7 +368,7 @@ export function StatisticsContent() {
         return (
             <CharacterStatsTable 
                 game="mlbb" 
-                data={sortData(heroStats)} 
+                data={sortData(filterLocal(heroStats))} 
                 sortColumn={sortColumn} 
                 sortOrder={sortOrder} 
                 onSort={handleSort} 
@@ -351,19 +378,19 @@ export function StatisticsContent() {
         return (
             <CharacterStatsTable 
                 game="valorant" 
-                data={sortData(agentStats)} 
+                data={sortData(filterLocal(agentStats))} 
                 sortColumn={sortColumn} 
                 sortOrder={sortOrder} 
                 onSort={handleSort} 
             />
         );
       case 'maps':
-        return <MapStatsDisplay data={mapStats} />;
+        return <MapStatsDisplay data={filterLocal(mapStats)} />;
       case 'teams':
         return (
           <TeamRankings
             game={game}
-            data={sortData(teamStats)}
+            data={sortData(filterLocal(teamStats))}
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onSort={handleSort}
@@ -396,6 +423,8 @@ export function StatisticsContent() {
         selectedStage={selectedStage}
         selectedCategory={selectedCategory}
         selectedTeam={selectedTeam}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
         onSeasonChange={setSelectedSeason}
         onStageChange={setSelectedStage}
         onCategoryChange={setSelectedCategory}

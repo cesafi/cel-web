@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Filter, Settings, X, Calendar, Swords, Users } from 'lucide-react';
+import { Filter, Settings, X, Calendar, Swords, Users, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -32,6 +33,8 @@ interface FilterPanelProps {
     onCategoryChange: (categoryId: number | null) => void;
     onTeamChange: (teamId: string | null) => void;
     onClearFilters: () => void;
+    searchQuery?: string;
+    onSearchChange?: (term: string) => void;
     isLoading?: boolean;
     className?: string;
 }
@@ -50,6 +53,8 @@ export function FilterPanel({
     onCategoryChange,
     onTeamChange,
     onClearFilters,
+    searchQuery = '',
+    onSearchChange,
     isLoading = false,
     className,
 }: FilterPanelProps) {
@@ -64,8 +69,30 @@ export function FilterPanel({
     return (
         <div className={cn("w-full bg-card/40 backdrop-blur-md border border-border/50 shadow-lg rounded-xl overflow-hidden", className)}>
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4">
-                 {/* Left: Filter Summary */}
-                 <div className="flex items-center gap-2">
+                 {/* Left: Filter Summary & Search */}
+                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
+                     {/* Search Bar */}
+                     <div className="relative w-full sm:max-w-xs xl:max-w-sm">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Search players, teams, heroes..."
+                            value={searchQuery}
+                            onChange={(e) => onSearchChange?.(e.target.value)}
+                            className="pl-9 pr-8 h-9 text-sm bg-background/50 border-border/50 hover:border-primary/50 focus:border-primary transition-all duration-200"
+                        />
+                        {searchQuery && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onSearchChange?.('')}
+                                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-muted"
+                            >
+                                <X className="h-3 w-3" />
+                            </Button>
+                        )}
+                     </div>
+
                      <div className="hidden sm:flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span className="font-medium text-foreground flex items-center gap-2">
                             <Filter className="w-4 h-4" />

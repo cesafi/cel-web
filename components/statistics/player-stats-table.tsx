@@ -56,7 +56,7 @@ export function PlayerStatsTable({
              <div className="font-bold text-sm tracking-tight text-foreground">{row.player_ign}</div>
              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                  {row.team_logo_url && <img src={row.team_logo_url} className="w-3 h-3 rounded-full opacity-70" alt="" />}
-                 <span className="truncate max-w-[130px] md:max-w-[150px]">{row.team_name}</span>
+                 <span className="hidden sm:inline-block truncate max-w-[130px] md:max-w-none w-full" title={row.team_name}>{row.team_name}</span>
              </div>
         </div>
       </div>

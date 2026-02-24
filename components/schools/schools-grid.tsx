@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,20 +16,29 @@ interface SchoolsGridProps {
 
 export default function SchoolsGrid({ initialSchools }: SchoolsGridProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const schools = initialSchools;
+
+  // Handle Debounce for Search Term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Filter schools based on search term
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
     
-    if (!searchTerm.trim()) return schools;
+    if (!debouncedSearchTerm.trim()) return schools;
     
-    const term = searchTerm.toLowerCase().trim();
+    const term = debouncedSearchTerm.toLowerCase().trim();
     return schools.filter(school => 
       school.name.toLowerCase().includes(term) ||
       school.abbreviation.toLowerCase().includes(term)
     );
-  }, [schools, searchTerm]);
+  }, [schools, debouncedSearchTerm]);
 
   // Show empty state if no schools
   if (schools.length === 0) {

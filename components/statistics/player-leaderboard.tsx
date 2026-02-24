@@ -388,7 +388,8 @@ export function PlayerLeaderboard({
                                                             />
                                                         </div>
                                                     )}
-                                                    <span className="truncate max-w-[100px] md:max-w-[140px]">{row.team_name || 'Free Agent'}</span>
+                                                    <span className="hidden sm:inline-block truncate max-w-[100px] md:max-w-[140px]">{row.team_name || 'Free Agent'}</span>
+                                                    <span className="inline-block sm:hidden truncate max-w-[100px] md:max-w-[140px] uppercase font-bold tracking-wider text-xs">{((row as any).school_abbreviation) || (row.team_name ? row.team_name.split(' ')[0] : 'FA')}</span>
                                                 </div>
                                             </div>
                                         </div>

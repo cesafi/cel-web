@@ -310,7 +310,7 @@ export function TeamRankings({
                                                         {row.school_abbreviation}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium truncate max-w-[120px] md:max-w-[160px]">
+                                                <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium truncate max-w-[120px] md:max-w-[160px]">
                                                     {row.team_name}
                                                 </div>
                                             </div>

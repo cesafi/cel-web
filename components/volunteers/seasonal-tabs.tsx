@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// Removed unused Skeleton import
 import DepartmentGroups from './department-groups';
+import VolunteerSearch from './volunteer-search';
 import { Calendar, Users } from 'lucide-react';
 import { moderniz, roboto } from '@/lib/fonts';
 import { Season } from '@/lib/types/seasons';
@@ -22,6 +22,8 @@ export default function SeasonalTabs({
   initialDepartments
 }: SeasonalTabsProps) {
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const seasons = initialSeasons;
   const volunteers = initialVolunteers;
@@ -32,9 +34,28 @@ export default function SeasonalTabs({
     setSelectedSeasonId(seasons[0].id);
   }
 
-  // Filter volunteers by selected season
-  const filteredVolunteers = volunteers?.filter(
-    volunteer => volunteer.season_id === selectedSeasonId && volunteer.is_active !== false
+  // Handle Debounce for Search Term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Filter volunteers by selected season and search term
+  const filteredVolunteers = volunteers?.filter(volunteer => {
+      // 1. Filter by season and active status
+      if (volunteer.season_id !== selectedSeasonId || volunteer.is_active === false) return false;
+      
+      // 2. Filter by search term
+      if (!debouncedSearchTerm.trim()) return true;
+      const term = debouncedSearchTerm.toLowerCase().trim();
+      
+      return (
+        volunteer.full_name?.toLowerCase().includes(term) ||
+        volunteer.title?.toLowerCase().includes(term)
+      );
+    }
   ) || [];
 
   // Group volunteers by department, sort: titled first, then alphabetically by name
@@ -123,6 +144,16 @@ export default function SeasonalTabs({
               </div>
             </div>
           </motion.div>
+        )}
+
+        {/* Search Bar */}
+        {selectedSeason && (
+          <div className="mb-12">
+            <VolunteerSearch 
+              searchTerm={searchTerm} 
+              onSearchChange={setSearchTerm} 
+            />
+          </div>
         )}
 
         {/* Department Groups */}

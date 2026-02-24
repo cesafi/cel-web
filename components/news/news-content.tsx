@@ -27,6 +27,7 @@ export default function NewsContent({
   initialPagination
 }: NewsContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
@@ -38,13 +39,21 @@ export default function NewsContent({
   } = usePaginatedArticles({
     page: currentPage,
     pageSize,
-    searchQuery: searchTerm,
+    searchQuery: debouncedSearchTerm,
     sortBy: 'created_at',
     sortOrder: 'desc'
   }, {
     enabled: currentPage > 1 || !!initialPagination, // Only enable if we have initial data or we're on page 2+
-    queryKey: ['articles', 'paginated', { page: currentPage, pageSize, searchQuery: searchTerm, sortBy: 'created_at', sortOrder: 'desc' }]
+    queryKey: ['articles', 'paginated', { page: currentPage, pageSize, searchQuery: debouncedSearchTerm, sortBy: 'created_at', sortOrder: 'desc' }]
   });
+
+  // Handle Debounce for Search Term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Use initial data for first page, hook data for subsequent pages
   const rawArticles = currentPage === 1 ? initialArticles : (articlesData?.data || []);
@@ -80,7 +89,7 @@ export default function NewsContent({
   // Reset pagination when search term changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
 
   return (
     <section className="py-16">

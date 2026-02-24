@@ -228,7 +228,7 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                                         'font-semibold text-sm transition-colors',
                                         isActive ? 'text-foreground' : 'text-muted-foreground'
                                     )}>
-                                        {g.name}
+                                        {g.shortName}
                                     </h3>
                                 </div>
 

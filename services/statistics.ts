@@ -48,6 +48,7 @@ export interface StatisticsFilters {
   season_id?: number;
   stage_id?: number;
   category_id?: number;
+  search_query?: string;
   page?: number;
   limit?: number;
 }
@@ -178,20 +179,33 @@ export class StatisticsService extends BaseService {
         // Ensure formatting if needed, but numbers are fine
       });
 
+      let resultData = aggregatedData;
+      
+      // Perform search filtering before pagination
+      if (filters?.search_query) {
+        const lowerSearch = filters.search_query.toLowerCase();
+        resultData = resultData.filter(p => 
+          p.player_ign?.toLowerCase().includes(lowerSearch) || 
+          p.team_name?.toLowerCase().includes(lowerSearch) ||
+          p.school_abbreviation?.toLowerCase().includes(lowerSearch) ||
+          p.hero_name?.toLowerCase().includes(lowerSearch)
+        );
+      }
+
       // Handle in-memory pagination if needed, but usually we return all
       // The frontend requested "VLR style" (all rows), so we return all.
       // But if explicit page/limit was passed, we mock it.
-      let resultData = aggregatedData;
+      const totalCount = resultData.length;
       if (filters?.page && filters?.limit) {
         const from = (filters.page - 1) * filters.limit;
         const to = from + filters.limit;
-        resultData = aggregatedData.slice(from, to);
+        resultData = resultData.slice(from, to);
       }
 
       return {
         success: true as const,
         data: resultData as unknown as MlbbPlayerStats[],
-        count: aggregatedData.length
+        count: totalCount
       };
     } catch (error) {
       return this.formatError<MlbbPlayerStats[]>(error, 'Failed to fetch MLBB stats');
@@ -270,18 +284,31 @@ export class StatisticsService extends BaseService {
         p.assists_per_game = p.total_assists / g;
       });
 
-      // Handle in-memory pagination
       let resultData = aggregatedData;
+
+      // Perform search filtering before pagination
+      if (filters?.search_query) {
+        const lowerSearch = filters.search_query.toLowerCase();
+        resultData = resultData.filter(p => 
+          p.player_ign?.toLowerCase().includes(lowerSearch) || 
+          p.team_name?.toLowerCase().includes(lowerSearch) ||
+          p.school_abbreviation?.toLowerCase().includes(lowerSearch) ||
+          p.agent_name?.toLowerCase().includes(lowerSearch)
+        );
+      }
+
+      // Handle in-memory pagination
+      const totalCount = resultData.length;
       if (filters?.page && filters?.limit) {
         const from = (filters.page - 1) * filters.limit;
         const to = from + filters.limit;
-        resultData = aggregatedData.slice(from, to);
+        resultData = resultData.slice(from, to);
       }
 
       return {
         success: true as const,
         data: resultData as unknown as ValorantPlayerStats[],
-        count: aggregatedData.length
+        count: totalCount
       };
     } catch (error) {
       return this.formatError<ValorantPlayerStats[]>(error, 'Failed to fetch Valorant stats');
