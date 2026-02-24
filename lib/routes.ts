@@ -39,9 +39,10 @@ export const PUBLIC_ROUTES = [
   // API Routes
   '/api/image-proxy',
   '/api/games/draft/[gameId]',
+  '/api/games/stats/[gameId]',
 
-  // Lobby
-  '/lobby/[matchId]'
+  // Map Veto
+  '/veto/[token]'
 ] as const;
 
 // Protected routes that require authentication
@@ -125,7 +126,9 @@ export const ROUTE_PATTERNS = {
     /^\/no-access$/,
     /^\/api\/image-proxy(\?.*)?$/,
     /^\/api\/games\/draft\/[^\/]+$/, // /api/games/draft/[gameId]
-    /^\/lobby\/[^\/]+$/ // /lobby/[matchId]
+    /^\/api\/games\/stats\/[^\/]+$/, // /api/games/stats/[gameId]
+    /^\/lobby\/[^\/]+$/, // /lobby/[matchId]
+    /^\/veto(\/.*)?$/ // /veto/[token] and /veto
   ],
 
   // Protected dynamic routes

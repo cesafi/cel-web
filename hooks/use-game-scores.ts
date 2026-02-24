@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getGameScoresByGameId, createGameScore, updateGameScore } from '@/actions/game-scores';
+import { matchKeys } from '@/hooks/use-matches';
 import { GameScoreInsert, GameScoreUpdate } from '@/lib/types/game-scores';
 import { toast } from 'sonner';
 
@@ -35,6 +36,7 @@ export function useCreateGameScore() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: gameScoreKeys.byGameId(variables.game_id) });
+      queryClient.invalidateQueries({ queryKey: matchKeys.all });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to create game score');
@@ -73,6 +75,7 @@ export function useUpdateGameScore() {
          // But for correctness let's try to invalidate if possible.
          queryClient.invalidateQueries({ queryKey: gameScoreKeys.all });
       }
+      queryClient.invalidateQueries({ queryKey: matchKeys.all });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to update game score');

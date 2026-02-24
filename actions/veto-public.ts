@@ -6,44 +6,71 @@ import { getVetoSequence, getCurrentVetoStep, VetoAction } from '@/lib/types/map
 import { revalidatePath } from 'next/cache';
 
 /**
- * Validates a veto token and returns the match and authorized team
+ * Validates public veto access using matchId and teamId
  */
-export async function validateVetoToken(token: string) {
-  return MatchesService.getMatchByVetoToken(token);
+export async function validatePublicVetoAccess(matchId: number, teamId: string) {
+  try {
+    const result = await MatchesService.getMatchById(matchId);
+    
+    if (!result.success || !result.data) {
+      return { success: false, error: 'Match not found' };
+    }
+    
+    const match = result.data;
+    
+    // Check if the provided teamId is actually part of this match
+    let teamSide: 'team1' | 'team2' | undefined;
+    
+    if (match.match_participants?.[0]?.team_id === teamId) {
+      teamSide = 'team1';
+    } else if (match.match_participants?.[1]?.team_id === teamId) {
+      teamSide = 'team2';
+    }
+    
+    if (!teamSide) {
+      return { success: false, error: 'Team is not a participant in this match' };
+    }
+    
+    return {
+      success: true as const,
+      data: {
+        match,
+        teamId,
+        teamSide
+      }
+    };
+  } catch (error) {
+    return { success: false, error: 'Failed to validate match access' };
+  }
 }
 
 /**
- * Performs a veto action (ban/pick) using a public token
+ * Performs a veto action (ban/pick) using public access parameters
  */
 export async function performPublicVeto(
-  token: string,
+  matchId: number,
+  teamId: string,
   mapName: string,
   action: VetoAction,
   sequenceOrder: number
 ) {
   try {
-    // 1. Validate Token
-    const result = await MatchesService.getMatchByVetoToken(token);
+    // 1. Validate Access
+    const result = await validatePublicVetoAccess(matchId, teamId);
     
     if (!result.success) {
-      // Cast to any to safely access error if TS is confused
       const errorMsg = (result as any).error;
-      return { success: false, error: errorMsg || 'Invalid or expired token' };
+      return { success: false, error: errorMsg || 'Invalid access' };
     }
 
-    // TS should strictly know this is success variant now, but if not, we use assertion
     const successData = (result as any).data;
     if (!successData) {
        return { success: false, error: 'Match data not found' };
     }
 
-    const { match, teamId, teamSide } = successData;
-    if (!teamId || !teamSide) {
-      return { success: false, error: 'Token is not associated with a valid team' };
-    }
+    const { match, teamSide } = successData;
 
     // 2. Validate Turn
-    // Fetch current vetoes to determine whose turn it is
     const vetoesResult = await ValorantMapVetoService.getByMatchId(match.id);
     if (!vetoesResult.success || !vetoesResult.data) {
       return { success: false, error: 'Failed to fetch current match state' };
@@ -65,14 +92,10 @@ export async function performPublicVeto(
 
     // Verify it's the correct step
     if (currentStep.stepNumber !== sequenceOrder) {
-       // Allow tolerance for race conditions? No, strict order.
-       // Actually, the client might send stale sequenceOrder.
-       // But we should trust the calculated currentStep on server.
-       // If client sends 1 but we are on 2, fail.
+      return { success: false, error: 'Out of sync sequence order' };
     }
 
     // Verify it's this team's turn
-    // currentStep.team is 'team1' or 'team2'
     if (currentStep.team !== teamSide) {
       return { success: false, error: `It is not your turn. Waiting for ${currentStep.team === 'team1' ? 'Team 1' : 'Team 2'}.` };
     }
@@ -89,14 +112,13 @@ export async function performPublicVeto(
       team_id: teamId,
       action: action,
       sequence_order: currentStep.stepNumber,
-      // creating_token: token, // Maybe log who did it? Not in schema.
     });
 
     if (!insertResult.success) {
       return { success: false, error: insertResult.error || 'Failed to record veto' };
     }
 
-    revalidatePath(`/veto/${token}`); // Revalidate public page
+    revalidatePath(`/veto/${matchId}`); // Revalidate public page
     revalidatePath(`/admin/matches/${match.id}`); // Revalidate admin page
 
     return { success: true };

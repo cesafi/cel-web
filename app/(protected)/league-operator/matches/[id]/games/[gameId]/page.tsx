@@ -158,12 +158,6 @@ export default function LeagueOperatorGameDetailPage() {
                         {isActive && (
                             <Badge variant="destructive" className="animate-pulse">LIVE</Badge>
                         )}
-                        {isDrafting && (
-                            <Button size="sm" variant="outline" onClick={() => router.push(`/lobby/${matchId}?gameId=${gameId}`)}>
-                                <MonitorPlay className="h-3.5 w-3.5 mr-1.5" />
-                                Open Draft UI
-                            </Button>
-                        )}
                     </div>
                 </div>
 

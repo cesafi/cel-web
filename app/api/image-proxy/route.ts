@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
             },
             [`image-proxy-${url}`], // Cache key based on URL
             {
-                revalidate: 604800, // Cache for 7 days
+                revalidate: 31536000, // Cache for 1 year
                 tags: ['image-proxy'],
             }
         );
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
             status: 200,
             headers: {
                 'Content-Type': cached.contentType,
-                'Cache-Control': 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400',
+                'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, stale-while-revalidate=86400, immutable',
                 'Access-Control-Allow-Origin': '*',
             },
         });

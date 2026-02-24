@@ -306,7 +306,7 @@ export default function LeagueOperatorMatchDetailsPage() {
       </div>
 
       {/* ── Games Section ── */}
-      <div className="space-y-4">
+      <div className="space-y-4 pb-8">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Swords className="h-5 w-5" />
@@ -343,10 +343,18 @@ export default function LeagueOperatorMatchDetailsPage() {
               const isCompleted = game.status === 'completed';
 
               return (
-                <button
+                <div
                   key={game.id}
                   onClick={() => router.push(`/league-operator/matches/${matchId}/games/${game.id}`)}
-                  className={`w-full text-left rounded-xl border bg-card p-4 md:p-5 flex items-center justify-between gap-4 transition-all hover:bg-accent/50 hover:border-primary/30 group ${isActive ? 'border-blue-500/40 bg-blue-500/5' : ''
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/league-operator/matches/${matchId}/games/${game.id}`);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`w-full text-left rounded-xl border bg-card p-4 md:p-5 flex items-center justify-between gap-4 transition-all hover:bg-accent/50 hover:border-primary/30 group cursor-pointer ${isActive ? 'border-blue-500/40 bg-blue-500/5' : ''
                     }`}
                 >
                   <div className="flex items-center gap-4">
@@ -378,7 +386,7 @@ export default function LeagueOperatorMatchDetailsPage() {
                     </div>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                </button>
+                </div>
               );
             })}
           </div>

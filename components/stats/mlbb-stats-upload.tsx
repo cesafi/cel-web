@@ -61,7 +61,9 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
         damageDealt: 0,
         turretDamage: 0,
         damageTaken: 0,
-        teamfight: 0
+        teamfight: 0,
+        turtlesSlain: 0,
+        lordsSlain: 0
       });
     }
     for (let i = 0; i < 5; i++) {
@@ -76,7 +78,9 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
         damageDealt: 0,
         turretDamage: 0,
         damageTaken: 0,
-        teamfight: 0
+        teamfight: 0,
+        turtlesSlain: 0,
+        lordsSlain: 0
       });
     }
 
@@ -176,6 +180,10 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
       player.damageTaken = Number(value) || 0;
     } else if (field === 'teamfight') {
       player.teamfight = Number(value) || 0;
+    } else if (field === 'turtlesSlain') {
+      player.turtlesSlain = Number(value) || 0;
+    } else if (field === 'lordsSlain') {
+      player.lordsSlain = Number(value) || 0;
     }
 
     newPlayers[index] = player;
@@ -212,6 +220,8 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
             turret_damage: stat.turretDamage,
             damage_taken: stat.damageTaken,
             teamfight: stat.teamfight,
+            turtle_slain: stat.turtlesSlain,
+            lord_slain: stat.lordsSlain,
             is_mvp: index === mvpIndex
           };
         })
@@ -251,7 +261,9 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                 damageDealt: 0,
                 turretDamage: 0,
                 damageTaken: 0,
-                teamfight: 0
+                teamfight: 0,
+                turtlesSlain: 0,
+                lordsSlain: 0
               };
             })
           };
@@ -394,7 +406,9 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                     damageDealt: 0,
                     turretDamage: 0,
                     damageTaken: 0,
-                    teamfight: 0
+                    teamfight: 0,
+                    turtlesSlain: 0,
+                    lordsSlain: 0
                   }))
                 };
               });
@@ -413,14 +427,17 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                 <TableRow>
                   <TableHead className="w-[180px]">Player & Team</TableHead>
                   <TableHead className="w-[120px]">Hero</TableHead>
+                  <TableHead className="w-[60px] text-center">MVP</TableHead>
                   <TableHead className="w-[160px] text-center">K / D / A</TableHead>
-                  <TableHead className="w-[100px]">Gold</TableHead>
+                  <TableHead className="w-[80px]">Gold</TableHead>
                   <TableHead className="w-[80px]">Rating</TableHead>
                   {/* Advanced Stats */}
                   <TableHead className="w-[100px]">Damage</TableHead>
                   <TableHead className="w-[100px]">Turret</TableHead>
                   <TableHead className="w-[100px]">Taken</TableHead>
                   <TableHead className="w-[80px]">TF %</TableHead>
+                  <TableHead className="w-[60px] text-center">Turtles</TableHead>
+                  <TableHead className="w-[60px] text-center">Lords</TableHead>
                   
                   <TableHead className="w-[200px]">Map to Player</TableHead>
                 </TableRow>
@@ -435,13 +452,7 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span className="flex items-center gap-2">
-                            <Checkbox 
-                              checked={mvpIndex === index}
-                              onCheckedChange={() => setMvpIndex(index)}
-                              className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-                            />
                             {stat.playerName} 
-                            {mvpIndex === index && <Badge className="bg-yellow-500 hover:bg-yellow-600 text-[10px] px-1 h-5">MVP</Badge>}
                             {stat.badge === 'Gold' && mvpIndex !== index && <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-[10px] px-1 h-5">Gold</Badge>}
                           </span>
                           <div className="flex items-center gap-1.5 mt-1">
@@ -455,6 +466,15 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                           onChange={(e) => handleStatChange(index, 'heroName', e.target.value)}
                           className="h-8 w-[100px]"
                         />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-center">
+                          <Checkbox 
+                            checked={mvpIndex === index}
+                            onCheckedChange={() => setMvpIndex(index)}
+                            className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -545,6 +565,22 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                           />
                           <span className="text-xs text-muted-foreground ml-1">%</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.turtlesSlain ?? 0} 
+                          onChange={(e) => handleStatChange(index, 'turtlesSlain', e.target.value)}
+                          className="h-8 w-[50px] px-2 text-center mx-auto"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.lordsSlain ?? 0} 
+                          onChange={(e) => handleStatChange(index, 'lordsSlain', e.target.value)}
+                          className="h-8 w-[50px] px-2 text-center mx-auto"
+                        />
                       </TableCell>
 
                       <TableCell>

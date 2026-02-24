@@ -60,7 +60,10 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
         agentName: '',
         acs: 0,
         kda: { kills: 0, deaths: 0, assists: 0 },
-        firstBloods: 0
+        econRating: 0,
+        firstBloods: 0,
+        plants: 0,
+        defuses: 0
       });
     }
     for (let i = 0; i < 5; i++) {
@@ -70,7 +73,10 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
         agentName: '',
         acs: 0,
         kda: { kills: 0, deaths: 0, assists: 0 },
-        firstBloods: 0
+        econRating: 0,
+        firstBloods: 0,
+        plants: 0,
+        defuses: 0
       });
     }
 
@@ -152,6 +158,14 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
       player.acs = Number(value) || 0;
     } else if (field === 'agentName') {
       player.agentName = value;
+    } else if (field === 'econRating') {
+      player.econRating = Number(value) || 0;
+    } else if (field === 'firstBloods') {
+      player.firstBloods = Number(value) || 0;
+    } else if (field === 'plants') {
+      player.plants = Number(value) || 0;
+    } else if (field === 'defuses') {
+      player.defuses = Number(value) || 0;
     }
 
     newPlayers[index] = player;
@@ -184,7 +198,10 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
             deaths: stat.kda.deaths,
             assists: stat.kda.assists,
             acs: stat.acs,
+            econ_rating: stat.econRating,
             first_bloods: stat.firstBloods,
+            plants: stat.plants,
+            defuses: stat.defuses,
             is_mvp: index === mvpIndex,
           };
         })
@@ -217,7 +234,10 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
               agentName: '',
               acs: 0,
               kda: { kills: 0, deaths: 0, assists: 0 },
-              firstBloods: 0
+              econRating: 0,
+              firstBloods: 0,
+              plants: 0,
+              defuses: 0
             }))
           };
         });
@@ -338,8 +358,12 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                   <TableHead>Extracted Name</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>ACS</TableHead>
-                  <TableHead>K/D/A</TableHead>
-                  <TableHead className="w-[250px]">Map to Player</TableHead>
+                  <TableHead className="w-[180px]">K / D / A</TableHead>
+                  <TableHead>Econ</TableHead>
+                  <TableHead>FB</TableHead>
+                  <TableHead>PL</TableHead>
+                  <TableHead>DF</TableHead>
+                  <TableHead className="w-[200px]">Map to Player</TableHead>
                   <TableHead>Team</TableHead>
                 </TableRow>
               </TableHeader>
@@ -407,6 +431,38 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                             placeholder="A"
                           />
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.econRating || 0} 
+                          onChange={(e) => handleStatChange(index, 'econRating', e.target.value)}
+                          className="h-8 w-[50px] px-2 text-center"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.firstBloods || 0} 
+                          onChange={(e) => handleStatChange(index, 'firstBloods', e.target.value)}
+                          className="h-8 w-[50px] px-2 text-center"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.plants || 0} 
+                          onChange={(e) => handleStatChange(index, 'plants', e.target.value)}
+                          className="h-8 w-[50px] px-2 text-center"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.defuses || 0} 
+                          onChange={(e) => handleStatChange(index, 'defuses', e.target.value)}
+                          className="h-8 w-[50px] px-2 text-center"
+                        />
                       </TableCell>
                       <TableCell>
                         <Select

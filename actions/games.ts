@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { PaginationOptions, ServiceResponse } from '@/lib/types/base';
 import { GameService } from '@/services/games';
 import { createGameSchema, updateGameSchema } from '@/lib/validations/games';
@@ -95,3 +96,38 @@ export async function deleteGameByIdWithCascade(id: number) {
 export async function calculateMatchDuration(matchId: number) {
   return await GameService.calculateMatchDuration(matchId);
 }
+
+/**
+ * Perform a dynamic coin toss for a single game (e.g. MLBB Side Selection).
+ */
+export async function performGameCoinToss(gameId: number, matchId: number, team1Id: string, team2Id: string) {
+  try {
+    const isTeam1 = Math.random() > 0.5;
+    // For MLBB, "heads/tails" doesn't matter as much, but we could determine First Pick or side
+    // Often it just means the winner gets to choose. We will set the winner.
+    
+    const winnerId = isTeam1 ? team1Id : team2Id;
+    
+    const update = await GameService.updateById({
+      id: gameId,
+      coin_toss_winner: winnerId,
+    });
+    
+    if (update.success) {
+      if (matchId) {
+        // We revalidate matches index because calculating match duration might require it,
+        // and we specifically invalidate the match route here if needed, or rely on a custom helper:
+        RevalidationHelper.revalidateMatches(); 
+        // Also revalidate the broadcast/draft paths since they rely on game data
+        revalidatePath(`/broadcast/mlbb/draft/${matchId}`);
+      }
+      RevalidationHelper.revalidateGames();
+    }
+    
+    return update;
+  } catch (error) {
+    console.error('Game coin toss failed:', error);
+    return { success: false, error: 'Coin toss execution failed' };
+  }
+}
+

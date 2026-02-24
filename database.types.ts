@@ -178,16 +178,16 @@ export type Database = {
           created_at: string
           esport_category_id: number | null
           id: number
+          points_bo2_draw_1_1: number | null
+          points_bo2_loss_0_2: number | null
+          points_bo2_win_2_0: number | null
+          points_bo3_loss_0_2: number | null
+          points_bo3_loss_1_2: number | null
+          points_bo3_win_2_0: number | null
+          points_bo3_win_2_1: number | null
           points_draw: number | null
           points_loss: number | null
           points_win: number | null
-          points_bo3_win_2_0: number | null
-          points_bo3_win_2_1: number | null
-          points_bo3_loss_1_2: number | null
-          points_bo3_loss_0_2: number | null
-          points_bo2_win_2_0: number | null
-          points_bo2_draw_1_1: number | null
-          points_bo2_loss_0_2: number | null
           season_id: number | null
           stage_type: Database["public"]["Enums"]["stage_type"]
           updated_at: string
@@ -197,16 +197,16 @@ export type Database = {
           created_at?: string
           esport_category_id?: number | null
           id?: number
+          points_bo2_draw_1_1?: number | null
+          points_bo2_loss_0_2?: number | null
+          points_bo2_win_2_0?: number | null
+          points_bo3_loss_0_2?: number | null
+          points_bo3_loss_1_2?: number | null
+          points_bo3_win_2_0?: number | null
+          points_bo3_win_2_1?: number | null
           points_draw?: number | null
           points_loss?: number | null
           points_win?: number | null
-          points_bo3_win_2_0?: number | null
-          points_bo3_win_2_1?: number | null
-          points_bo3_loss_1_2?: number | null
-          points_bo3_loss_0_2?: number | null
-          points_bo2_win_2_0?: number | null
-          points_bo2_draw_1_1?: number | null
-          points_bo2_loss_0_2?: number | null
           season_id?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           updated_at?: string
@@ -216,16 +216,16 @@ export type Database = {
           created_at?: string
           esport_category_id?: number | null
           id?: number
+          points_bo2_draw_1_1?: number | null
+          points_bo2_loss_0_2?: number | null
+          points_bo2_win_2_0?: number | null
+          points_bo3_loss_0_2?: number | null
+          points_bo3_loss_1_2?: number | null
+          points_bo3_win_2_0?: number | null
+          points_bo3_win_2_1?: number | null
           points_draw?: number | null
           points_loss?: number | null
           points_win?: number | null
-          points_bo3_win_2_0?: number | null
-          points_bo3_win_2_1?: number | null
-          points_bo3_loss_1_2?: number | null
-          points_bo3_loss_0_2?: number | null
-          points_bo2_win_2_0?: number | null
-          points_bo2_draw_1_1?: number | null
-          points_bo2_loss_0_2?: number | null
           season_id?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type"]
           updated_at?: string
@@ -559,6 +559,13 @@ export type Database = {
             foreignKeyName: "games_valorant_map_id_fkey"
             columns: ["valorant_map_id"]
             isOneToOne: false
+            referencedRelation: "mv_valorant_map_stats"
+            referencedColumns: ["map_id"]
+          },
+          {
+            foreignKeyName: "games_valorant_map_id_fkey"
+            columns: ["valorant_map_id"]
+            isOneToOne: false
             referencedRelation: "valorant_maps"
             referencedColumns: ["id"]
           },
@@ -630,6 +637,8 @@ export type Database = {
       matches: {
         Row: {
           best_of: number
+          coin_toss_result: string | null
+          coin_toss_winner_id: string | null
           created_at: string
           description: string
           end_at: string | null
@@ -648,6 +657,8 @@ export type Database = {
         }
         Insert: {
           best_of?: number
+          coin_toss_result?: string | null
+          coin_toss_winner_id?: string | null
           created_at?: string
           description: string
           end_at?: string | null
@@ -666,6 +677,8 @@ export type Database = {
         }
         Update: {
           best_of?: number
+          coin_toss_result?: string | null
+          coin_toss_winner_id?: string | null
           created_at?: string
           description?: string
           end_at?: string | null
@@ -683,6 +696,13 @@ export type Database = {
           venue?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "matches_coin_toss_winner_id_fkey"
+            columns: ["coin_toss_winner_id"]
+            isOneToOne: false
+            referencedRelation: "schools_teams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matches_stage_id_fkey"
             columns: ["stage_id"]
@@ -1509,6 +1529,84 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seasons"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_valorant_map_stats: {
+        Row: {
+          category_id: number | null
+          map_id: number | null
+          map_name: string | null
+          season_id: number | null
+          splash_image_url: string | null
+          stage_id: number | null
+          total_bans: number | null
+          total_games: number | null
+          total_picks: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esports_seasons_stages_esport_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "esports_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esports_seasons_stages_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "esports_seasons_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_hero_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_player_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_mlbb_team_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_agent_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_player_stats"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "mv_valorant_team_stats"
+            referencedColumns: ["stage_id"]
           },
         ]
       }

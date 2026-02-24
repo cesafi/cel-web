@@ -17,7 +17,8 @@ export const createGameSchema = z
       .default('00:00'),
 
     start_at: z.string().optional().nullable(),
-    end_at: z.string().optional().nullable()
+    end_at: z.string().optional().nullable(),
+    valorant_map_id: z.number().nullable().optional()
   })
   .refine(
     (data) => {
@@ -49,7 +50,10 @@ export const updateGameSchema = z
       .transform(val => val.split(':').length === 2 ? `00:${val}` : val)
       .optional(),
     start_at: z.string().optional().nullable(),
-    end_at: z.string().optional().nullable()
+    end_at: z.string().optional().nullable(),
+    valorant_map_id: z.number().nullable().optional(),
+    coin_toss_winner: z.string().nullable().optional(),
+    side_selection: z.string().nullable().optional()
   })
   .refine(
     (data) => {

@@ -1,56 +1,47 @@
-'use client';
+'use client'
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useRef, useState, useEffect, useMemo } from 'react';
-import { Plus, Minus, Loader2 } from 'lucide-react';
-import { moderniz, roboto } from '@/lib/fonts';
-import { useAboutUsFaq } from '@/hooks/use-faq';
-import { Faq } from '@/lib/types/faq';
-import dynamic from 'next/dynamic';
-import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion'
+import { useRef, useState, useEffect, useMemo } from 'react'
+import { Plus, Minus, Loader2 } from 'lucide-react'
+import { moderniz, roboto } from '@/lib/fonts'
+import { useAboutUsFaq } from '@/hooks/use-faq'
+import { Faq } from '@/lib/types/faq'
+import dynamic from 'next/dynamic'
+import Image from 'next/image'
 
 // Dynamically import scroll effects only on client side
-const ScrollEffects = dynamic(
-  () => import('./scroll-effects').then(mod => mod.ScrollEffects),
-  { ssr: false }
-);
+const ScrollEffects = dynamic(() => import('./scroll-effects').then((mod) => mod.ScrollEffects), { ssr: false })
 
 interface AboutUsFaqProps {
-  initialFaqs?: Faq[];
+  initialFaqs?: Faq[]
 }
 
 export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLElement>(null)
 
-  const { data: faqResponse, isLoading, error } = useAboutUsFaq();
+  const { data: faqResponse, isLoading, error } = useAboutUsFaq()
   // Get About Us specific FAQs (use client data if available, otherwise use initial data)
   const faqItems = useMemo(() => {
     if (faqResponse?.success && 'data' in faqResponse && Array.isArray(faqResponse.data)) {
-      return faqResponse.data;
+      return faqResponse.data
     }
     // Fallback to server-side initial data
-    return initialFaqs;
-  }, [faqResponse, initialFaqs]);
+    return initialFaqs
+  }, [faqResponse, initialFaqs])
 
-  const [openItems, setOpenItems] = useState<number[]>([]);
+  const [openItems, setOpenItems] = useState<number[]>([])
 
   // Initialize open items based on database is_open values
   useEffect(() => {
     if (faqItems && faqItems.length > 0) {
-      const defaultOpenItems = faqItems
-        .filter(item => item.is_open)
-        .map(item => item.id);
-      setOpenItems(defaultOpenItems);
+      const defaultOpenItems = faqItems.filter((item) => item.is_open).map((item) => item.id)
+      setOpenItems(defaultOpenItems)
     }
-  }, [faqItems]);
+  }, [faqItems])
 
   const toggleItem = (id: number) => {
-    setOpenItems(prev =>
-      prev.includes(id)
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    );
-  };
+    setOpenItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
+  }
 
   // Loading state
   if (isLoading) {
@@ -65,9 +56,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
               </div>
 
               {/* Loading text */}
-              <h3 className={`${moderniz.className} text-2xl font-bold text-foreground mb-4`}>
-                Loading FAQ
-              </h3>
+              <h3 className={`${moderniz.className} text-2xl font-bold text-foreground mb-4`}>Loading FAQ</h3>
               <p className={`${roboto.className} text-muted-foreground text-lg`}>
                 Please wait while we fetch the frequently asked questions...
               </p>
@@ -75,7 +64,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
           </div>
         </div>
       </section>
-    );
+    )
   }
 
   // Error state
@@ -91,9 +80,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
               </div>
 
               {/* Error title */}
-              <h3 className={`${moderniz.className} text-2xl font-bold text-foreground mb-4`}>
-                Unable to Load FAQ
-              </h3>
+              <h3 className={`${moderniz.className} text-2xl font-bold text-foreground mb-4`}>Unable to Load FAQ</h3>
 
               {/* Error description */}
               <p className={`${roboto.className} text-muted-foreground text-lg leading-relaxed mb-6`}>
@@ -111,7 +98,7 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
           </div>
         </div>
       </section>
-    );
+    )
   }
 
   // Empty state (but allow loading state with initial data)
@@ -127,20 +114,17 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
               </div>
 
               {/* Title */}
-              <h3 className={`${moderniz.className} text-2xl font-bold text-foreground mb-4`}>
-                No FAQ Items Yet
-              </h3>
+              <h3 className={`${moderniz.className} text-2xl font-bold text-foreground mb-4`}>No FAQ Items Yet</h3>
 
               {/* Description */}
               <p className={`${roboto.className} text-muted-foreground text-lg leading-relaxed mb-6`}>
-                We&apos;re working on adding frequently asked questions to help you learn more about CESAFI. Check back soon!
+                We&apos;re working on adding frequently asked questions to help you learn more about CESAFI. Check back
+                soon!
               </p>
 
               {/* Call to action */}
               <div className="space-y-3">
-                <p className={`${roboto.className} text-sm text-muted-foreground`}>
-                  In the meantime, you can:
-                </p>
+                <p className={`${roboto.className} text-sm text-muted-foreground`}>In the meantime, you can:</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <a
                     href="/about-us"
@@ -160,14 +144,13 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
           </div>
         </div>
       </section>
-    );
+    )
   }
 
   return (
     <section ref={ref} className="py-16 sm:py-40 bg-muted/30 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-20 items-start">
-
           {/* Left Column - FAQ */}
           <ScrollEffects ref={ref}>
             <div className="space-y-6">
@@ -184,27 +167,27 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                     onClick={() => toggleItem(item.id)}
                     className="w-full p-4 sm:p-8 text-left flex items-center justify-between hover:bg-muted/30 transition-all duration-300 group"
                   >
-                    <span className={`${moderniz.className} text-base sm:text-xl font-semibold text-foreground transition-colors duration-300 pr-2 ${openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
-                      }`}>
+                    <span
+                      className={`${moderniz.className} text-base sm:text-xl font-semibold text-foreground transition-colors duration-300 pr-2 ${
+                        openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
+                      }`}
+                    >
                       {item.question}
                     </span>
                     <motion.div
-                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 ${openItems.includes(item.id)
-                        ? 'bg-primary text-primary-foreground scale-110'
-                        : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'
-                        }`}
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 ${
+                        openItems.includes(item.id)
+                          ? 'bg-primary text-primary-foreground scale-110'
+                          : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'
+                      }`}
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <motion.div
                         animate={{ rotate: openItems.includes(item.id) ? 180 : 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
                       >
-                        {openItems.includes(item.id) ? (
-                          <Minus className="w-5 h-5" />
-                        ) : (
-                          <Plus className="w-5 h-5" />
-                        )}
+                        {openItems.includes(item.id) ? <Minus className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                       </motion.div>
                     </motion.div>
                   </button>
@@ -217,17 +200,17 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                           opacity: 1,
                           height: 'auto',
                           transition: {
-                            height: { duration: 0.4, ease: "easeInOut" },
-                            opacity: { duration: 0.3, delay: 0.1 }
-                          }
+                            height: { duration: 0.4, ease: 'easeInOut' },
+                            opacity: { duration: 0.3, delay: 0.1 },
+                          },
                         }}
                         exit={{
                           opacity: 0,
                           height: 0,
                           transition: {
                             opacity: { duration: 0.2 },
-                            height: { duration: 0.3, delay: 0.1, ease: "easeInOut" }
-                          }
+                            height: { duration: 0.3, delay: 0.1, ease: 'easeInOut' },
+                          },
                         }}
                         className="overflow-hidden"
                       >
@@ -286,24 +269,6 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
                         className="object-contain"
                       />
                     </motion.div>
-                    <motion.h3
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: 0.4 }}
-                      viewport={{ once: true }}
-                      className={`${moderniz.className} text-xl sm:text-3xl font-bold text-foreground mb-2 sm:mb-4`}
-                    >
-                      CESAFI Excellence
-                    </motion.h3>
-                    <motion.p
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: 0.6 }}
-                      viewport={{ once: true }}
-                      className={`${roboto.className} text-muted-foreground text-sm sm:text-lg mb-4 sm:mb-6`}
-                    >
-                      Celebrating athletic achievement
-                    </motion.p>
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
@@ -332,18 +297,15 @@ export default function AboutUsFaq({ initialFaqs = [] }: AboutUsFaqProps) {
           viewport={{ once: true }}
           className="text-center mt-16"
         >
-          <p className={`${roboto.className} text-muted-foreground mb-4`}>
-            Looking for more detailed information?
-          </p>
+          <p className={`${roboto.className} text-muted-foreground mb-4`}>Looking for more detailed information?</p>
           <a
             href="/faq"
             className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-8 py-4 rounded-xl font-semibold text-lg uppercase tracking-wide transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-3`}
           >
             View Complete FAQ
-            <span className="text-xl">📚</span>
           </a>
         </motion.div>
       </div>
     </section>
-  );
+  )
 }

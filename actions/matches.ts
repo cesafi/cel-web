@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { MatchesService } from '@/services/matches';
 import { SeasonService } from '@/services/seasons';
 import { EsportsSeasonsStagesService } from '@/services/esports-seasons-stages';
-import { SchedulePaginationOptions, ScheduleFilters, MatchInsert } from '@/lib/types/matches';
+import { SchedulePaginationOptions, ScheduleFilters, MatchInsert, MatchUpdate, Match } from '@/lib/types/matches';
+import { ServiceResponse } from '@/lib/types/base';
 
 export async function getMatchById(id: number) {
   return MatchesService.getMatchById(id);
@@ -47,8 +48,8 @@ export async function getAvailableSportCategories() {
   return MatchesService.getAvailableSportCategories();
 }
 
-export async function updateMatchById(data: Parameters<typeof MatchesService.updateMatchById>[0]) {
-  const result = await MatchesService.updateMatchById(data);
+export async function updateMatchById(data: MatchUpdate & { id: number }, participantTeamIds?: string[]) {
+  const result = await MatchesService.updateMatchById(data, participantTeamIds);
   if (result.success) revalidatePath('/admin/matches');
   return result;
 }
@@ -73,6 +74,36 @@ export async function getAvailableSeasons() {
   return SeasonService.getAll();
 }
 
+
 export async function getAvailableStages() {
   return EsportsSeasonsStagesService.getAll();
+}
+
+/**
+ * Perform a dynamic coin toss for a match to determine Map Veto execution advantages.
+ */
+export async function performMatchCoinToss(matchId: number, team1Id: string, team2Id: string): Promise<ServiceResponse<Match>> {
+  try {
+    const isTeam1 = Math.random() > 0.5;
+    const isHeads = Math.random() > 0.5;
+    
+    const winnerId = isTeam1 ? team1Id : team2Id;
+    const result = isHeads ? 'heads' : 'tails';
+    
+    const update = await MatchesService.updateMatchById({
+      id: matchId,
+      coin_toss_winner_id: winnerId,
+      coin_toss_result: result,
+    });
+    
+    if (update.success) {
+      revalidatePath(`/admin/matches/${matchId}`);
+      revalidatePath(`/veto/${matchId}`);
+    }
+    
+    return update;
+  } catch (error) {
+    console.error('Match coin toss failed:', error);
+    return { success: false, error: 'Coin toss execution failed' };
+  }
 }

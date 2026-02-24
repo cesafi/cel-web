@@ -8,11 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MatchModal } from '@/components/shared/matches/match-modal';
-import { updateMatchById } from '@/actions/matches';
-import { createGame } from '@/actions/games';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { updateMatchById, deleteMatchById } from '@/actions/matches';
+import { createGame, updateGameById } from '@/actions/games';
 import { MatchInsert, MatchUpdate } from '@/lib/types/matches';
+import { MapVetoPanel } from '@/components/veto/map-veto-panel';
+import { getActiveValorantMaps } from '@/actions/valorant-maps';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Calendar,
@@ -22,6 +26,7 @@ import {
   Swords,
   Trophy,
   Pencil,
+  Trash2,
   Plus,
   ChevronRight,
   Clock,
@@ -61,12 +66,29 @@ export default function MatchDetailPage() {
   const queryClient = useQueryClient();
   const matchId = Number(params.matchId);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
   const team1 = match?.match_participants?.[0];
   const team2 = match?.match_participants?.[1];
+
+  const esportName = match?.esports_seasons_stages?.esports_categories?.esports?.name?.toLowerCase() || '';
+  const isMlbb = esportName.includes('mobile legends') || esportName.includes('mlbb');
+  const isValorant = esportName.includes('valorant');
+
+  // Global Valorant Maps for assignment
+  const { data: valorantMaps = [] } = useQuery({
+    queryKey: ['valorant-maps-active'],
+    queryFn: async () => {
+      const result = await getActiveValorantMaps();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: isValorant,
+  });
 
   if (isLoading) {
     return <MatchDetailSkeleton />;
@@ -88,12 +110,56 @@ export default function MatchDetailPage() {
     );
   }
 
-  const esportName = match.esports_seasons_stages?.esports_categories?.esports?.name?.toLowerCase() || '';
-  const isMlbb = esportName.includes('mobile legends') || esportName.includes('mlbb');
-  const isValorant = esportName.includes('valorant');
-  const nextGameNumber = (match.games?.length || 0) + 1;
-  const activeGame = match.games?.find(g => ['drafting', 'in_progress'].includes(g.status || ''));
-  const status = statusConfig[match.status] || statusConfig.upcoming;
+  const nextGameNumber = (match?.games?.length || 0) + 1;
+  const activeGame = match?.games?.find(g => ['drafting', 'in_progress'].includes(g.status || ''));
+  const status = match ? (statusConfig[match.status] || statusConfig.upcoming) : statusConfig.upcoming;
+
+  const handleMapAssign = async (gameId: number, mapIdStr: string) => {
+    const mapId = mapIdStr === 'unassigned' ? null : Number(mapIdStr);
+    try {
+      const result = await updateGameById({ id: gameId, valorant_map_id: mapId });
+      if (result.success) {
+        toast.success('Map assigned to game');
+        queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      } else {
+        toast.error(result.error || 'Failed to assign map');
+      }
+    } catch {
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleVetoComplete = async () => {
+    // Fetch vetoes from cache manually since this is fired right after a Pick/Ban completes
+    const vetoes: any[] = queryClient.getQueryData(['valorant-map-vetoes', matchId]) || [];
+    const pickedVetoes = vetoes.filter(v => v.action === 'pick' || v.action === 'remain');
+    
+    // Map veto text names to map database IDs
+    const pickedMapIds = pickedVetoes.map(v => {
+      const mapObj = valorantMaps.find(m => m.name === v.map_name);
+      return mapObj?.id;
+    }).filter(Boolean);
+
+    if (!match?.games || match.games.length === 0) return;
+
+    const sortedGames = [...match.games].sort((a, b) => a.game_number - b.game_number);
+    let updateCount = 0;
+
+    for (let i = 0; i < Math.min(pickedMapIds.length, sortedGames.length); i++) {
+       const game = sortedGames[i];
+       const newMapId = pickedMapIds[i];
+
+       if (game.valorant_map_id !== newMapId) {
+          await updateGameById({ id: game.id, valorant_map_id: newMapId });
+          updateCount++;
+       }
+    }
+
+    if (updateCount > 0) {
+       toast.success(`Auto-assigned ${updateCount} map(s) to games from Map Veto`);
+       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+    }
+  };
 
   const handleStartGame = async () => {
     try {
@@ -133,8 +199,22 @@ export default function MatchDetailPage() {
     }
   };
 
-  const handleLobbyRedirect = () => {
-    router.push(`/lobby/${matchId}`);
+  const handleDeleteMatch = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteMatchById(matchId);
+      if (result.success) {
+        toast.success('Match deleted');
+        setDeleteModalOpen(false);
+        router.push('/admin/matches');
+      } else {
+        toast.error(result.error || 'Failed to delete match');
+        setIsDeleting(false);
+      }
+    } catch {
+      toast.error('An unexpected error occurred');
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -166,9 +246,9 @@ export default function MatchDetailPage() {
               <Pencil className="w-3.5 h-3.5 mr-1.5" />
               Edit
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleLobbyRedirect}>
-              <MonitorPlay className="w-3.5 h-3.5 mr-1.5" />
-              Lobby
+            <Button variant="destructive" size="sm" onClick={() => setDeleteModalOpen(true)}>
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Delete
             </Button>
           </div>
         </div>
@@ -343,8 +423,36 @@ export default function MatchDetailPage() {
         </div>
       </div>
 
+      {/* ── Map Veto Section ── */}
+      {isValorant && team1?.schools_teams && team2?.schools_teams && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Swords className="h-5 w-5" />
+            Map Veto
+          </h2>
+          <MapVetoPanel
+            matchId={matchId}
+            bestOf={match.best_of || 3}
+            team1={{
+              id: team1.schools_teams.id,
+              name: team1.schools_teams.name || 'Team 1',
+              abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+              logoUrl: team1.schools_teams.school?.logo_url,
+            }}
+            team2={{
+              id: team2.schools_teams.id,
+              name: team2.schools_teams.name || 'Team 2',
+              abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+              logoUrl: team2.schools_teams.school?.logo_url,
+            }}
+            isAdmin={true}
+            onVetoComplete={handleVetoComplete}
+          />
+        </div>
+      )}
+
       {/* ── Games Section ── */}
-      <div className="space-y-4">
+      <div className="space-y-4 pb-8">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Swords className="h-5 w-5" />
@@ -383,10 +491,18 @@ export default function MatchDetailPage() {
               const isCompleted = game.status === 'completed';
 
               return (
-                <button
+                <div
                   key={game.id}
                   onClick={() => router.push(`/admin/matches/${matchId}/games/${game.id}`)}
-                  className={`w-full text-left rounded-xl border bg-card p-4 md:p-5 flex items-center justify-between gap-4 transition-all hover:bg-accent/50 hover:border-primary/30 group ${isActive ? 'border-blue-500/40 bg-blue-500/5' : ''
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/admin/matches/${matchId}/games/${game.id}`);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`w-full text-left rounded-xl border bg-card p-4 md:p-5 flex items-center justify-between gap-4 transition-all hover:bg-accent/50 hover:border-primary/30 group cursor-pointer ${isActive ? 'border-blue-500/40 bg-blue-500/5' : ''
                     }`}
                 >
                   <div className="flex items-center gap-4">
@@ -418,10 +534,28 @@ export default function MatchDetailPage() {
                             <span>{format(new Date(game.start_at), 'p')}</span>
                           </>
                         )}
-                        {game.valorant_map_id && (
+                        {/* Inline Valorant Map Selector */}
+                        {isValorant && (
                           <>
                             <span>•</span>
-                            <span>Map #{game.valorant_map_id}</span>
+                            <div onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                                <Select
+                                  value={game.valorant_map_id ? String(game.valorant_map_id) : 'unassigned'}
+                                  onValueChange={(val) => handleMapAssign(game.id, val)}
+                                >
+                                  <SelectTrigger className="h-6 text-xs bg-muted/50 border-transparent hover:border-border w-[130px] px-2 py-0">
+                                    <SelectValue placeholder="Assign map" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
+                                    {valorantMaps.map((m: any) => (
+                                      <SelectItem key={m.id} value={String(m.id)}>
+                                        {m.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                            </div>
                           </>
                         )}
                       </div>
@@ -429,7 +563,7 @@ export default function MatchDetailPage() {
                   </div>
 
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                </button>
+                </div>
               );
             })}
           </div>
@@ -448,6 +582,17 @@ export default function MatchDetailPage() {
           isSubmitting={isSubmitting}
         />
       )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteMatch}
+        title="Delete Match"
+        message="Are you sure you want to delete this match? This action cannot be undone and will delete all associated games and scores."
+        type="delete"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

@@ -10,7 +10,8 @@ export async function getGameScoresByGameId(gameId: number) {
 
 export async function createGameScore(data: GameScoreInsert) {
   const result = await GameScoreService.insert(data);
-  if (result.success) {
+  if (result.success && data.game_id) {
+    await GameScoreService.syncMatchScoresFromGame(data.game_id);
     RevalidationHelper.revalidateMatches();
   }
   return result;
@@ -19,7 +20,19 @@ export async function createGameScore(data: GameScoreInsert) {
 export async function updateGameScore(data: GameScoreUpdate) {
   const result = await GameScoreService.updateById(data);
   if (result.success) {
-    RevalidationHelper.revalidateMatches();
+    let gameId = data.game_id !== null ? data.game_id : undefined;
+    if (!gameId && data.id) {
+      // Fetch game_id from DB if not in payload
+      const gameIdResult = await GameScoreService.getGameIdById(data.id);
+      if (gameIdResult.success && gameIdResult.data) {
+        gameId = gameIdResult.data;
+      }
+    }
+    
+    if (gameId) {
+      await GameScoreService.syncMatchScoresFromGame(gameId);
+      RevalidationHelper.revalidateMatches();
+    }
   }
   return result;
 }

@@ -116,18 +116,24 @@ export function MatchModal({
           description: match.description,
           venue: match.venue,
           stage_id: match.stage_id,
+          stream_url: match.stream_url || '',
           scheduled_at: match.scheduled_at ? utcToLocal(match.scheduled_at).toISOString().slice(0, 16) : null,
           start_at: match.start_at ? utcToLocal(match.start_at).toISOString().slice(0, 16) : null,
           end_at: match.end_at ? utcToLocal(match.end_at).toISOString().slice(0, 16) : null,
           best_of: match.best_of,
           status: 'upcoming'
         });
-        setSelectedTeamIds([]); // For edit mode, we don't manage participants here
+        setSelectedTeamIds(
+          ((match.match_participants as any[]) || [])
+            .map((p: any) => p?.schools_teams?.id)
+            .filter(Boolean) as string[]
+        ); 
       } else {
         setFormData({
           name: '',
           description: '',
           venue: '',
+          stream_url: '',
           stage_id: selectedStageId || 0,
           scheduled_at: null,
           start_at: null,
@@ -170,7 +176,7 @@ export function MatchModal({
         setErrors({ stage_id: 'League stage is required' });
         return;
       }
-      if (mode === 'add' && selectedTeamIds.length < 2) {
+      if (selectedTeamIds.length < 2) {
         setErrors({ participants: 'At least 2 teams must be selected for a match' });
         return;
       }
@@ -181,7 +187,7 @@ export function MatchModal({
         hasStartedUpdating.current = true;
       }
 
-      await onSubmit(formData, mode === 'add' ? selectedTeamIds : undefined);
+      await onSubmit(formData, selectedTeamIds);
     } catch (error) {
       if (error instanceof ZodError) {
         const newErrors: Record<string, string> = {};
@@ -262,8 +268,7 @@ export function MatchModal({
           </Card>
         )}
 
-        {/* Match Participants - Only for Add Mode */}
-        {mode === 'add' && (
+        {/* Match Participants */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -303,8 +308,6 @@ export function MatchModal({
               )}
             </CardContent>
           </Card>
-        )}
-
         {/* Match Details */}
         <Card>
           <CardHeader>
@@ -363,6 +366,18 @@ export function MatchModal({
               {errors.venue && (
                 <p className="text-sm text-red-500">{errors.venue}</p>
               )}
+            </div>
+
+            {/* Stream URL */}
+            <div className="space-y-2">
+              <Label htmlFor="stream_url">Stream URL</Label>
+              <Input
+                id="stream_url"
+                type="url"
+                value={formData.stream_url || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, stream_url: e.target.value }))}
+                placeholder="https://twitch.tv/..."
+              />
             </div>
 
             {/* Best of */}

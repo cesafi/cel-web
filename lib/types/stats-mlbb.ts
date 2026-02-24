@@ -53,4 +53,6 @@ export interface MlbbPlayerScreenshotStat {
   turretDamage?: number;
   damageTaken?: number;
   teamfight?: number;
+  turtlesSlain?: number;
+  lordsSlain?: number;
 }

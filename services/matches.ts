@@ -133,7 +133,7 @@ export class MatchesService extends BaseService {
   /**
    * Update a match by ID
    */
-  static async updateMatchById(data: MatchUpdate & { id: number }) {
+  static async updateMatchById(data: MatchUpdate & { id: number }, participantTeamIds?: string[]) {
     try {
       const supabase = await this.getClient();
       const { id, ...updateData } = data;
@@ -146,6 +146,28 @@ export class MatchesService extends BaseService {
         .single();
 
       if (error) throw error;
+
+      if (participantTeamIds !== undefined) {
+          // Pre-fetch old scores to retain them
+          const { data: oldParticipants } = await supabase
+            .from('match_participants')
+            .select('team_id, match_score')
+            .eq('match_id', id);
+
+          const oldScoreMap = new Map((oldParticipants || []).map(p => [p.team_id, p.match_score]));
+
+          // Delete all old
+          await supabase.from('match_participants').delete().eq('match_id', id);
+
+          if (participantTeamIds.length > 0) {
+              const newParticipants = participantTeamIds.map(teamId => ({
+                  match_id: id,
+                  team_id: teamId,
+                  match_score: oldScoreMap.get(teamId) || 0
+              }));
+              await supabase.from('match_participants').insert(newParticipants);
+          }
+      }
 
       return { success: true as const, data: updatedMatch as Match };
     } catch (error) {

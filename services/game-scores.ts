@@ -50,6 +50,22 @@ export class GameScoreService extends BaseService {
     }
   }
 
+  static async getGameIdById(id: number): Promise<ServiceResponse<number | null>> {
+    try {
+      const supabase = await this.getClient();
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('game_id')
+        .eq('id', id)
+        .single();
+        
+      if (error) throw error;
+      return { success: true, data: data.game_id };
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch game_id for score ${id}`);
+    }
+  }
+
   static async updateById(data: GameScoreUpdate): Promise<ServiceResponse<undefined>> {
     try {
       if (!data.id) {
@@ -57,10 +73,14 @@ export class GameScoreService extends BaseService {
       }
 
       const supabase = await this.getClient();
-      const { error } = await supabase.from(TABLE_NAME).update({
-        ...data,
-        updated_at: nowUtc()
-      }).eq('id', data.id);
+
+      // Clean up nulls that might violate generic FK constraints in Supabase types
+      const updateData = { ...data, updated_at: nowUtc() };
+      if (updateData.game_id === null) {
+        delete updateData.game_id;
+      }
+
+      const { error } = await supabase.from(TABLE_NAME).update(updateData).eq('id', data.id);
 
       if (error) {
         throw error;
@@ -69,6 +89,74 @@ export class GameScoreService extends BaseService {
       return { success: true, data: undefined };
     } catch (err) {
       return this.formatError(err, `Failed to update ${TABLE_NAME} entity.`);
+    }
+  }
+
+  /**
+   * Syncs the total match score for all participants based on the individual game scores of a match.
+   * This is called after a game score is created or updated.
+   */
+  static async syncMatchScoresFromGame(gameId: number): Promise<ServiceResponse<undefined>> {
+    try {
+      const supabase = await this.getClient();
+
+      // 1. Get the match_id for this game
+      const { data: gameData, error: gameError } = await supabase
+        .from('games')
+        .select('match_id')
+        .eq('id', gameId)
+        .single();
+
+      if (gameError) throw gameError;
+      if (!gameData) return { success: true, data: undefined };
+
+      const matchId = gameData.match_id;
+
+      // 2. Get all games for this match
+      const { data: matchGames, error: matchGamesError } = await supabase
+        .from('games')
+        .select('id')
+        .eq('match_id', matchId);
+
+      if (matchGamesError) throw matchGamesError;
+      
+      const gameIds = matchGames.map(g => g.id);
+
+      // 3. Get all game scores for all games in this match
+      const { data: allScores, error: scoresError } = await supabase
+        .from(TABLE_NAME)
+        .select('match_participant_id, score')
+        .in('game_id', gameIds);
+
+      if (scoresError) throw scoresError;
+
+      // 4. Calculate total score per participant
+      const participantScores: Record<number, number> = {};
+      
+      for (const scoreRecord of allScores || []) {
+        const participantId = scoreRecord.match_participant_id;
+        if (!participantScores[participantId]) {
+          participantScores[participantId] = 0;
+        }
+        // Assuming score is numeric (e.g., 1 for win, 0 for loss)
+        participantScores[participantId] += (scoreRecord.score || 0);
+      }
+
+      // 5. Update the match_participants table
+      const updatePromises = Object.entries(participantScores).map(async ([participantId, totalScore]) => {
+        const { error: updateError } = await supabase
+          .from('match_participants')
+          .update({ match_score: totalScore })
+          .eq('id', parseInt(participantId));
+          
+        if (updateError) throw updateError;
+      });
+
+      await Promise.all(updatePromises);
+
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to sync match scores from game ${gameId}.`);
     }
   }
 }

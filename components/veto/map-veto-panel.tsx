@@ -33,6 +33,7 @@ import {
   deleteValorantMapVetoesByMatchId 
 } from '@/actions/valorant-map-vetoes';
 import { performPublicVeto } from '@/actions/veto-public';
+import { performMatchCoinToss } from '@/actions/matches';
 
 interface MapVetoPanelProps {
   matchId: number;
@@ -51,8 +52,10 @@ interface MapVetoPanelProps {
   };
   isAdmin?: boolean;
   isPublicView?: boolean;
-  publicToken?: string;
+  publicTeamId?: string;
   userSide?: 'team1' | 'team2';
+  coinTossWinnerId?: string | null;
+  coinTossResult?: string | null;
   onVetoComplete?: () => void;
 }
 
@@ -76,11 +79,14 @@ export function MapVetoPanel({
   team2,
   isAdmin = false,
   isPublicView = false,
-  publicToken,
+  publicTeamId,
   userSide,
+  coinTossWinnerId,
+  coinTossResult,
   onVetoComplete
 }: MapVetoPanelProps) {
   const queryClient = useQueryClient();
+  const [isTossing, setIsTossing] = useState(false);
   const [pendingSideSelection, setPendingSideSelection] = useState<{
     vetoId: string;
     mapName: string;
@@ -146,8 +152,8 @@ export function MapVetoPanel({
       action: VetoAction;
       sequenceOrder: number;
     }) => {
-      if (!publicToken) throw new Error('No token provided');
-      const result = await performPublicVeto(publicToken, mapName, action, sequenceOrder);
+      if (!publicTeamId) throw new Error('No team ID provided');
+      const result = await performPublicVeto(matchId, publicTeamId, mapName, action, sequenceOrder);
       if (!result.success) throw new Error(result.error);
       return result;
     },
@@ -171,6 +177,26 @@ export function MapVetoPanel({
       queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
       toast.success('Map veto reset successfully');
     },
+  });
+
+  // Coin toss mutation
+  const coinTossMutation = useMutation({
+    mutationFn: async () => {
+      setIsTossing(true);
+      // Brief artificial delay for visual flair
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await performMatchCoinToss(matchId, team1.id, team2.id);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: () => {
+      toast.success('Coin toss complete!');
+      setIsTossing(false);
+    },
+    onError: (err) => {
+      toast.error('Coin toss failed: ' + err.message);
+      setIsTossing(false);
+    }
   });
 
   // Get vetoed map names
@@ -296,11 +322,64 @@ export function MapVetoPanel({
         )}
       </div>
 
-      {/* Veto Sequence Timeline */}
-      <Card className="bg-gradient-to-b from-background to-muted/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Veto Sequence</CardTitle>
-        </CardHeader>
+      {!coinTossWinnerId ? (
+        <Card className="bg-gradient-to-b from-background to-muted/20 border-muted">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-2xl font-bold tracking-tight">Coin Toss</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-10 space-y-6">
+            <div className={cn("relative w-32 h-32 rounded-full border-4 flex items-center justify-center bg-muted transition-transform duration-700", isTossing && "animate-spin border-primary")}>
+              {isTossing ? (
+                <RotateCcw className="w-10 h-10 text-primary animate-pulse" />
+              ) : (
+                <span className="text-4xl font-bold text-muted-foreground/30">?</span>
+              )}
+            </div>
+            
+            <div className="text-center max-w-sm">
+              <p className="text-muted-foreground mb-6">
+                A coin toss determines which team gets the opening advantage in the Map Veto sequence.
+              </p>
+              
+              {isAdmin ? (
+                <Button 
+                  size="lg" 
+                  className="w-full text-lg shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => coinTossMutation.mutate()}
+                  disabled={isTossing || coinTossMutation.isPending}
+                >
+                  {isTossing ? 'Flipping Coin...' : 'Toss Coin'}
+                </Button>
+              ) : (
+                <Badge variant="outline" className="text-base px-4 py-2 bg-muted/50 border-dashed">
+                  Waiting for Admin to toss...
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Coin Toss Result Header */}
+          <div className="rounded-lg border bg-card p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Check className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Coin Toss Result</p>
+                <p className="font-bold">
+                  <span className="text-primary">{coinTossWinnerId === team1.id ? team1.name : team2.name}</span> won ({coinTossResult})
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Veto Sequence Timeline */}
+          <Card className="bg-gradient-to-b from-background to-muted/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Veto Sequence</CardTitle>
+            </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
             {vetoSequence.map((step, index) => {
@@ -371,6 +450,8 @@ export function MapVetoPanel({
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }

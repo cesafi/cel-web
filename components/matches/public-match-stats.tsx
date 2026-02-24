@@ -7,11 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Trophy, Copy, ExternalLink, Link2, BarChart3 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getValorantStatsByGameId } from '@/actions/stats-valorant';
 import { getMlbbStatsByGameId } from '@/actions/stats-mlbb';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import Link from 'next/link';
 
 interface PublicMatchStatsProps {
   games: Game[];
@@ -20,6 +23,12 @@ interface PublicMatchStatsProps {
 
 export function PublicMatchStats({ games, sport }: PublicMatchStatsProps) {
   const [activeGameId, setActiveGameId] = useState<string>(games[0]?.id.toString());
+  const [origin, setOrigin] = useState('');
+
+  // Get base URL for copying full links safely
+  if (typeof window !== 'undefined' && !origin) {
+    setOrigin(window.location.origin);
+  }
   
   // Sort games by sequence
   const sortedGames = [...games].sort((a, b) => a.game_number - b.game_number);
@@ -47,7 +56,7 @@ export function PublicMatchStats({ games, sport }: PublicMatchStatsProps) {
 
         {sortedGames.map((game) => (
           <TabsContent key={game.id} value={game.id.toString()}>
-            <GameStatsViewer gameId={game.id} sport={sport} />
+            <GameStatsViewer gameId={game.id} sport={sport} origin={origin} />
           </TabsContent>
         ))}
       </Tabs>
@@ -55,7 +64,7 @@ export function PublicMatchStats({ games, sport }: PublicMatchStatsProps) {
   );
 }
 
-function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
+function GameStatsViewer({ gameId, sport, origin }: { gameId: number; sport: string, origin: string }) {
   const isValorant = sport === 'Valorant';
   const isMlbb = sport === 'Mobile Legends: Bang Bang';
 
@@ -99,9 +108,44 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
   // The stats object has schools_teams relation
   const teams = Array.from(new Set(stats.map((s: any) => s.schools_teams?.id))).filter(Boolean);
   
+  const handleCopyLink = async () => {
+    try {
+      const fullUrl = `${origin}/api/games/stats/${gameId}`;
+      await navigator.clipboard.writeText(fullUrl);
+      toast.success('API link copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const apiEndpoint = `${origin}/api/games/stats/${gameId}`;
+
   return (
-    <div className="space-y-8">
-      {teams.map((teamId) => {
+    <div className="space-y-8 mt-6">
+      {/* ── API Export Link ── */}
+      <div className="rounded-xl border bg-card p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Link2 className="h-4 w-4" />
+              API EXPORT
+          </h3>
+          <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
+                  {apiEndpoint}
+              </code>
+              <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8">
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Copy
+              </Button>
+          </div>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2 uppercase">
+            <BarChart3 className="h-5 w-5" />
+            Post-Game Statistics
+        </h2>
+
+        {teams.map((teamId) => {
         const teamStats = stats.filter((s: any) => s.schools_teams?.id === teamId);
         const teamInfo = teamStats[0]?.schools_teams;
         if (!teamInfo) return null;
@@ -178,8 +222,8 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
                                  {(stat.gold || 0).toLocaleString()}
                                </TableCell>
                              </>
-                           )}
-                        </TableRow>
+            )}
+                         </TableRow>
                       ))}
                    </TableBody>
                 </Table>
@@ -187,6 +231,7 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

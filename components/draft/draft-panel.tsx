@@ -20,7 +20,9 @@ import {
     Wand2,
     ChevronDown,
     X,
-    CheckCheck
+    CheckCheck,
+    Play,
+    Pause
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -116,6 +118,7 @@ export function DraftPanel({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
     const [timer, setTimer] = useState(30);
+    const [isTimerPaused, setIsTimerPaused] = useState(false);
 
     // 1. Fetch Characters
     const { data: characters = [], isLoading: isLoadingCharacters } = useQuery({
@@ -341,10 +344,10 @@ export function DraftPanel({
 
     // Timer (MLBB only)
     useEffect(() => {
-        if (isValorant || draftState.isComplete || timer <= 0) return;
+        if (isValorant || draftState.isComplete || timer <= 0 || isTimerPaused) return;
         const interval = setInterval(() => setTimer(t => t - 1), 1000);
         return () => clearInterval(interval);
-    }, [timer, draftState.isComplete, isValorant]);
+    }, [timer, draftState.isComplete, isValorant, isTimerPaused]);
 
     // Filtering
     const filteredCharacters = useMemo(() => {
@@ -473,10 +476,32 @@ export function DraftPanel({
                     )}
 
                     {!draftState.isComplete && (
-                        <span className="font-mono text-lg font-bold text-amber-500 flex items-center gap-1.5">
-                            <Timer className="w-4 h-4" />
-                            {timer}s
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-lg font-bold text-amber-500 flex items-center gap-1.5">
+                                <Timer className="w-4 h-4" />
+                                {timer}s
+                            </span>
+                            {isAdmin && (
+                                <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5 ml-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setIsTimerPaused(!isTimerPaused)}
+                                    >
+                                        {isTimerPaused ? <Play className="w-3.5 h-3.5 text-green-500" /> : <Pause className="w-3.5 h-3.5 text-amber-500" />}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setTimer(30)}
+                                    >
+                                        <RotateCcw className="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
