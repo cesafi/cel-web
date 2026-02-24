@@ -12,10 +12,11 @@ import {
   submitGameDraftAction,
   resetGameDraft,
   undoLastGameDraftAction,
-  lockGameDraftAction
+  lockGameDraftAction,
+  updateGameDraftAction
 } from '@/actions/game-draft';
 
-import { GameDraftAction, GameDraftActionInsert } from '@/lib/types/game-draft';
+import { GameDraftAction, GameDraftActionInsert, GameDraftActionUpdate } from '@/lib/types/game-draft';
 import { ServiceResponse } from '@/lib/types/base';
 
 export const gameDraftKeys = {
@@ -131,6 +132,30 @@ export function useLockGameDraftAction(
     onError: (error, variables, context) => {
        console.error('Failed to lock action:', error);
        toast.error('Failed to lock action');
+       (mutationOptions?.onError as any)?.(error, variables, context);
+    },
+    ...mutationOptions
+  });
+}
+
+export function useUpdateGameDraftAction(
+  mutationOptions?: UseMutationOptions<ServiceResponse<undefined>, Error, { actionId: string; gameId: number; data: GameDraftActionUpdate }>
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ actionId, data }) => updateGameDraftAction(actionId, data),
+    onSuccess: (result, variables, context) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: gameDraftKeys.byGame(variables.gameId) });
+        toast.success('Action updated');
+      } else {
+         toast.error(result.error || 'Failed to update action');
+      }
+      (mutationOptions?.onSuccess as any)?.(result, variables, context);
+    },
+    onError: (error, variables, context) => {
+       console.error('Failed to update action:', error);
+       toast.error('Failed to update action');
        (mutationOptions?.onError as any)?.(error, variables, context);
     },
     ...mutationOptions

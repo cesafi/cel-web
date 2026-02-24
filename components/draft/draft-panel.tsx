@@ -19,7 +19,8 @@ import {
     Undo2,
     Wand2,
     ChevronDown,
-    X
+    X,
+    CheckCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -37,10 +38,10 @@ import {
     MLBB_DRAFT_SEQUENCE
 } from '@/lib/types/game-draft';
 
-// Services & Hooks
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
+import { autoFillRosterFromGame1 } from '@/actions/game-roster';
 import { GameRosterService } from '@/services/game-roster';
-import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUndoLastGameDraftAction } from '@/hooks/use-game-draft';
+import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUndoLastGameDraftAction, useUpdateGameDraftAction } from '@/hooks/use-game-draft';
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
 
 interface DraftPanelProps {
@@ -63,6 +64,7 @@ interface DraftPanelProps {
     team2Players?: { id: string; ign: string; role: string | null }[];
     isAdmin?: boolean;
     isValorant?: boolean;
+    gameNumber?: number;
 }
 
 // Role colors for visual distinction
@@ -108,6 +110,7 @@ export function DraftPanel({
     team2Players,
     isAdmin = false,
     isValorant = false,
+    gameNumber = 1,
 }: DraftPanelProps) {
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
@@ -188,6 +191,19 @@ export function DraftPanel({
         onError: () => toast.error("Failed to remove player")
     });
 
+    const autoFillGame1Mutation = useMutation({
+        mutationFn: async () => {
+            const result = await autoFillRosterFromGame1(gameId, matchId);
+            if (!result.success) throw new Error(result.error);
+            return result;
+        },
+        onSuccess: () => {
+            refetchRosters();
+            toast.success("Roster copied from Game 1");
+        },
+        onError: () => toast.error("Failed to copy Game 1 roster")
+    });
+
     const submitActionMutation = useSubmitGameDraftAction({
         onSuccess: () => {
             refetchActions();
@@ -200,6 +216,10 @@ export function DraftPanel({
     });
 
     const undoActionMutation = useUndoLastGameDraftAction({
+        onSuccess: () => refetchActions()
+    });
+
+    const updateActionMutation = useUpdateGameDraftAction({
         onSuccess: () => refetchActions()
     });
 
@@ -236,6 +256,18 @@ export function DraftPanel({
             action_type: 'pick',
             sort_order: (teamId === team1.id ? 0 : 100) + sortOrder,
             is_locked: true
+        });
+    };
+
+    const handleCharacterSwap = (actionId: string, newCharacter: GameCharacter) => {
+        if (!isAdmin) return;
+        updateActionMutation.mutate({
+            actionId,
+            gameId,
+            data: {
+                hero_name: newCharacter.name,
+                hero_id: newCharacter.id
+            }
         });
     };
 
@@ -380,9 +412,11 @@ export function DraftPanel({
                         takenCharacters={takenCharacters}
                         isAdmin={isAdmin}
                         onPickAgent={(char, slot) => handleValorantPick(team1.id, char, slot)}
+                        onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
+                        onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                     {/* Team 2 */}
                     <ValorantTeamPanel
@@ -395,9 +429,11 @@ export function DraftPanel({
                         takenCharacters={takenCharacters}
                         isAdmin={isAdmin}
                         onPickAgent={(char, slot) => handleValorantPick(team2.id, char, slot)}
+                        onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
+                        onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                 </div>
             </div>
@@ -430,7 +466,10 @@ export function DraftPanel({
                             </span>
                         </Badge>
                     ) : (
-                        <Badge className="text-sm px-4 py-1.5 bg-green-500 text-white">Draft Complete</Badge>
+                        <div className="flex items-center gap-2 ">
+                            <CheckCheck className="w-4 h-4 text-green-500" />
+                            <span className="text-sm py-1.5 bg-transparent text-green-400">Draft Complete</span>
+                        </div>
                     )}
 
                     {!draftState.isComplete && (
@@ -476,11 +515,14 @@ export function DraftPanel({
                         roster={team1Roster}
                         players={team1Players || []}
                         characters={characters}
+                        takenCharacters={takenCharacters}
                         isActive={currentAction?.team === 'team1'}
                         isAdmin={isAdmin}
+                        onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
+                        onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                 </div>
 
@@ -547,12 +589,15 @@ export function DraftPanel({
                         roster={team2Roster}
                         players={team2Players || []}
                         characters={characters}
+                        takenCharacters={takenCharacters}
                         isActive={currentAction?.team === 'team2'}
                         isRightSide
                         isAdmin={isAdmin}
+                        onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
+                        onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                 </div>
             </div>
@@ -566,7 +611,7 @@ export function DraftPanel({
 
 function ValorantTeamPanel({
     team, teamId, picks, roster, players, characters, takenCharacters, isAdmin,
-    onPickAgent, onAssignPlayer, onUnassignPlayer, onAutoFill
+    onPickAgent, onSwapAgent, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
 }: {
     team: DraftPanelProps['team1'];
     teamId: string;
@@ -577,9 +622,11 @@ function ValorantTeamPanel({
     takenCharacters: Set<string>;
     isAdmin: boolean;
     onPickAgent: (char: GameCharacter, slotIndex: number) => void;
+    onSwapAgent: (actionId: string, char: GameCharacter) => void;
     onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void;
     onUnassignPlayer: (sortOrder: number) => void;
     onAutoFill: () => void;
+    onAutoFillGame1?: () => void;
 }) {
     const slots = Array.from({ length: 5 });
 
@@ -604,10 +651,18 @@ function ValorantTeamPanel({
                     </div>
                 </div>
                 {isAdmin && players.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={onAutoFill} className="text-xs">
-                        <Wand2 className="w-3.5 h-3.5 mr-1" />
-                        Auto-Fill
-                    </Button>
+                    <div className="flex gap-1.5 flex-col items-end">
+                        <Button variant="outline" size="sm" onClick={onAutoFill} className="text-[10px] h-7 px-2">
+                            <Wand2 className="w-3 h-3 mr-1" />
+                            Smart Fill
+                        </Button>
+                        {onAutoFillGame1 && (
+                            <Button variant="outline" size="sm" onClick={onAutoFillGame1} className="text-[10px] h-7 px-2 text-primary border-primary/30">
+                                <RotateCcw className="w-3 h-3 mr-1" />
+                                Copy Game 1
+                            </Button>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -625,29 +680,44 @@ function ValorantTeamPanel({
                             {/* Agent pick */}
                             <div className="flex-1">
                                 {pick ? (
-                                    <div className={cn(
-                                        "flex items-center gap-3 p-2.5 rounded-lg border",
-                                        heroRole ? roleColors[heroRole]?.replace('/10', '/5') : 'bg-muted/30'
-                                    )}>
-                                        <LazyImage src={icon} alt={pick.hero_name} className="w-10 h-10 rounded-md" />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="font-semibold text-sm truncate">{pick.hero_name}</p>
-                                            {heroRole && (
-                                                <Badge variant="outline" className={cn("text-[10px] h-4 px-1", roleColors[heroRole])}>
-                                                    {heroRole}
-                                                </Badge>
+                                        <div className={cn(
+                                            "flex items-center gap-3 p-2.5 rounded-lg border group relative",
+                                            heroRole ? roleColors[heroRole]?.replace('/10', '/5') : 'bg-muted/30'
+                                        )}>
+                                            <LazyImage src={icon} alt={pick.hero_name} className="w-10 h-10 rounded-md" />
+                                            <div className="min-w-0 flex-1 relative z-0">
+                                                <p className="font-semibold text-sm truncate">{pick.hero_name}</p>
+                                                {heroRole && (
+                                                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", roleColors[heroRole])}>
+                                                        {heroRole}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            {isAdmin && (
+                                                <div className={cn(
+                                                    "absolute inset-x-0 bottom-0 top-0 flex items-center justify-end px-2 bg-background/80 backdrop-blur-sm z-10 transition-all duration-200",
+                                                    "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
+                                                )}>
+                                                    <CharacterPickerPopover
+                                                        slotIndex={i}
+                                                        characters={characters}
+                                                        takenCharacters={takenCharacters}
+                                                        isAdmin={isAdmin}
+                                                        onPick={(char) => onSwapAgent(pick.id, char)}
+                                                        isSwapMode={true}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
-                                    </div>
-                                ) : (
-                                    <AgentPickerPopover
-                                        slotIndex={i}
-                                        characters={characters}
-                                        takenCharacters={takenCharacters}
-                                        isAdmin={isAdmin}
-                                        onPick={(char) => onPickAgent(char, i)}
-                                    />
-                                )}
+                                    ) : (
+                                        <CharacterPickerPopover
+                                            slotIndex={i}
+                                            characters={characters}
+                                            takenCharacters={takenCharacters}
+                                            isAdmin={isAdmin}
+                                            onPick={(char) => onPickAgent(char, i)}
+                                        />
+                                    )}
                             </div>
 
                             {/* Player assignment */}
@@ -689,17 +759,18 @@ function ValorantTeamPanel({
 }
 
 // ══════════════════════════════════
-// Agent Picker Popover (VALO)
+// Character Picker Popover
 // ══════════════════════════════════
 
-function AgentPickerPopover({
-    slotIndex, characters, takenCharacters, isAdmin, onPick
+function CharacterPickerPopover({
+    slotIndex, characters, takenCharacters, isAdmin, onPick, isSwapMode = false
 }: {
     slotIndex: number;
     characters: GameCharacter[];
     takenCharacters: Set<string>;
     isAdmin: boolean;
     onPick: (char: GameCharacter) => void;
+    isSwapMode?: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -719,10 +790,20 @@ function AgentPickerPopover({
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button className="w-full flex items-center justify-between p-2.5 rounded-lg border border-dashed hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm text-muted-foreground">
-                    <span>Select Agent {slotIndex + 1}</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                </button>
+                {isSwapMode ? (
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-7 text-xs px-2 shadow-sm rounded-md border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    >
+                        Swap
+                    </Button>
+                ) : (
+                    <button className="w-full flex items-center justify-between p-2.5 rounded-lg border border-dashed hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm text-muted-foreground">
+                        <span>Select Character {slotIndex + 1}</span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                )}
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="start">
                 <div className="p-2 border-b">
@@ -733,7 +814,7 @@ function AgentPickerPopover({
                         className="h-8 text-sm"
                     />
                 </div>
-                <ScrollArea className="max-h-64">
+                <ScrollArea className="h-64">
                     <div className="grid grid-cols-4 gap-1 p-2">
                         {filtered.map(char => (
                             <button
@@ -779,7 +860,7 @@ function PlayerPickerPopover({
             </PopoverTrigger>
             <PopoverContent className="w-48 p-1" align="end">
                 <p className="text-[10px] font-semibold text-muted-foreground px-2 py-1">Select Player</p>
-                <ScrollArea className="max-h-40">
+                <ScrollArea className="h-40">
                     {available.length > 0 ? available.map(p => (
                         <button
                             key={p.id}
@@ -810,8 +891,8 @@ function PlayerPickerPopover({
 // ══════════════════════════════════
 
 function MlbbTeamColumn({
-    team, bans, picks, roster, players, characters, isActive, isRightSide = false, isAdmin,
-    onAssignPlayer, onUnassignPlayer, onAutoFill
+    team, bans, picks, roster, players, characters, takenCharacters, isActive, isRightSide = false, isAdmin,
+    onSwapCharacter, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
 }: {
     team: DraftPanelProps['team1'];
     bans: GameDraftAction[];
@@ -819,12 +900,15 @@ function MlbbTeamColumn({
     roster: any[];
     players: { id: string; ign: string; role: string | null }[];
     characters: GameCharacter[];
+    takenCharacters: Set<string>;
     isActive: boolean;
     isRightSide?: boolean;
     isAdmin: boolean;
+    onSwapCharacter: (actionId: string, char: GameCharacter) => void;
     onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void;
     onUnassignPlayer: (sortOrder: number) => void;
     onAutoFill: () => void;
+    onAutoFillGame1?: () => void;
 }) {
     const pickSlots = Array.from({ length: 5 });
     const banSlots = Array.from({ length: 5 });
@@ -863,10 +947,18 @@ function MlbbTeamColumn({
 
             {/* Auto-Fill */}
             {isAdmin && players.length > 0 && (
-                <Button variant="outline" size="sm" onClick={onAutoFill} className={cn("text-xs w-full")}>
-                    <Wand2 className="w-3.5 h-3.5 mr-1" />
-                    Auto-Fill Players
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={onAutoFill} className={cn("text-xs flex-1")}>
+                        <Wand2 className="w-3.5 h-3.5 mr-1" />
+                        Smart Fill
+                    </Button>
+                    {onAutoFillGame1 && (
+                        <Button variant="outline" size="sm" onClick={onAutoFillGame1} className={cn("text-xs flex-1 text-primary border-primary/30")}>
+                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                            Copy Game 1
+                        </Button>
+                    )}
+                </div>
             )}
 
             {/* Picks */}
@@ -879,7 +971,7 @@ function MlbbTeamColumn({
                     const playerDetails = rosterEntry ? players.find(p => p.id === rosterEntry.player_id) : null;
 
                     return (
-                        <div key={i} className="space-y-0.5">
+                        <div key={i} className="space-y-0.5 group/pick">
                             <div className={cn(
                                 "h-14 relative rounded-lg border flex items-center overflow-hidden transition-colors",
                                 pick ? "border-border bg-muted/20" : "border-border border-dashed bg-muted/10",
@@ -897,6 +989,21 @@ function MlbbTeamColumn({
                                         )}>
                                             {pick.hero_name}
                                         </div>
+                                        {isAdmin && (
+                                            <div className={cn(
+                                                "absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20 transition-all duration-200",
+                                                "opacity-0 pointer-events-none group-hover/pick:opacity-100 group-hover/pick:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
+                                            )}>
+                                                <CharacterPickerPopover
+                                                    slotIndex={i}
+                                                    characters={characters}
+                                                    takenCharacters={takenCharacters}
+                                                    isAdmin={isAdmin}
+                                                    onPick={(char) => onSwapCharacter(pick.id, char)}
+                                                    isSwapMode={true}
+                                                />
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <div className="w-full text-center text-muted-foreground text-xs">
@@ -953,7 +1060,7 @@ function MlbbTeamColumn({
                         const icon = ban ? getHeroIcon(ban.hero_name) : null;
                         return (
                             <div key={i} className={cn(
-                                "w-10 h-10 relative rounded-md border flex items-center justify-center overflow-hidden",
+                                "w-10 h-10 relative rounded-md border flex items-center justify-center overflow-hidden group/ban",
                                 ban ? "border-destructive/40 bg-destructive/5" : "border-border border-dashed bg-muted/30"
                             )}>
                                 {ban ? (
@@ -962,6 +1069,21 @@ function MlbbTeamColumn({
                                             <LazyImage src={icon} alt={ban.hero_name} className="w-full h-full grayscale opacity-40 absolute inset-0" />
                                         )}
                                         <Ban className="w-5 h-5 text-destructive z-10" />
+                                        {isAdmin && (
+                                            <div className={cn(
+                                                "absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-md z-20 transition-all duration-200",
+                                                "opacity-0 pointer-events-none group-hover/ban:opacity-100 group-hover/ban:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
+                                            )}>
+                                                <CharacterPickerPopover
+                                                    slotIndex={i}
+                                                    characters={characters}
+                                                    takenCharacters={takenCharacters}
+                                                    isAdmin={isAdmin}
+                                                    onPick={(char) => onSwapCharacter(ban.id, char)}
+                                                    isSwapMode={true}
+                                                />
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <span className="text-[9px] text-muted-foreground">{i + 1}</span>

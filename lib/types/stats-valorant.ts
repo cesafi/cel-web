@@ -33,6 +33,7 @@ export interface ValorantScreenshotData {
     enemy: number;
   };
   mapName: string;
+  matchDuration?: string; // e.g. "00:35:12"
   players: ValorantPlayerScreenshotStat[];
 }
 

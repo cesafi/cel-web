@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { extractMlbbStatsFromImage } from '@/actions/mlbb-ocr';
 import { createMultipleMlbbStats } from '@/actions/stats-mlbb';
+import { updateGameById } from '@/actions/games';
 import { MlbbScreenshotData } from '@/lib/types/stats-mlbb';
 import { Player } from '@/lib/types/players';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, Upload, Save, RefreshCcw, Coins } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2, Upload, Save, RefreshCcw, Coins, FileImage, ShieldAlert, Swords, Percent } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGameDraftActions } from '@/hooks/use-game-draft';
 
 interface MlbbStatsUploadProps {
   gameId: number;
@@ -32,25 +35,90 @@ interface MlbbStatsUploadProps {
 }
 
 export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStatsUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [previewData, setPreviewData] = useState<MlbbScreenshotData | null>(null);
-  const [playerMapping, setPlayerMapping] = useState<Record<string, string>>({}); // index -> playerId
-  const [isSaving, setIsSaving] = useState(false);
+  const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(() => {
+    const initialMapping: Record<string, string> = {};
+    const team1Picks = team1.players.slice(0, 5);
+    const team2Picks = team2.players.slice(0, 5);
+    
+    for (let i = 0; i < 5; i++) {
+      if (team1Picks[i]) initialMapping[i.toString()] = team1Picks[i].id;
+      if (team2Picks[i]) initialMapping[(i + 5).toString()] = team2Picks[i].id;
+    }
+    return initialMapping;
+  });
 
-  // Handle file upload
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const [previewData, setPreviewData] = useState<MlbbScreenshotData>(() => {
+    const emptyPlayers = [];
+    for (let i = 0; i < 5; i++) {
+      emptyPlayers.push({
+        playerName: team1.players[i]?.ign || `Player ${i + 1}`,
+        team: 'Blue' as const,
+        heroName: '',
+        kda: { kills: 0, deaths: 0, assists: 0 },
+        gold: 0,
+        rating: 0,
+        badge: null,
+        damageDealt: 0,
+        turretDamage: 0,
+        damageTaken: 0,
+        teamfight: 0
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      emptyPlayers.push({
+        playerName: team2.players[i]?.ign || `Player ${i + 6}`,
+        team: 'Red' as const,
+        heroName: '',
+        kda: { kills: 0, deaths: 0, assists: 0 },
+        gold: 0,
+        rating: 0,
+        badge: null,
+        damageDealt: 0,
+        turretDamage: 0,
+        damageTaken: 0,
+        teamfight: 0
+      });
+    }
+
+    return {
+      matchResult: 'VICTORY',
+      duration: '',
+      score: { blue: 0, red: 0 },
+      players: emptyPlayers
+    };
+  });
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [mvpIndex, setMvpIndex] = useState<number | null>(null);
+
+  const { data: gameDraftActions } = useGameDraftActions(gameId);
+
+  const [equipmentFile, setEquipmentFile] = useState<File | null>(null);
+  const [dataFile, setDataFile] = useState<File | null>(null);
+
+  // Handle file analysis once both are provided
+  const handleAnalyze = async () => {
+    if (!equipmentFile || !dataFile) {
+      toast.error('Please upload both the Equipment and Data screenshots first.');
+      return;
+    }
 
     setIsUploading(true);
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('equipment', equipmentFile);
+    formData.append('data', dataFile);
 
     try {
       const result = await extractMlbbStatsFromImage(formData);
       if (result.success && result.data) {
+        // When AI extracts stats, override the empty structure
         setPreviewData(result.data);
         autoMapPlayers(result.data);
+        const extractedMvpIndex = result.data.players.findIndex(p => p.badge === 'MVP');
+        if (extractedMvpIndex !== -1) {
+          setMvpIndex(extractedMvpIndex);
+        }
         toast.success('Stats extracted successfully');
       } else {
         toast.error(result.error || 'Failed to extract stats');
@@ -64,11 +132,10 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
   // Auto-map extracted players to system players based on IGN
   const autoMapPlayers = (data: MlbbScreenshotData) => {
-    const newMapping: Record<string, string> = {};
     const allPlayers = [...team1.players, ...team2.players];
+    const newMapping: Record<string, string> = {};
 
     data.players.forEach((stat, index) => {
-      // Clean OCR name (remove team prefix if possible)
       const matchedPlayer = allPlayers.find(p => 
         stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) || 
         p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
@@ -84,7 +151,6 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
   // Handle manual stat edits
   const handleStatChange = (index: number, field: string, value: string) => {
-    if (!previewData) return;
     const newPlayers = [...previewData.players];
     const player = JSON.parse(JSON.stringify(newPlayers[index]));
 
@@ -102,6 +168,14 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
       player.rating = Number(value) || 0;
     } else if (field === 'heroName') {
       player.heroName = value;
+    } else if (field === 'damageDealt') {
+      player.damageDealt = Number(value) || 0;
+    } else if (field === 'turretDamage') {
+      player.turretDamage = Number(value) || 0;
+    } else if (field === 'damageTaken') {
+      player.damageTaken = Number(value) || 0;
+    } else if (field === 'teamfight') {
+      player.teamfight = Number(value) || 0;
     }
 
     newPlayers[index] = player;
@@ -110,8 +184,6 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
   // Handle Save
   const handleSave = async () => {
-    if (!previewData) return;
-    
     setIsSaving(true);
     try {
       // Filter out players who aren't mapped
@@ -135,8 +207,12 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
             deaths: stat.kda.deaths,
             assists: stat.kda.assists,
             gold: stat.gold,
-            // MLBB stats table doesn't have rating/score column yet, so we verify what we have
-            // db types: kills, deaths, assists, gold, hero_name
+            rating: stat.rating,
+            damage_dealt: stat.damageDealt,
+            turret_damage: stat.turretDamage,
+            damage_taken: stat.damageTaken,
+            teamfight: stat.teamfight,
+            is_mvp: index === mvpIndex
           };
         })
         .filter((stat): stat is NonNullable<typeof stat> => stat !== null);
@@ -148,10 +224,41 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
       }
 
       const result = await createMultipleMlbbStats(statsToSave);
+      
+      // Also save the extracted/edited match duration into the games table
+      if (previewData.duration) {
+        await updateGameById({ id: gameId, duration: previewData.duration });
+      }
+
       if (result.success) {
         toast.success(`Saved stats for ${statsToSave.length} players`);
-        setPreviewData(null);
+        setPreviewData(() => {
+          const allPlayers = [...team1.players, ...team2.players];
+          return {
+            matchResult: 'VICTORY',
+            duration: '',
+            score: { blue: 0, red: 0 },
+            players: allPlayers.map(p => {
+              const isTeam1 = team1.players.some(t1p => t1p.id === p.id);
+              return {
+                playerName: p.ign,
+                team: isTeam1 ? 'Blue' : 'Red',
+                heroName: '',
+                kda: { kills: 0, deaths: 0, assists: 0 },
+                gold: 0,
+                rating: 0,
+                badge: null,
+                damageDealt: 0,
+                turretDamage: 0,
+                damageTaken: 0,
+                teamfight: 0
+              };
+            })
+          };
+        });
         setPlayerMapping({});
+        setEquipmentFile(null);
+        setDataFile(null);
         onStatsSaved?.();
       } else {
         toast.error(result.error || 'Failed to save stats');
@@ -171,59 +278,130 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
   return (
     <div className="space-y-6">
-      {!previewData ? (
-        <Card className="border-dashed border-2">
-          <CardContent className="py-10">
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="p-4 bg-muted rounded-full">
-                <Upload className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">Upload Screenshot</h3>
-                <p className="text-sm text-muted-foreground">
-                  Upload the end-game scoreboard to automatically extract stats
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
+      {/* ALWAYS SHOW UPLOAD */}
+      <Card className="border-dashed border-2">
+        <CardContent className="py-10">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="p-4 bg-muted rounded-full relative">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Upload Screenshots</h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                Provide BOTH the Equipment and Data screenshots from the post-game scoreboard to extract all stats.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full justify-center">
+              {/* Equipment Upload */}
+              <div className="flex flex-col items-center gap-2">
                 <Input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  id="image-upload-mlbb"
-                  onChange={handleFileUpload}
+                  id="equipment-upload-mlbb"
+                  onChange={(e) => setEquipmentFile(e.target.files?.[0] || null)}
                   disabled={isUploading}
                 />
-                <Button asChild disabled={isUploading}>
-                  <label htmlFor="image-upload-mlbb" className="cursor-pointer">
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      'Select Image'
-                    )}
+                <Button asChild variant={equipmentFile ? "default" : "outline"} className="w-48 relative">
+                  <label htmlFor="equipment-upload-mlbb" className="cursor-pointer flex items-center h-full">
+                    <FileImage className="mr-2 h-4 w-4" />
+                    {equipmentFile ? "Equipment Ready" : "Select Equipment"}
+                  </label>
+                </Button>
+              </div>
+
+              {/* Data Upload */}
+              <div className="flex flex-col items-center gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="data-upload-mlbb"
+                  onChange={(e) => setDataFile(e.target.files?.[0] || null)}
+                  disabled={isUploading}
+                />
+                <Button asChild variant={dataFile ? "default" : "outline"} className="w-48 relative">
+                  <label htmlFor="data-upload-mlbb" className="cursor-pointer flex items-center h-full">
+                    <FileImage className="mr-2 h-4 w-4" />
+                    {dataFile ? "Data Ready" : "Select Data"}
                   </label>
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
+
+            <Button 
+              onClick={handleAnalyze} 
+              disabled={isUploading || !equipmentFile || !dataFile}
+              className="mt-6 w-full max-w-xs"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing via AI...
+                </>
+              ) : (
+                'Extract Statistics'
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ALWAYS SHOW TABLE */}
+      <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">
-              Extracted Statistics ({previewData.matchResult})
+              Extracted Statistics
             </h3>
-            <div className="flex gap-2">
-               <Badge variant="outline" className="text-blue-500 border-blue-200 bg-blue-50">
-                 Blue: {previewData.score.blue}
-               </Badge>
-               <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50">
-                 Red: {previewData.score.red}
-               </Badge>
+            <div className="flex items-center gap-4">
+               {previewData.duration !== undefined && (
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm text-muted-foreground font-medium">Duration:</span>
+                   <Input 
+                     type="text" 
+                     value={previewData.duration} 
+                     onChange={(e) => setPreviewData({ ...previewData, duration: e.target.value })}
+                     className="h-8 w-16 text-center font-mono"
+                     placeholder="MM:SS"
+                   />
+                 </div>
+               )}
+               <div className="flex gap-2">
+                 <Badge variant="outline" className="text-blue-500">
+                   Blue: {previewData.score.blue}
+                 </Badge>
+                 <Badge variant="outline" className="text-red-500">
+                   Red: {previewData.score.red}
+                 </Badge>
+               </div>
             </div>
-            <Button variant="outline" onClick={() => setPreviewData(null)}>
+            <Button variant="outline" onClick={() => {
+              // Reset simply clears uploaded data and re-initializes empty framework
+              setPreviewData(() => {
+                return {
+                  matchResult: 'VICTORY',
+                  duration: '',
+                  score: { blue: 0, red: 0 },
+                  players: Array.from({ length: 10 }).map((_, i) => ({
+                    playerName: '',
+                    team: i < 5 ? 'Blue' : 'Red',
+                    heroName: '',
+                    kda: { kills: 0, deaths: 0, assists: 0 },
+                    gold: 0,
+                    rating: 0,
+                    badge: null,
+                    damageDealt: 0,
+                    turretDamage: 0,
+                    damageTaken: 0,
+                    teamfight: 0
+                  }))
+                };
+              });
+              setEquipmentFile(null);
+              setDataFile(null);
+              setMvpIndex(null);
+            }}>
               <RefreshCcw className="mr-2 h-4 w-4" />
               Reset
             </Button>
@@ -233,13 +411,18 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Extracted Name</TableHead>
-                  <TableHead>Hero</TableHead>
-                  <TableHead>K/D/A</TableHead>
-                  <TableHead>Gold</TableHead>
-                  <TableHead>Rating</TableHead>
-                  <TableHead className="w-[250px]">Map to Player</TableHead>
-                  <TableHead>Team</TableHead>
+                  <TableHead className="w-[180px]">Player & Team</TableHead>
+                  <TableHead className="w-[120px]">Hero</TableHead>
+                  <TableHead className="w-[160px] text-center">K / D / A</TableHead>
+                  <TableHead className="w-[100px]">Gold</TableHead>
+                  <TableHead className="w-[80px]">Rating</TableHead>
+                  {/* Advanced Stats */}
+                  <TableHead className="w-[100px]">Damage</TableHead>
+                  <TableHead className="w-[100px]">Turret</TableHead>
+                  <TableHead className="w-[100px]">Taken</TableHead>
+                  <TableHead className="w-[80px]">TF %</TableHead>
+                  
+                  <TableHead className="w-[200px]">Map to Player</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -248,17 +431,22 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                   const team = mappedPlayerId && mappedPlayerId !== 'skip' ? getTeamForPlayer(mappedPlayerId) : null;
 
                   return (
-                    <TableRow key={index} className={stat.team === 'Blue' ? 'bg-blue-50/10' : 'bg-red-50/10'}>
+                    <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span className="flex items-center gap-2">
+                            <Checkbox 
+                              checked={mvpIndex === index}
+                              onCheckedChange={() => setMvpIndex(index)}
+                              className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                            />
                             {stat.playerName} 
-                            {stat.badge === 'MVP' && <Badge className="bg-yellow-500 hover:bg-yellow-600 text-[10px] px-1 h-5">MVP</Badge>}
-                            {stat.badge === 'Gold' && <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-[10px] px-1 h-5">Gold</Badge>}
+                            {mvpIndex === index && <Badge className="bg-yellow-500 hover:bg-yellow-600 text-[10px] px-1 h-5">MVP</Badge>}
+                            {stat.badge === 'Gold' && mvpIndex !== index && <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-[10px] px-1 h-5">Gold</Badge>}
                           </span>
-                          <span className={cn("text-xs font-semibold", stat.team === 'Blue' ? "text-blue-500" : "text-red-500")}>
-                            {stat.team} Team
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                             <div className={cn("w-2 h-2 rounded-full", stat.team === 'Blue' ? "bg-blue-500" : "bg-red-500")} />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -315,10 +503,68 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                           step="0.1"
                         />
                       </TableCell>
+                      
+                      {/* Advanced Stats */}
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Swords className="h-3 w-3 text-red-500" />
+                          <Input 
+                            type="number" 
+                            value={stat.damageDealt} 
+                            onChange={(e) => handleStatChange(index, 'damageDealt', e.target.value)}
+                            className="h-8 w-[80px]"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={stat.turretDamage} 
+                          onChange={(e) => handleStatChange(index, 'turretDamage', e.target.value)}
+                          className="h-8 w-[80px]"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <ShieldAlert className="h-3 w-3 text-blue-500" />
+                          <Input 
+                            type="number" 
+                            value={stat.damageTaken} 
+                            onChange={(e) => handleStatChange(index, 'damageTaken', e.target.value)}
+                            className="h-8 w-[80px]"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                         <div className="flex items-center">
+                          <Input 
+                            type="number" 
+                            value={stat.teamfight} 
+                            onChange={(e) => handleStatChange(index, 'teamfight', e.target.value)}
+                            className="h-8 w-[50px]"
+                          />
+                          <span className="text-xs text-muted-foreground ml-1">%</span>
+                        </div>
+                      </TableCell>
+
                       <TableCell>
                         <Select
                           value={mappedPlayerId || ''}
-                          onValueChange={(value) => setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }))}
+                          onValueChange={(value) => {
+                              setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
+                              
+                              // Auto-fill hero if mapped from draft
+                              if (value !== 'skip' && gameDraftActions) {
+                                const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === value);
+                                if (pickAction && pickAction.hero_name) {
+                                  setPreviewData(prevData => {
+                                    const newPlayers = [...prevData.players];
+                                    newPlayers[index] = { ...newPlayers[index], heroName: pickAction.hero_name! };
+                                    return { ...prevData, players: newPlayers };
+                                  });
+                                }
+                              }
+                            }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select player..." />
@@ -340,17 +586,11 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                             ))}
                           </SelectContent>
                         </Select>
-                      </TableCell>
-                      <TableCell>
                         {team ? (
-                          <Badge variant="outline">{team.abbreviation}</Badge>
+                          <div className="mt-1 text-[10px] text-muted-foreground font-medium">Mapped to • {team.abbreviation}</div>
                         ) : mappedPlayerId === 'skip' ? (
-                          <Badge variant="secondary">Skipped</Badge>
-                        ) : mappedPlayerId ? (
-                          <Badge variant="destructive">Unknown Team</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+                          <div className="mt-1 text-[10px] text-muted-foreground font-medium text-amber-500">Row Skipped</div>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -360,7 +600,10 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
           </div>
 
           <div className="flex justify-end gap-2">
-             <Button variant="outline" onClick={() => setPreviewData(null)}>Cancel</Button>
+             <Button variant="outline" onClick={() => {
+               setEquipmentFile(null);
+               setDataFile(null);
+             }}>Cancel</Button>
              <Button onClick={handleSave} disabled={isSaving}>
                {isSaving ? (
                  <>
@@ -376,7 +619,6 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
              </Button>
           </div>
         </div>
-      )}
     </div>
   );
 }

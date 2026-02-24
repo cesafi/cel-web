@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { extractValorantStatsFromImage } from '@/actions/valorant-ocr';
 import { createMultipleValorantStats } from '@/actions/stats-valorant';
+import { updateGameById } from '@/actions/games';
 import { ValorantScreenshotData } from '@/lib/types/stats-valorant';
 import { Player } from '@/lib/types/players';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Upload, Save, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGameDraftActions } from '@/hooks/use-game-draft';
+import { cn } from '@/lib/utils';
 
 interface ValorantStatsUploadProps {
   gameId: number;
@@ -32,10 +36,58 @@ interface ValorantStatsUploadProps {
 }
 
 export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: ValorantStatsUploadProps) {
+  const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(() => {
+    const initialMapping: Record<string, string> = {};
+    // Map first 5 players from each team to the initial 10 rows
+    const team1Picks = team1.players.slice(0, 5);
+    const team2Picks = team2.players.slice(0, 5);
+    
+    // Rows 0-4 are Team 1, Rows 5-9 are Team 2
+    for (let i = 0; i < 5; i++) {
+      if (team1Picks[i]) initialMapping[i.toString()] = team1Picks[i].id;
+      if (team2Picks[i]) initialMapping[(i + 5).toString()] = team2Picks[i].id;
+    }
+    return initialMapping;
+  });
+
+  const [previewData, setPreviewData] = useState<ValorantScreenshotData>(() => {
+    // Exactly 10 empty rows
+    const emptyPlayers = [];
+    for (let i = 0; i < 5; i++) {
+      emptyPlayers.push({
+        playerName: team1.players[i]?.ign || `Player ${i + 1}`,
+        team: 'Ally' as const,
+        agentName: '',
+        acs: 0,
+        kda: { kills: 0, deaths: 0, assists: 0 },
+        firstBloods: 0
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      emptyPlayers.push({
+        playerName: team2.players[i]?.ign || `Player ${i + 6}`,
+        team: 'Enemy' as const,
+        agentName: '',
+        acs: 0,
+        kda: { kills: 0, deaths: 0, assists: 0 },
+        firstBloods: 0
+      });
+    }
+
+    return {
+      matchResult: 'VICTORY',
+      matchDuration: '',
+      mapName: '',
+      score: { ally: 0, enemy: 0 },
+      players: emptyPlayers
+    };
+  });
+
   const [isUploading, setIsUploading] = useState(false);
-  const [previewData, setPreviewData] = useState<ValorantScreenshotData | null>(null);
-  const [playerMapping, setPlayerMapping] = useState<Record<string, string>>({}); // index -> playerId
   const [isSaving, setIsSaving] = useState(false);
+  const [mvpIndex, setMvpIndex] = useState<number | null>(null);
+
+  const { data: gameDraftActions } = useGameDraftActions(gameId);
 
   // Handle file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,7 +138,6 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
 
   // Handle manual stat edits
   const handleStatChange = (index: number, field: string, value: string) => {
-    if (!previewData) return;
     const newPlayers = [...previewData.players];
     // Deep copy the player object to avoid mutating state directly
     const player = JSON.parse(JSON.stringify(newPlayers[index]));
@@ -109,8 +160,6 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
 
   // Handle Save
   const handleSave = async () => {
-    if (!previewData) return;
-    
     setIsSaving(true);
     try {
       // Filter out players who aren't mapped
@@ -136,8 +185,7 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
             assists: stat.kda.assists,
             acs: stat.acs,
             first_bloods: stat.firstBloods,
-            // Note: DB doesn't support plants/defuses yet, so we drop them or need to update schema
-            // We proceed with available fields
+            is_mvp: index === mvpIndex,
           };
         })
         .filter((stat): stat is NonNullable<typeof stat> => stat !== null);
@@ -149,9 +197,30 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
       }
 
       const result = await createMultipleValorantStats(statsToSave);
+      
+      if (previewData.matchDuration) {
+        await updateGameById({ id: gameId, duration: previewData.matchDuration });
+      }
+
       if (result.success) {
         toast.success(`Saved stats for ${statsToSave.length} players`);
-        setPreviewData(null);
+        setPreviewData(() => {
+          const allPlayers = [...team1.players, ...team2.players];
+          return {
+            matchResult: 'VICTORY',
+            matchDuration: '',
+            mapName: '',
+            score: { ally: 0, enemy: 0 },
+            players: Array.from({ length: 10 }).map((_, i) => ({
+              playerName: '',
+              team: i < 5 ? 'Ally' : 'Enemy',
+              agentName: '',
+              acs: 0,
+              kda: { kills: 0, deaths: 0, assists: 0 },
+              firstBloods: 0
+            }))
+          };
+        });
         setPlayerMapping({});
         onStatsSaved?.();
       } else {
@@ -172,49 +241,91 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
 
   return (
     <div className="space-y-6">
-      {!previewData ? (
-        <Card className="border-dashed border-2">
-          <CardContent className="py-10">
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="p-4 bg-muted rounded-full">
-                <Upload className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">Upload Screenshot</h3>
-                <p className="text-sm text-muted-foreground">
-                  Upload the end-game scoreboard to automatically extract stats
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="image-upload"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                />
-                <Button asChild disabled={isUploading}>
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      'Select Image'
-                    )}
-                  </label>
-                </Button>
-              </div>
+      {/* ALWAYS SHOW UPLOAD */}
+      <Card className="border-dashed border-2">
+        <CardContent className="py-10">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="p-4 bg-muted rounded-full">
+              <Upload className="h-8 w-8 text-muted-foreground" />
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold">Upload Screenshot</h3>
+              <p className="text-sm text-muted-foreground">
+                Upload the end-game scoreboard to automatically extract stats
+              </p>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="image-upload-valorant"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+              />
+              <Button asChild disabled={isUploading}>
+                <label htmlFor="image-upload-valorant" className="cursor-pointer flex items-center h-full">
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    'Select Image'
+                  )}
+                </label>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ALWAYS SHOW TABLE */}
+      <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Extracted Statistics</h3>
-            <Button variant="outline" onClick={() => setPreviewData(null)}>
+            <div className="flex items-center gap-4">
+               {previewData.matchDuration !== undefined && (
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm text-muted-foreground font-medium">Duration:</span>
+                   <Input 
+                     type="text" 
+                     value={previewData.matchDuration} 
+                     onChange={(e) => setPreviewData({ ...previewData, matchDuration: e.target.value })}
+                     className="h-8 w-16 text-center font-mono"
+                     placeholder="MM:SS"
+                   />
+                 </div>
+               )}
+               <div className="flex gap-2">
+                 <Badge variant="outline" className="text-blue-500">
+                   Ally: {previewData.score.ally}
+                 </Badge>
+                 <Badge variant="outline" className="text-red-500">
+                   Enemy: {previewData.score.enemy}
+                 </Badge>
+               </div>
+            </div>
+            <Button variant="outline" onClick={() => {
+              setPreviewData(() => {
+                const allPlayers = [...team1.players, ...team2.players];
+                return {
+                  matchResult: 'VICTORY',
+                  matchDuration: '',
+                  mapName: '',
+                  score: { ally: 0, enemy: 0 },
+                  players: Array.from({ length: 10 }).map((_, i) => ({
+                    playerName: '',
+                    team: i < 5 ? 'Ally' : 'Enemy',
+                    agentName: '',
+                    acs: 0,
+                    kda: { kills: 0, deaths: 0, assists: 0 },
+                    firstBloods: 0
+                  }))
+                };
+              });
+              setMvpIndex(null);
+            }}>
               <RefreshCcw className="mr-2 h-4 w-4" />
               Reset
             </Button>
@@ -238,11 +349,21 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                   const team = mappedPlayerId && mappedPlayerId !== 'skip' ? getTeamForPlayer(mappedPlayerId) : null;
 
                   return (
-                    <TableRow key={index}>
+                    <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
-                          <span>{stat.playerName}</span>
-                          <span className="text-xs text-muted-foreground">{stat.team}</span>
+                          <span className="flex items-center gap-2">
+                            <Checkbox 
+                              checked={mvpIndex === index}
+                              onCheckedChange={() => setMvpIndex(index)}
+                              className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                            />
+                            {stat.playerName} 
+                            {mvpIndex === index && <Badge className="bg-yellow-500 hover:bg-yellow-600 text-[10px] px-1 h-5">MVP</Badge>}
+                          </span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                             <div className={cn("w-2 h-2 rounded-full", stat.team === 'Ally' ? "bg-blue-500" : "bg-red-500")} />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -290,7 +411,21 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                       <TableCell>
                         <Select
                           value={mappedPlayerId || ''}
-                          onValueChange={(value) => setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }))}
+                          onValueChange={(value) => {
+                            setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
+                            
+                            if (value !== 'skip' && gameDraftActions) {
+                              const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === value);
+                              if (pickAction && pickAction.hero_name) {
+                                setPreviewData(prevData => {
+                                  if (!prevData) return prevData;
+                                  const newPlayers = [...prevData.players];
+                                  newPlayers[index] = { ...newPlayers[index], agentName: pickAction.hero_name! };
+                                  return { ...prevData, players: newPlayers };
+                                });
+                              }
+                            }
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select player..." />
@@ -332,7 +467,6 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
           </div>
 
           <div className="flex justify-end gap-2">
-             <Button variant="outline" onClick={() => setPreviewData(null)}>Cancel</Button>
              <Button onClick={handleSave} disabled={isSaving}>
                {isSaving ? (
                  <>
@@ -348,7 +482,6 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
              </Button>
           </div>
         </div>
-      )}
     </div>
   );
 }

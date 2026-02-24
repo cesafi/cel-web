@@ -14,6 +14,7 @@ export const insertGameDraftActionSchema = z.object({
 });
 
 export const updateGameDraftActionSchema = z.object({
-  id: z.string().uuid("Action ID must be a valid UUID"),
-  is_locked: z.boolean(),
+  hero_name: z.string().min(1, "Hero name is required").optional(),
+  hero_id: z.number().int().positive("Hero ID must be a positive integer").optional(),
+  is_locked: z.boolean().optional(),
 });

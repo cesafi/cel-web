@@ -49,4 +49,8 @@ export interface MlbbPlayerScreenshotStat {
   gold: number;
   rating: number; // The score (e.g. 9.8)
   badge?: 'MVP' | 'Gold' | 'Silver' | 'Bronze' | null;
+  damageDealt?: number;
+  turretDamage?: number;
+  damageTaken?: number;
+  teamfight?: number;
 }

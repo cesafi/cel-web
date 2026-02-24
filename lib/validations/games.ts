@@ -10,10 +10,11 @@ export const createGameSchema = z
       .default(1),
     duration: z
       .string({ message: 'Duration must be a string.' })
-      .regex(/^\d{2}:\d{2}:\d{2}$/, {
-        message: 'Duration must be in HH:MM:SS format.'
+      .regex(/^(\d{2}:)?\d{2}:\d{2}$/, {
+        message: 'Duration must be in MM:SS or HH:MM:SS format.'
       })
-      .default('00:00:00'),
+      .transform(val => val.split(':').length === 2 ? `00:${val}` : val)
+      .default('00:00'),
 
     start_at: z.string().optional().nullable(),
     end_at: z.string().optional().nullable()
@@ -42,9 +43,10 @@ export const updateGameSchema = z
       .optional(),
     duration: z
       .string({ message: 'Duration must be a string.' })
-      .regex(/^\d{2}:\d{2}:\d{2}$/, {
-        message: 'Duration must be in HH:MM:SS format.'
+      .regex(/^(\d{2}:)?\d{2}:\d{2}$/, {
+        message: 'Duration must be in MM:SS or HH:MM:SS format.'
       })
+      .transform(val => val.split(':').length === 2 ? `00:${val}` : val)
       .optional(),
     start_at: z.string().optional().nullable(),
     end_at: z.string().optional().nullable()

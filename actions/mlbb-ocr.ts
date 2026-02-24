@@ -1,132 +1,117 @@
 'use server';
 
+import OpenAI from 'openai';
 import { MlbbScreenshotData } from '@/lib/types/stats-mlbb';
 
+// Convert a File to base64 string
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  return buffer.toString('base64');
+}
+
 /**
- * Extracts MLBB stats from an uploaded image.
- * 
- * Mock implementation returning data from the user's "Victory 16-3" screenshot.
+ * Extracts MLBB stats from an uploaded Equipment and Data screenshot using GPT-4o.
  */
 export async function extractMlbbStatsFromImage(formData: FormData): Promise<{ success: boolean; data?: MlbbScreenshotData; error?: string }> {
   try {
-    const file = formData.get('image') as File;
-    if (!file) {
-      return { success: false, error: 'No image provided' };
+    const equipmentFile = formData.get('equipment') as File | null;
+    const dataFile = formData.get('data') as File | null;
+    
+    // We strictly require both now for accurate merging
+    if (!equipmentFile || !dataFile) {
+      return { success: false, error: 'Both Equipment and Data screenshots are required.' };
     }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Return mock data for MLBB (Victory 16-3)
-    return {
-      success: true,
-      data: MOCK_MLBB_DATA
-    };
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
-  } catch (error) {
-    console.error('OCR Extraction Failed:', error);
-    return { success: false, error: 'Failed to process image' };
-  }
-}
+    const equipmentBase64 = await fileToBase64(equipmentFile);
+    const dataBase64 = await fileToBase64(dataFile);
 
-const MOCK_MLBB_DATA: MlbbScreenshotData = {
-  matchResult: 'VICTORY',
-  score: {
-    blue: 16,
-    red: 3
+    // Call OpenAI Vision model
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are a highly accurate data extraction system specialized in reading Mobile Legends: Bang Bang (MLBB) post-match screens. 
+You will be provided with TWO screenshots of the SAME match scoreboard: 
+1. The "Equipment" tab (shows KDA, Gold, Rating/Score).
+2. The "Data" tab (shows Damage, Turret Damage, Damage Taken, Teamfight participation).
+
+Extract the match data and output perfectly compliant JSON exactly matching this structure (do NOT wrap in markdown blocks, just raw JSON):
+{
+  "matchResult": "VICTORY" | "DEFEAT",
+  "score": {
+    "blue": number,
+    "red": number
   },
-  players: [
-    // Blue Team (Left) - USJR
+  "duration": string (MUST be strictly formatted as "MM:SS" e.g. "15:30" or "05:12"),
+  "players": [ // Must be exactly 10 players, ordered exactly as they appear top-to-bottom on the screen
     {
-      playerName: 'USJR KAZUKI',
-      heroName: 'Odette',
-      team: 'Blue',
-      kda: { kills: 0, deaths: 0, assists: 11 },
-      gold: 6272,
-      rating: 8.8,
-      badge: 'Gold'
-    },
-    {
-      playerName: 'USJR Stevesanity',
-      heroName: 'Harith',
-      team: 'Blue',
-      kda: { kills: 6, deaths: 0, assists: 2 },
-      gold: 9087,
-      rating: 9.3,
-      badge: 'Gold'
-    },
-    {
-      playerName: 'USJR Wanji.',
-      heroName: 'Karrie',
-      team: 'Blue',
-      kda: { kills: 6, deaths: 2, assists: 4 },
-      gold: 9379,
-      rating: 9.3,
-      badge: 'Gold'
-    },
-    {
-      playerName: 'USJR DANJIRO',
-      heroName: 'Lylia',
-      team: 'Blue',
-      kda: { kills: 0, deaths: 1, assists: 12 },
-      gold: 7474,
-      rating: 8.7,
-      badge: 'Gold'
-    },
-    {
-      playerName: 'USJR CELIBOURGE1',
-      heroName: 'Fanny',
-      team: 'Blue',
-      kda: { kills: 4, deaths: 0, assists: 6 },
-      gold: 7660,
-      rating: 9.5,
-      badge: 'MVP'
-    },
-    // Red Team (Right) - USC
-    {
-      playerName: 'LUKETZYY USC',
-      heroName: 'Lapu-Lapu',
-      team: 'Red',
-      kda: { kills: 2, deaths: 3, assists: 1 },
-      gold: 6148,
-      rating: 5.8,
-      badge: null // Silver usually for loser MVP but icon is different
-    },
-    {
-      playerName: 'Bravo. USC',
-      heroName: 'Eudora',
-      team: 'Red',
-      kda: { kills: 0, deaths: 3, assists: 2 },
-      gold: 5301,
-      rating: 4.9,
-      badge: null
-    },
-    {
-      playerName: 'SHIN TORU USC',
-      heroName: 'Valir',
-      team: 'Red',
-      kda: { kills: 1, deaths: 4, assists: 0 },
-      gold: 6906,
-      rating: 4.0,
-      badge: 'Bronze'
-    },
-    {
-      playerName: 'Yingg USC',
-      heroName: 'Angela',
-      team: 'Red',
-      kda: { kills: 0, deaths: 2, assists: 2 },
-      gold: 4515,
-      rating: 4.6,
-      badge: null
-    },
-    {
-      playerName: 'BAI LUCI USC',
-      heroName: 'Tigreal',
-      team: 'Red',
-      kda: { kills: 0, deaths: 4, assists: 1 },
-      gold: 5711,
-      rating: 4.1,
-      badge: null
+      "heroName": string (leave empty if unknown, but try your best to identify from portrait),
+      "playerName": string,
+      "team": "Blue" | "Red", // Left side is Blue, Right side is Red
+      "kda": {
+        "kills": number,
+        "deaths": number,
+        "assists": number
+      },
+      "gold": number,
+      "rating": number (e.g., 9.8),
+      "badge": "MVP" | "Gold" | "Silver" | "Bronze" | null,
+      "damageDealt": number (e.g. 45913),
+      "turretDamage": number,
+      "damageTaken": number,
+      "teamfight": number (the percentage value, but as a raw number e.g. 57)
     }
   ]
-};
+}
+
+Important Rules:
+- The Left team is ALWAYS "Blue" and Right team is ALWAYS "Red".
+- Be precise with K/D/A order.
+- Gold often has commas or 'k', convert to standard integer (e.g. 5.5k -> 5500, 10,000 -> 10000).
+- Teamfight is a percentage string like "40%", output it as integer 40.
+- Match all players perfectly across both images (Top-to-Bottom order is identical on both tabs).`
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Screenshot 1: Equipment Tab:" },
+            {
+              type: "image_url",
+              image_url: { url: `data:${equipmentFile.type};base64,${equipmentBase64}` },
+            },
+            { type: "text", text: "Screenshot 2: Data Tab:" },
+            {
+              type: "image_url",
+              image_url: { url: `data:${dataFile.type};base64,${dataBase64}` },
+            },
+          ],
+        }
+      ],
+      max_tokens: 1500,
+      temperature: 0.1, // Low temp for more accurate data extraction
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No content returned from OpenAI");
+    }
+
+    const extractedData = JSON.parse(content) as MlbbScreenshotData;
+
+    return {
+      success: true,
+      data: extractedData
+    };
+
+  } catch (error: any) {
+    console.error('OCR Extraction Failed:', error);
+    return { success: false, error: error?.message || 'Failed to process images via AI' };
+  }
+}

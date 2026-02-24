@@ -115,4 +115,22 @@ export class GameDraftService extends BaseService {
       return this.formatError(err, `Failed to lock action.`);
     }
   }
+
+  /**
+   * Update an existing draft action (e.g. swapping a picked/banned character).
+   */
+  static async updateAction(actionId: string, data: Partial<GameDraftActionUpdate>): Promise<ServiceResponse<undefined>> {
+    try {
+      const supabase = await this.getClient();
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .update(data)
+        .eq('id', actionId);
+      
+      if (error) throw error;
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to update action.`);
+    }
+  }
 }

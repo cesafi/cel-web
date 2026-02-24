@@ -16,6 +16,7 @@ import { MapVetoPanel } from '@/components/veto/map-veto-panel';
 import { ValorantStatsUpload } from '@/components/stats/valorant-stats-upload';
 import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
 import { PostGameStatsUploader } from '@/components/statistics/post-game-stats-uploader';
+import { GameWinnerSelector } from '@/components/games/game-winner-selector';
 import {
     ArrowLeft,
     CheckCircle2,
@@ -202,6 +203,23 @@ export default function GameDetailPage() {
                 </div>
             </div>
 
+            {/* ── Game Winner Selector ── */}
+            {team1 && team2 && (
+                <GameWinnerSelector
+                    gameId={gameId}
+                    team1={{
+                        matchParticipantId: team1.id,
+                        name: team1.schools_teams?.name || 'T1',
+                        abbreviation: team1.schools_teams?.school?.abbreviation || 'T1'
+                    }}
+                    team2={{
+                        matchParticipantId: team2.id,
+                        name: team2.schools_teams?.name || 'T2',
+                        abbreviation: team2.schools_teams?.school?.abbreviation || 'T2'
+                    }}
+                />
+            )}
+
             {/* ── API Export Link ── */}
             <div className="rounded-xl border bg-card p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -246,6 +264,7 @@ export default function GameDetailPage() {
                         team2Players={team2Players.map(p => ({ id: p.id, ign: p.ign, role: p.role }))}
                         isAdmin={true}
                         isValorant={isValorant}
+                        gameNumber={game.game_number}
                     />
                 </div>
             )}
@@ -278,7 +297,7 @@ export default function GameDetailPage() {
 
             {/* ── Post-Game Statistics ── */}
             {(isMlbb || isValorant) && team1?.schools_teams && team2?.schools_teams && (
-                <div className="space-y-4">
+                <div className="space-y-4 pb-8">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <BarChart3 className="h-5 w-5" />
                         Post-Game Statistics
