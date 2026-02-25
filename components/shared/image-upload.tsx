@@ -156,7 +156,7 @@ export function ImageUpload({
   const handleFileValidation = useCallback((file: File): string | null => {
     // Check file size
     if (file.size > effectivePreset.maxFileSize) {
-      return `File size must be less than ${Math.round(effectivePreset.maxFileSize / (1024 * 1024))}MB`;
+      return `File size must be less than ${Math.round(effectivePreset.maxFileSize / (1024))}KB`;
     }
 
     // Check file type
@@ -370,7 +370,7 @@ export function ImageUpload({
         {/* Requirements */}
         <div className="text-xs text-muted-foreground space-y-1">
           <p>
-            Max size: {Math.round(effectivePreset.maxFileSize / (1024 * 1024))}MB
+            Max size: {Math.round(effectivePreset.maxFileSize / (1024))}KB
           </p>
           <p>
             Recommended: {effectivePreset.maxWidth}×{effectivePreset.maxHeight}px

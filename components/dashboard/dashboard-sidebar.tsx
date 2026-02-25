@@ -115,18 +115,25 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
     ];
   };
 
-  const getSeasonalNavigationItems = (): NavigationItem[] => {
-    return [
-      { href: '/admin/league-stage', label: 'League Stages', icon: Group },
-      { href: '/admin/school-teams', label: 'School Teams', icon: Shield },
-      { href: '/admin/volunteers', label: 'Volunteers', icon: Users },
-      { href: '/admin/matches', label: 'Matches', icon: Target },
-    ];
+  const getSeasonalNavigationItems = (role: string): NavigationItem[] => {
+    switch (role) {
+      case 'admin':
+        return [
+          { href: '/admin/league-stage', label: 'League Stages', icon: Group },
+          { href: '/admin/school-teams', label: 'School Teams', icon: Shield },
+          { href: '/admin/volunteers', label: 'Volunteers', icon: Users },
+          { href: '/admin/matches', label: 'Matches', icon: Target },
+        ];
+      default:
+        // Other roles (league_operator, head_writer, writer) don't get seasonal items
+        // League operators already have Matches in their General section
+        return [];
+    }
   };
 
   const generalItems = getGeneralNavigationItems(userRole);
   const landingPageItems = getLandingPageNavigationItems(userRole);
-  const seasonalItems = getSeasonalNavigationItems();
+  const seasonalItems = getSeasonalNavigationItems(userRole);
 
   return (
     <aside className="border-border bg-sidebar flex h-screen w-64 flex-col border-r overflow-hidden">
@@ -283,8 +290,8 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
           </div>
         )}
 
-        {/* Seasonal Category - Only show for roles that need season context */}
-        {needsSeasonContext && (
+        {/* Seasonal Category - Only show for roles that need season context and have items */}
+        {needsSeasonContext && seasonalItems.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sidebar-foreground/70 text-xs font-semibold tracking-wider uppercase">
               {currentSeason ? (currentSeason.name || `Season ${currentSeason.id}`) : 'Season'}
