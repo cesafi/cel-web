@@ -184,28 +184,6 @@ export default async function LeagueOperatorOverviewPage() {
                 <p className="text-sm text-muted-foreground">Create, edit, and schedule matches</p>
               </div>
             </Link>
-
-            <Link
-              href="/league-operator/schedules"
-              className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-              <Calendar className="h-5 w-5 text-primary" />
-              <div>
-                <p className="font-medium">View Schedule</p>
-                <p className="text-sm text-muted-foreground">Check upcoming match schedules</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/league-operator/results"
-              className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-              <Trophy className="h-5 w-5 text-primary" />
-              <div>
-                <p className="font-medium">Update Results</p>
-                <p className="text-sm text-muted-foreground">Record match scores and outcomes</p>
-              </div>
-            </Link>
           </CardContent>
         </Card>
 

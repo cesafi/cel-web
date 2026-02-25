@@ -7,12 +7,16 @@ import { getArticlesTableColumns, getArticlesTableActions } from '@/components/a
 import { Article } from '@/lib/types/articles';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 export default function WriterArticlesPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const router = useRouter();
 
   const {
     articles,
+    totalCount,
+    pageCount,
     currentPage,
     pageSize,
     loading,
@@ -25,8 +29,7 @@ export default function WriterArticlesPage() {
     onFiltersChange
   } = useArticlesTable();
 
-  // Show all articles for writers, but with different actions based on status
-  const filteredArticles = articles;
+
 
   const handleDeleteArticle = () => {
     // Writers cannot delete articles
@@ -65,9 +68,9 @@ export default function WriterArticlesPage() {
 
       {/* Data Table */}
       <DataTable
-        data={filteredArticles}
-        totalCount={filteredArticles.length}
-        pageCount={Math.ceil(filteredArticles.length / pageSize)}
+        data={articles}
+        totalCount={totalCount}
+        pageCount={pageCount}
         loading={loading}
         tableBodyLoading={tableBodyLoading}
         error={error}
@@ -88,7 +91,7 @@ export default function WriterArticlesPage() {
         addButton={{
           label: 'Create Article',
           onClick: () => {
-            window.location.href = '/writer/articles/new';
+            router.push('/writer/articles/new');
           }
         }}
         className=""

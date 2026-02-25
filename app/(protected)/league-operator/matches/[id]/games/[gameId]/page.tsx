@@ -6,13 +6,19 @@ import { useMatchByIdWithFullDetails, matchKeys } from '@/hooks/use-matches';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPlayersByTeamId } from '@/actions/players';
 import { Player } from '@/lib/types/players';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { DraftPanel } from '@/components/draft/draft-panel';
-import { MapVetoPanel } from '@/components/veto/map-veto-panel';
 import { ValorantStatsUpload } from '@/components/stats/valorant-stats-upload';
 import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
+import { PostGameStatsUploader } from '@/components/statistics/post-game-stats-uploader';
+import { GameWinnerSelector } from '@/components/games/game-winner-selector';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     ArrowLeft,
     CheckCircle2,
@@ -24,7 +30,8 @@ import {
     Swords,
     Link2,
     Copy,
-    Users
+    Users,
+    Trash2
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -34,14 +41,20 @@ import { format } from 'date-fns';
 export default function LeagueOperatorGameDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const matchId = Number(params.id);
     const gameId = Number(params.gameId);
+    
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdatingAttr, setIsUpdatingAttr] = useState(false);
 
     const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
     const team1 = match?.match_participants?.[0];
     const team2 = match?.match_participants?.[1];
 
+    // Fetch players for stats
     const { data: team1Players = [] } = useQuery({
         queryKey: ['players', team1?.schools_teams?.id],
         queryFn: async () => {
@@ -120,6 +133,46 @@ export default function LeagueOperatorGameDetailPage() {
         toast.success('API link copied to clipboard');
     };
 
+    const handleDeleteGame = async () => {
+        setIsDeleting(true);
+        try {
+            const result = await deleteGameByIdWithCascade(gameId);
+            if (result.success) {
+                toast.success('Game deleted');
+                setDeleteModalOpen(false);
+                queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+                router.push(`/league-operator/matches/${matchId}`);
+            } else {
+                toast.error(result.error || 'Failed to delete game');
+                setIsDeleting(false);
+            }
+        } catch {
+            toast.error('An unexpected error occurred');
+            setIsDeleting(false);
+        }
+    };
+
+    const handleUpdateGameAttr = async (field: 'coin_toss_winner' | 'side_selection', value: string) => {
+        setIsUpdatingAttr(true);
+        try {
+            const data: any = { id: gameId };
+            // If value is 'none', map it to null to clear it
+            data[field] = value === 'none' ? null : value;
+            
+            const result = await updateGameById(data);
+            if (result.success) {
+                toast.success('Game updated');
+                queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+            } else {
+                toast.error(result.error || 'Failed to update game');
+            }
+        } catch {
+            toast.error('An unexpected error occurred');
+        } finally {
+            setIsUpdatingAttr(false);
+        }
+    };
+
     return (
         <div className="w-full space-y-8">
             {/* Navigation */}
@@ -158,6 +211,10 @@ export default function LeagueOperatorGameDetailPage() {
                         {isActive && (
                             <Badge variant="destructive" className="animate-pulse">LIVE</Badge>
                         )}
+                        <Button variant="destructive" size="sm" onClick={() => setDeleteModalOpen(true)}>
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                            Delete Game
+                        </Button>
                     </div>
                 </div>
 
@@ -191,6 +248,73 @@ export default function LeagueOperatorGameDetailPage() {
                 </div>
             </div>
 
+            {/* ── Game Winner Selector ── */}
+            {team1 && team2 && (
+                <GameWinnerSelector
+                    gameId={gameId}
+                    team1={{
+                        matchParticipantId: team1.id,
+                        name: team1.schools_teams?.name || 'T1',
+                        abbreviation: team1.schools_teams?.school?.abbreviation || 'T1'
+                    }}
+                    team2={{
+                        matchParticipantId: team2.id,
+                        name: team2.schools_teams?.name || 'T2',
+                        abbreviation: team2.schools_teams?.school?.abbreviation || 'T2'
+                    }}
+                />
+            )}
+
+            {/* ── Game Attributes Editor ── */}
+            {team1 && team2 && (
+                <div className="rounded-xl border bg-card p-5 space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Swords className="h-4 w-4" />
+                        Game Attributes Overlay
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Coin Toss Winner / Advantage</label>
+                            <Select 
+                                disabled={isUpdatingAttr}
+                                value={game.coin_toss_winner || 'none'}
+                                onValueChange={(val) => handleUpdateGameAttr('coin_toss_winner', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select team" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
+                                    <SelectItem value={String(team1.id)}>{team1.schools_teams?.school?.abbreviation || 'Team 1'}</SelectItem>
+                                    <SelectItem value={String(team2.id)}>{team2.schools_teams?.school?.abbreviation || 'Team 2'}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Overrides the coin toss winner for side selection / first pick mechanics.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Side Selection / Starting Side</label>
+                            <Select 
+                                disabled={isUpdatingAttr}
+                                value={game.side_selection || 'none'}
+                                onValueChange={(val) => handleUpdateGameAttr('side_selection', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select side" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
+                                    <SelectItem value="blue">Blue Side</SelectItem>
+                                    <SelectItem value="red">Red Side</SelectItem>
+                                    {isValorant && <SelectItem value="attack">Attack</SelectItem>}
+                                    {isValorant && <SelectItem value="defend">Defend</SelectItem>}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Force assigns the starting side for the advantage team.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── API Export Link ── */}
             <div className="rounded-xl border bg-card p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -208,7 +332,7 @@ export default function LeagueOperatorGameDetailPage() {
                 </div>
             </div>
 
-            {/* ── Draft / Agent Select ── */}
+            {/* ── Draft / Agent Select Section ── */}
             {(isMlbb || isValorant) && team1?.schools_teams && team2?.schools_teams && (
                 <div className="space-y-4">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -235,43 +359,40 @@ export default function LeagueOperatorGameDetailPage() {
                         team2Players={team2Players.map(p => ({ id: p.id, ign: p.ign, role: p.role }))}
                         isAdmin={true}
                         isValorant={isValorant}
+                        gameNumber={game.game_number}
                     />
                 </div>
             )}
 
-            {isValorant && team1?.schools_teams && team2?.schools_teams && (
-                <div className="space-y-4">
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Swords className="h-5 w-5" />
-                        Map Veto
-                    </h2>
-                    <MapVetoPanel
-                        matchId={matchId}
-                        bestOf={match.best_of || 3}
-                        team1={{
-                            id: team1.schools_teams.id,
-                            name: team1.schools_teams.name || 'Team 1',
-                            abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
-                            logoUrl: team1.schools_teams.school?.logo_url,
-                        }}
-                        team2={{
-                            id: team2.schools_teams.id,
-                            name: team2.schools_teams.name || 'Team 2',
-                            abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
-                            logoUrl: team2.schools_teams.school?.logo_url,
-                        }}
-                        isAdmin={true}
-                    />
+
+            {/* ── API Export Link (Stats) ── */}
+            <div className="rounded-xl border bg-card p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    API EXPORT
+                </h3>
+                <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
+                        {`${apiEndpoint.replace('/draft/', '/stats/')}`}
+                    </code>
+                    <Button variant="outline" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(`${apiEndpoint.replace('/draft/', '/stats/')}`)
+                        toast.success('Stats API link copied to clipboard')
+                    }}>
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        Copy
+                    </Button>
                 </div>
-            )}
+            </div>
 
             {/* ── Post-Game Statistics ── */}
             {(isMlbb || isValorant) && team1?.schools_teams && team2?.schools_teams && (
-                <div className="space-y-4">
+                <div className="space-y-4 pb-8">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <BarChart3 className="h-5 w-5" />
                         Post-Game Statistics
                     </h2>
+
                     {isValorant ? (
                         <ValorantStatsUpload
                             gameId={gameId}
@@ -307,6 +428,17 @@ export default function LeagueOperatorGameDetailPage() {
                     )}
                 </div>
             )}
+
+            {/* ── Delete Confirmation Modal ── */}
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={handleDeleteGame}
+                title="Delete Game"
+                message={`Are you sure you want to delete Game ${game?.game_number}? This action cannot be undone and will permanently delete all associated scores, stats, map vetoes, and drafts.`}
+                type="delete"
+                isLoading={isDeleting}
+            />
         </div>
     );
 }
@@ -320,6 +452,7 @@ function GameDetailSkeleton() {
                 <Skeleton className="h-12 w-full" />
             </div>
             <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-64 rounded-xl" />
             <Skeleton className="h-64 rounded-xl" />
         </div>
     );

@@ -6,10 +6,12 @@ import { useArticlesTable } from '@/hooks/use-articles';
 import { getArticlesTableColumns, getArticlesTableActions } from '@/components/admin/articles';
 import { Article } from '@/lib/types/articles';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { useRouter } from 'next/navigation';
 
 export default function HeadWriterArticlesPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [articleToDelete, setArticleToDelete] = useState<Article | undefined>();
+  const router = useRouter();
 
   const {
     articles,
@@ -28,6 +30,10 @@ export default function HeadWriterArticlesPage() {
     onSearchChange,
     onFiltersChange
   } = useArticlesTable();
+
+  const handleAddArticle = () => {
+    router.push('/head-writer/articles/new');
+  }
 
   const handleDeleteArticle = (article: Article) => {
     setArticleToDelete(article);
@@ -61,7 +67,13 @@ export default function HeadWriterArticlesPage() {
   const actions = getArticlesTableActions(handleDeleteArticle, 'head-writer', handlePreviewArticle, handleViewArticle);
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="w-full space-y-6">
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Articles Management</h1>
+        <p className="text-muted-foreground">Review and manage articles for publication.</p>
+      </div>
+
       {/* Data Table */}
       <DataTable
         data={articles}
@@ -86,9 +98,7 @@ export default function HeadWriterArticlesPage() {
         showFilters={false}
         addButton={{
           label: 'Create Article',
-          onClick: () => {
-            window.location.href = '/head-writer/articles/new';
-          }
+          onClick: () => { handleAddArticle() }
         }}
         className=""
         emptyMessage="No articles found"

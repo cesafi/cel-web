@@ -1,76 +1,130 @@
-import { TimelineTable } from '@/components/admin/timeline/timeline-table';
-import { getPaginatedTimeline } from '@/actions/timeline';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Star, FileText } from 'lucide-react';
+'use client';
 
-export default async function HeadWriterTimelinePage() {
-  // Fetch initial timeline data
-  const timelineResult = await getPaginatedTimeline({
-    page: 1,
-    pageSize: 10,
-    sortBy: 'year',
-    sortOrder: 'asc'
-  });
+import { useState } from 'react';
+import { DataTable } from '@/components/table';
+import { 
+  useAllTimelineEntries, 
+  useCreateTimelineEntry, 
+  useUpdateTimelineEntry, 
+  useDeleteTimelineEntry 
+} from '@/hooks/use-timeline';
+import { 
+  TimelineModal,
+  getTimelineTableColumns,
+  getTimelineTableActions
+} from '@/components/admin/timeline';
+import { Timeline, TimelineInsert, TimelineUpdate } from '@/lib/types/timeline';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
-  const timelineData = timelineResult.success && timelineResult.data ? timelineResult.data : null;
+export default function HeadWriterTimelinePage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingEntry, setEditingEntry] = useState<Timeline | undefined>();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<Timeline | undefined>();
+
+  // Client-side pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data: entries = [], isLoading, error, refetch } = useAllTimelineEntries();
+  const createMutation = useCreateTimelineEntry();
+  const updateMutation = useUpdateTimelineEntry();
+  const deleteMutation = useDeleteTimelineEntry();
+
+  // Calculate pagination
+  const totalCount = entries.length;
+  const pageCount = Math.ceil(totalCount / pageSize);
+  const offset = (currentPage - 1) * pageSize;
+  const paginatedEntries = entries.slice(offset, offset + pageSize);
+
+  const handleEditEntry = (entry: Timeline) => {
+    setEditingEntry(entry);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteEntry = (entry: Timeline) => {
+    setEntryToDelete(entry);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (!entryToDelete) return;
+    deleteMutation.mutate(entryToDelete.id);
+    setIsDeleteModalOpen(false);
+    setEntryToDelete(undefined);
+  };
+
+  const handleSubmit = (data: TimelineInsert | TimelineUpdate) => {
+    if (modalMode === 'add') {
+      createMutation.mutate(data as TimelineInsert);
+    } else if (editingEntry) {
+      updateMutation.mutate({ id: editingEntry.id, ...data } as TimelineUpdate);
+    }
+    setIsModalOpen(false);
+  };
+
+  const columns = getTimelineTableColumns();
+  const actions = getTimelineTableActions(handleEditEntry, handleDeleteEntry);
 
   return (
     <div className="w-full space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Timeline Management</h1>
-        <p className="text-muted-foreground">
-          Manage CESAFI timeline events and historical milestones
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-            <Calendar className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{timelineData?.totalCount || 0}</div>
-            <p className="text-muted-foreground text-xs">Timeline events created</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Highlight Events</CardTitle>
-            <Star className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {timelineData?.data.filter((event) => event.is_highlight).length || 0}
-            </div>
-            <p className="text-muted-foreground text-xs">Featured timeline events</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Content Management</CardTitle>
-            <FileText className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{timelineData?.data.length || 0}</div>
-            <p className="text-muted-foreground text-xs">Events ready for content</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Timeline Table */}
-      <TimelineTable
-        initialData={timelineData || undefined}
-        initialPagination={{
-          page: 1,
-          pageSize: 10,
-          sortBy: 'year',
-          sortOrder: 'asc'
+      <DataTable
+        data={paginatedEntries}
+        totalCount={totalCount}
+        loading={isLoading}
+        tableBodyLoading={false}
+        error={error?.message || null}
+        columns={columns}
+        actions={actions}
+        currentPage={currentPage}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        onSortChange={() => {}}
+        onSearchChange={() => {}}
+        onFiltersChange={() => {}}
+        title="Timeline Management"
+        subtitle="Manage the CESAFI timeline events and milestones."
+        searchPlaceholder="Search timeline events..."
+        showSearch={true}
+        showFilters={false}
+        addButton={{
+          label: 'Add Event',
+          onClick: () => {
+            setModalMode('add');
+            setEditingEntry(undefined);
+            setIsModalOpen(true);
+          }
         }}
+        emptyMessage="No timeline events found"
+        refetch={refetch}
+      />
+
+      {/* Modal */}
+      <TimelineModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        mode={modalMode}
+        entry={editingEntry}
+        onSubmit={handleSubmit}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteEntry}
+        type="delete"
+        title="Delete Timeline Event"
+        message={`Are you sure you want to delete "${entryToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        destructive={true}
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );

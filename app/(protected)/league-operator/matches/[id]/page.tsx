@@ -8,11 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MatchModal } from '@/components/shared/matches/match-modal';
-import { updateMatchById } from '@/actions/matches';
-import { createGame } from '@/actions/games';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { updateMatchById, deleteMatchById } from '@/actions/matches';
+import { createGame, updateGameById } from '@/actions/games';
 import { MatchInsert, MatchUpdate } from '@/lib/types/matches';
+import { MapVetoPanel } from '@/components/veto/map-veto-panel';
+import { getActiveValorantMaps } from '@/actions/valorant-maps';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Calendar,
@@ -22,6 +26,7 @@ import {
   Swords,
   Trophy,
   Pencil,
+  Trash2,
   Plus,
   ChevronRight,
   Clock,
@@ -37,6 +42,7 @@ import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
+// Status badge config
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
   upcoming: { label: 'Upcoming', variant: 'outline', className: 'border-blue-500/50 text-blue-500' },
   live: { label: 'Live', variant: 'destructive', className: 'animate-pulse' },
@@ -60,12 +66,29 @@ export default function LeagueOperatorMatchDetailsPage() {
   const queryClient = useQueryClient();
   const matchId = Number(params.id);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
   const team1 = match?.match_participants?.[0];
   const team2 = match?.match_participants?.[1];
+
+  const esportName = match?.esports_seasons_stages?.esports_categories?.esports?.name?.toLowerCase() || '';
+  const isMlbb = esportName.includes('mobile legends') || esportName.includes('mlbb');
+  const isValorant = esportName.includes('valorant');
+
+  // Global Valorant Maps for assignment
+  const { data: valorantMaps = [] } = useQuery({
+    queryKey: ['valorant-maps-active'],
+    queryFn: async () => {
+      const result = await getActiveValorantMaps();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: isValorant,
+  });
 
   if (isLoading) {
     return <MatchDetailSkeleton />;
@@ -87,9 +110,56 @@ export default function LeagueOperatorMatchDetailsPage() {
     );
   }
 
-  const nextGameNumber = (match.games?.length || 0) + 1;
-  const activeGame = match.games?.find(g => ['drafting', 'in_progress'].includes(g.status || ''));
-  const status = statusConfig[match.status] || statusConfig.upcoming;
+  const nextGameNumber = (match?.games?.length || 0) + 1;
+  const activeGame = match?.games?.find(g => ['drafting', 'in_progress'].includes(g.status || ''));
+  const status = match ? (statusConfig[match.status] || statusConfig.upcoming) : statusConfig.upcoming;
+
+  const handleMapAssign = async (gameId: number, mapIdStr: string) => {
+    const mapId = mapIdStr === 'unassigned' ? null : Number(mapIdStr);
+    try {
+      const result = await updateGameById({ id: gameId, valorant_map_id: mapId });
+      if (result.success) {
+        toast.success('Map assigned to game');
+        queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      } else {
+        toast.error(result.error || 'Failed to assign map');
+      }
+    } catch {
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleVetoComplete = async () => {
+    // Fetch vetoes from cache manually since this is fired right after a Pick/Ban completes
+    const vetoes: any[] = queryClient.getQueryData(['valorant-map-vetoes', matchId]) || [];
+    const pickedVetoes = vetoes.filter(v => v.action === 'pick' || v.action === 'remain');
+    
+    // Map veto text names to map database IDs
+    const pickedMapIds = pickedVetoes.map(v => {
+      const mapObj = valorantMaps.find(m => m.name === v.map_name);
+      return mapObj?.id;
+    }).filter(Boolean);
+
+    if (!match?.games || match.games.length === 0) return;
+
+    const sortedGames = [...match.games].sort((a, b) => a.game_number - b.game_number);
+    let updateCount = 0;
+
+    for (let i = 0; i < Math.min(pickedMapIds.length, sortedGames.length); i++) {
+       const game = sortedGames[i];
+       const newMapId = pickedMapIds[i];
+
+       if (game.valorant_map_id !== newMapId) {
+          await updateGameById({ id: game.id, valorant_map_id: newMapId });
+          updateCount++;
+       }
+    }
+
+    if (updateCount > 0) {
+       toast.success(`Auto-assigned ${updateCount} map(s) to games from Map Veto`);
+       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+    }
+  };
 
   const handleStartGame = async () => {
     try {
@@ -97,6 +167,7 @@ export default function LeagueOperatorMatchDetailsPage() {
         match_id: matchId,
         game_number: nextGameNumber,
       });
+
       if (result.success) {
         toast.success(`Game ${nextGameNumber} created`);
         queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
@@ -128,6 +199,24 @@ export default function LeagueOperatorMatchDetailsPage() {
     }
   };
 
+  const handleDeleteMatch = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteMatchById(matchId);
+      if (result.success) {
+        toast.success('Match deleted');
+        setDeleteModalOpen(false);
+        router.push('/league-operator/matches');
+      } else {
+        toast.error(result.error || 'Failed to delete match');
+        setIsDeleting(false);
+      }
+    } catch {
+      toast.error('An unexpected error occurred');
+      setIsDeleting(false);
+    }
+  };
+
   const handleLobbyRedirect = () => {
     router.push(`/lobby/${matchId}`);
   };
@@ -142,6 +231,7 @@ export default function LeagueOperatorMatchDetailsPage() {
 
       {/* ── Match Header ── */}
       <div className="rounded-xl border bg-card overflow-hidden">
+        {/* Top bar */}
         <div className="px-6 py-4 border-b bg-muted/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={status.variant} className={status.className}>
@@ -151,7 +241,9 @@ export default function LeagueOperatorMatchDetailsPage() {
               {match.esports_seasons_stages?.competition_stage?.replace(/_/g, ' ') || 'Stage'}
             </span>
             <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground">Best of {match.best_of}</span>
+            <span className="text-xs text-muted-foreground">
+              Best of {match.best_of}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setEditModalOpen(true)}>
@@ -162,17 +254,26 @@ export default function LeagueOperatorMatchDetailsPage() {
               <MonitorPlay className="w-3.5 h-3.5 mr-1.5" />
               Lobby
             </Button>
+            <Button variant="destructive" size="sm" onClick={() => setDeleteModalOpen(true)}>
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Delete
+            </Button>
           </div>
         </div>
 
         {/* Scoreboard */}
         <div className="p-6 md:p-8">
           <div className="grid grid-cols-3 items-center gap-4 max-w-2xl mx-auto">
+            {/* Team 1 */}
             <div className="flex flex-col items-center gap-3">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-border bg-muted flex items-center justify-center overflow-hidden">
                 {team1?.schools_teams?.school?.logo_url ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={team1.schools_teams.school.logo_url} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={team1.schools_teams.school.logo_url}
+                    alt={team1.schools_teams.school.abbreviation || 'T1'}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span className="text-lg md:text-xl font-bold text-muted-foreground">
                     {team1?.schools_teams?.school?.abbreviation?.substring(0, 3) || 'T1'}
@@ -185,6 +286,7 @@ export default function LeagueOperatorMatchDetailsPage() {
               </div>
             </div>
 
+            {/* Score */}
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center gap-3 md:gap-5">
                 <span className="text-4xl md:text-5xl font-bold tabular-nums">{team1?.match_score ?? 0}</span>
@@ -198,11 +300,16 @@ export default function LeagueOperatorMatchDetailsPage() {
               )}
             </div>
 
+            {/* Team 2 */}
             <div className="flex flex-col items-center gap-3">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-border bg-muted flex items-center justify-center overflow-hidden">
                 {team2?.schools_teams?.school?.logo_url ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={team2.schools_teams.school.logo_url} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={team2.schools_teams.school.logo_url}
+                    alt={team2.schools_teams.school.abbreviation || 'T2'}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span className="text-lg md:text-xl font-bold text-muted-foreground">
                     {team2?.schools_teams?.school?.abbreviation?.substring(0, 3) || 'T2'}
@@ -217,6 +324,7 @@ export default function LeagueOperatorMatchDetailsPage() {
           </div>
         </div>
 
+        {/* Match meta */}
         <div className="px-6 py-3 border-t bg-muted/20 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Gamepad2 className="h-3.5 w-3.5" />
@@ -249,6 +357,7 @@ export default function LeagueOperatorMatchDetailsPage() {
 
       {/* ── Match Details Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Competition Context */}
         <div className="rounded-xl border bg-card p-5 space-y-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Trophy className="h-4 w-4" />
@@ -271,9 +380,20 @@ export default function LeagueOperatorMatchDetailsPage() {
                 {match.esports_seasons_stages?.esports_categories?.division || 'N/A'} • {match.esports_seasons_stages?.esports_categories?.levels || 'N/A'}
               </p>
             </div>
+            {(match.round || match.group_name) && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Group / Round</p>
+                <p className="font-medium">
+                  {match.group_name && `Group ${match.group_name}`}
+                  {match.group_name && match.round && ' • '}
+                  {match.round && `Round ${match.round}`}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Schedule & Details */}
         <div className="rounded-xl border bg-card p-5 space-y-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Info className="h-4 w-4" />
@@ -302,8 +422,44 @@ export default function LeagueOperatorMatchDetailsPage() {
               </p>
             </div>
           </div>
+          {match.description && (
+            <div className="pt-2 border-t">
+              <p className="text-muted-foreground text-xs mb-1">Description</p>
+              <p className="text-sm text-foreground/80 leading-relaxed">{match.description}</p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ── Map Veto Section ── */}
+      {isValorant && team1?.schools_teams && team2?.schools_teams && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Swords className="h-5 w-5" />
+            Map Veto
+          </h2>
+          <MapVetoPanel
+            matchId={matchId}
+            bestOf={match.best_of || 3}
+            team1={{
+              id: team1.schools_teams.id,
+              name: team1.schools_teams.name || 'Team 1',
+              abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+              logoUrl: team1.schools_teams.school?.logo_url,
+            }}
+            team2={{
+              id: team2.schools_teams.id,
+              name: team2.schools_teams.name || 'Team 2',
+              abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+              logoUrl: team2.schools_teams.school?.logo_url,
+            }}
+            coinTossWinnerId={match.coin_toss_winner_id}
+            coinTossResult={match.coin_toss_result}
+            isAdmin={true}
+            onVetoComplete={handleVetoComplete}
+          />
+        </div>
+      )}
 
       {/* ── Games Section ── */}
       <div className="space-y-4 pb-8">
@@ -323,6 +479,7 @@ export default function LeagueOperatorMatchDetailsPage() {
         </div>
 
         {(!match.games || match.games.length === 0) ? (
+          /* Empty state */
           <div className="rounded-xl border-2 border-dashed bg-muted/20 flex flex-col items-center justify-center py-16 text-center">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
               <Gamepad2 className="h-6 w-6 text-muted-foreground" />
@@ -337,6 +494,7 @@ export default function LeagueOperatorMatchDetailsPage() {
             </Button>
           </div>
         ) : (
+          /* Game cards */
           <div className="space-y-3">
             {match.games.map((game) => {
               const isActive = ['drafting', 'in_progress'].includes(game.status || '');
@@ -358,6 +516,7 @@ export default function LeagueOperatorMatchDetailsPage() {
                     }`}
                 >
                   <div className="flex items-center gap-4">
+                    {/* Game number circle */}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isActive
                       ? 'bg-blue-500/10 text-blue-500 ring-2 ring-blue-500/30'
                       : isCompleted
@@ -366,11 +525,14 @@ export default function LeagueOperatorMatchDetailsPage() {
                       }`}>
                       {game.game_number}
                     </div>
+
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">Game {game.game_number}</span>
                         {isActive && (
-                          <Badge variant="destructive" className="animate-pulse text-xs px-1.5 py-0">LIVE</Badge>
+                          <Badge variant="destructive" className="animate-pulse text-xs px-1.5 py-0">
+                            LIVE
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -382,9 +544,34 @@ export default function LeagueOperatorMatchDetailsPage() {
                             <span>{format(new Date(game.start_at), 'p')}</span>
                           </>
                         )}
+                        {/* Inline Valorant Map Selector */}
+                        {isValorant && (
+                          <>
+                            <span>•</span>
+                            <div onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                                <Select
+                                  value={game.valorant_map_id ? String(game.valorant_map_id) : 'unassigned'}
+                                  onValueChange={(val) => handleMapAssign(game.id, val)}
+                                >
+                                  <SelectTrigger className="h-6 text-xs bg-muted/50 border-transparent hover:border-border w-[130px] px-2 py-0">
+                                    <SelectValue placeholder="Assign map" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
+                                    {valorantMaps.map((m: any) => (
+                                      <SelectItem key={m.id} value={String(m.id)}>
+                                        {m.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
+
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
                 </div>
               );
@@ -393,7 +580,7 @@ export default function LeagueOperatorMatchDetailsPage() {
         )}
       </div>
 
-      {/* Match Edit Modal */}
+      {/* ── Match Edit Modal ── */}
       {match && (
         <MatchModal
           open={editModalOpen}
@@ -405,6 +592,17 @@ export default function LeagueOperatorMatchDetailsPage() {
           isSubmitting={isSubmitting}
         />
       )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteMatch}
+        title="Delete Match"
+        message="Are you sure you want to delete this match? This action cannot be undone and will delete all associated games and scores."
+        type="delete"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
@@ -428,6 +626,7 @@ function MatchDetailSkeleton() {
       </div>
       <div className="space-y-3">
         <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-20 rounded-xl" />
         <Skeleton className="h-20 rounded-xl" />
       </div>
     </div>
