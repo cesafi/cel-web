@@ -158,6 +158,8 @@ export default async function PublicVetoPage({ params, searchParams }: PublicVet
           abbreviation: team2.school?.abbreviation || 'T2',
           logoUrl: team2.school?.logo_url,
         }}
+        coinTossWinnerId={match.coin_toss_winner_id}
+        coinTossResult={match.coin_toss_result}
         isPublicView={true}
         publicTeamId={teamIdStr}
         userSide={teamSide}

@@ -445,6 +445,8 @@ export default function MatchDetailPage() {
               abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
               logoUrl: team2.schools_teams.school?.logo_url,
             }}
+            coinTossWinnerId={match.coin_toss_winner_id}
+            coinTossResult={match.coin_toss_result}
             isAdmin={true}
             onVetoComplete={handleVetoComplete}
           />

@@ -121,6 +121,8 @@ export function MatchModal({
           start_at: match.start_at ? utcToLocal(match.start_at).toISOString().slice(0, 16) : null,
           end_at: match.end_at ? utcToLocal(match.end_at).toISOString().slice(0, 16) : null,
           best_of: match.best_of,
+          coin_toss_winner_id: match.coin_toss_winner_id || null,
+          coin_toss_result: match.coin_toss_result || null,
           status: 'upcoming'
         });
         setSelectedTeamIds(
@@ -139,6 +141,8 @@ export function MatchModal({
           start_at: null,
           end_at: null,
           best_of: 1,
+          coin_toss_winner_id: null,
+          coin_toss_result: null,
           status: 'upcoming'
         });
         setSelectedTeamIds([]);
@@ -404,6 +408,54 @@ export function MatchModal({
               onChange={(utcIsoString) => handleDateChange('scheduled_at', utcIsoString || '')}
               helpText="When the match is scheduled to take place"
             />
+            
+            {/* Coin Toss Overrides */}
+            {mode === 'edit' && selectedTeamIds.length >= 2 && (
+              <div className="pt-4 border-t space-y-4">
+                <h4 className="font-semibold text-sm">Coin Toss Overrides (Optional)</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Coin Toss Winner</Label>
+                    <Select 
+                      value={formData.coin_toss_winner_id || 'none'} 
+                      onValueChange={(val) => setFormData(prev => ({ ...prev, coin_toss_winner_id: val === 'none' ? null : val }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
+                        {selectedTeamIds.map(tId => {
+                          const teamInfo = availableTeams.find(t => t.id === tId) || (match?.match_participants as any[])?.find((p: any) => p.schools_teams?.id === tId)?.schools_teams;
+                          if (!teamInfo) return null;
+                          return (
+                            <SelectItem key={tId} value={tId}>
+                              {teamInfo.abbreviation || teamInfo.name || tId}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Coin Toss Result</Label>
+                    <Select 
+                      value={formData.coin_toss_result || 'none'} 
+                      onValueChange={(val) => setFormData(prev => ({ ...prev, coin_toss_result: val === 'none' ? null : val as any }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select result" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
+                        <SelectItem value="heads">Heads</SelectItem>
+                        <SelectItem value="tails">Tails</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

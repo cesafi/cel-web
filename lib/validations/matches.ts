@@ -101,6 +101,8 @@ export const updateMatchSchema = z
       .optional(),
     stage_id: z
       .number().int().positive().optional(),
+    coin_toss_winner_id: z.string().nullable().optional(),
+    coin_toss_result: z.enum(['heads', 'tails']).nullable().optional(),
     status: z.enum(['upcoming', 'live', 'completed', 'finished', 'cancelled', 'postponed'], {
       message: 'Status must be one of: upcoming, live, completed, finished, cancelled, postponed.'
     }).optional(),

@@ -11,7 +11,7 @@ export function useRealtimeDraft(
 
     const supabase = getSupabaseClient();
     
-    // Subscribe to all changes for this game's draft actions
+    // Subscribe to all changes for this game's draft actions AND rosters
     const channel = supabase
       .channel(`draft-room:${gameId}`)
       .on(
@@ -23,15 +23,22 @@ export function useRealtimeDraft(
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          // console.log('Realtime Draft Update:', payload);
           onActionCallback(payload);
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          // console.log(`Connected to draft room ${gameId}`);
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_rosters',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          onActionCallback(payload);
         }
-      });
+      )
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

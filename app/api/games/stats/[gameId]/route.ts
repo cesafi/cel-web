@@ -60,7 +60,13 @@ export async function GET(
     // 3. Return the data
     return NextResponse.json(
       { success: true, data: stats },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-store, max-age=0',
+        }
+      }
     );
   } catch (error: any) {
     console.error('Error in game stats API:', error);

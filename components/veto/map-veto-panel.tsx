@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,15 @@ import {
   Shield,
   Sword,
   Copy,
-  ExternalLink
+  ExternalLink,
+  ArrowLeftRight,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 // Types
 import { ValorantMapVetoWithTeam } from '@/lib/types/valorant-map-vetoes';
@@ -33,7 +37,8 @@ import {
   deleteValorantMapVetoesByMatchId 
 } from '@/actions/valorant-map-vetoes';
 import { performPublicVeto } from '@/actions/veto-public';
-import { performMatchCoinToss } from '@/actions/matches';
+import { performMatchCoinToss, resetMatchCoinToss, switchMatchCoinTossWinner } from '@/actions/matches';
+import { ConfirmationModal } from '@/components/shared/confirmation-modal';
 
 interface MapVetoPanelProps {
   matchId: number;
@@ -91,6 +96,56 @@ export function MapVetoPanel({
     vetoId: string;
     mapName: string;
   } | null>(null);
+
+  // Modal State
+  const [isResetVetoModalOpen, setIsResetVetoModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+
+  // Router for refreshing server component props (coin toss)
+  const router = useRouter();
+
+  // ── Supabase Realtime ──
+  // Subscribe to changes on valorant_map_vetoes and matches tables
+  // so both admin and public pages auto-update instantly.
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+
+    const channel = supabase
+      .channel(`veto-realtime-${matchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'valorant_map_vetoes',
+          filter: `match_id=eq.${matchId}`,
+        },
+        () => {
+          // Invalidate the vetoes query so React Query refetches
+          queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'matches',
+          filter: `id=eq.${matchId}`,
+        },
+        () => {
+          // Coin toss data comes from server component props,
+          // so we need to refresh the page to get updated props
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [matchId, queryClient, router]);
 
   // Fetch all active maps
   const { data: maps = [], isLoading: isLoadingMaps } = useQuery({
@@ -176,6 +231,7 @@ export function MapVetoPanel({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
       toast.success('Map veto reset successfully');
+      setIsResetVetoModalOpen(false);
     },
   });
 
@@ -192,10 +248,44 @@ export function MapVetoPanel({
     onSuccess: () => {
       toast.success('Coin toss complete!');
       setIsTossing(false);
+      router.refresh(); // Re-fetch server component props to update coinTossWinnerId
     },
     onError: (err) => {
       toast.error('Coin toss failed: ' + err.message);
       setIsTossing(false);
+    }
+  });
+
+  const resetCoinTossMutation = useMutation({
+    mutationFn: async () => {
+      const result = await resetMatchCoinToss(matchId);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: () => {
+      toast.success('Coin toss reset successfully');
+      setIsResetModalOpen(false);
+      router.refresh();
+    },
+    onError: (err) => {
+      toast.error('Failed to reset tossing: ' + err.message);
+    }
+  });
+
+  const switchCoinTossMutation = useMutation({
+    mutationFn: async () => {
+      if (!coinTossWinnerId) return;
+      const result = await switchMatchCoinTossWinner(matchId, coinTossWinnerId, team1.id, team2.id);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: () => {
+      toast.success('Coin toss winner switched!');
+      setIsSwitchModalOpen(false);
+      router.refresh();
+    },
+    onError: (err) => {
+      toast.error('Failed to switch winner: ' + err.message);
     }
   });
 
@@ -312,15 +402,26 @@ export function MapVetoPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => resetVetoMutation.mutate()}
+              onClick={() => setIsResetVetoModalOpen(true)}
               disabled={resetVetoMutation.isPending}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              Reset
+              Reset Vetoes
             </Button>
           </div>
         )}
       </div>
+
+      <ConfirmationModal 
+        open={isResetVetoModalOpen}
+        onOpenChange={setIsResetVetoModalOpen}
+        title="Reset Map Veto Sequence?"
+        description="Are you sure you want to reset the Map Veto sequence? This will permanently delete ALL map bans and picks."
+        cancelText="Cancel"
+        confirmText="Yes, reset vetoes"
+        onConfirm={() => resetVetoMutation.mutate()}
+        variant="destructive"
+      />
 
       {!coinTossWinnerId ? (
         <Card className="bg-gradient-to-b from-background to-muted/20 border-muted">
@@ -373,7 +474,50 @@ export function MapVetoPanel({
                 </p>
               </div>
             </div>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsSwitchModalOpen(true)}
+                  disabled={switchCoinTossMutation.isPending}
+                >
+                  <ArrowLeftRight className="w-4 h-4 mr-2" />
+                  Switch Winner
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setIsResetModalOpen(true)}
+                  disabled={resetCoinTossMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Reset Toss
+                </Button>
+              </div>
+            )}
           </div>
+
+          <ConfirmationModal 
+            open={isResetModalOpen}
+            onOpenChange={setIsResetModalOpen}
+            title="Reset Coin Toss?"
+            description="Are you sure you want to completely cancel and reset the coin toss? The sequence will return to the 'Toss Coin' phase."
+            cancelText="Cancel"
+            confirmText="Yes, reset toss"
+            onConfirm={() => resetCoinTossMutation.mutate()}
+            variant="destructive"
+          />
+
+          <ConfirmationModal 
+            open={isSwitchModalOpen}
+            onOpenChange={setIsSwitchModalOpen}
+            title="Switch Winner?"
+            description={`Are you sure you want to manually change the Coin Toss winner? The new winner will be ${coinTossWinnerId === team1.id ? team2.name : team1.name}.`}
+            cancelText="Cancel"
+            confirmText="Yes, switch winner"
+            onConfirm={() => switchCoinTossMutation.mutate()}
+          />
 
           {/* Veto Sequence Timeline */}
           <Card className="bg-gradient-to-b from-background to-muted/20">

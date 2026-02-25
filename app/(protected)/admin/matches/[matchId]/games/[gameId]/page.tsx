@@ -17,7 +17,8 @@ import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
 import { PostGameStatsUploader } from '@/components/statistics/post-game-stats-uploader';
 import { GameWinnerSelector } from '@/components/games/game-winner-selector';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import { deleteGameByIdWithCascade } from '@/actions/games';
+import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     ArrowLeft,
     CheckCircle2,
@@ -46,6 +47,7 @@ export default function GameDetailPage() {
     
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdatingAttr, setIsUpdatingAttr] = useState(false);
 
     const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
@@ -150,6 +152,27 @@ export default function GameDetailPage() {
         }
     };
 
+    const handleUpdateGameAttr = async (field: 'coin_toss_winner' | 'side_selection', value: string) => {
+        setIsUpdatingAttr(true);
+        try {
+            const data: any = { id: gameId };
+            // If value is 'none', map it to null to clear it
+            data[field] = value === 'none' ? null : value;
+            
+            const result = await updateGameById(data);
+            if (result.success) {
+                toast.success('Game updated');
+                queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+            } else {
+                toast.error(result.error || 'Failed to update game');
+            }
+        } catch {
+            toast.error('An unexpected error occurred');
+        } finally {
+            setIsUpdatingAttr(false);
+        }
+    };
+
     return (
         <div className="w-full space-y-8">
             {/* Navigation */}
@@ -240,6 +263,56 @@ export default function GameDetailPage() {
                         abbreviation: team2.schools_teams?.school?.abbreviation || 'T2'
                     }}
                 />
+            )}
+
+            {/* ── Game Attributes Editor ── */}
+            {team1 && team2 && (
+                <div className="rounded-xl border bg-card p-5 space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Swords className="h-4 w-4" />
+                        Game Attributes Overlay
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Coin Toss Winner / Advantage</label>
+                            <Select 
+                                disabled={isUpdatingAttr}
+                                value={game.coin_toss_winner || 'none'}
+                                onValueChange={(val) => handleUpdateGameAttr('coin_toss_winner', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select team" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
+                                    <SelectItem value={String(team1.id)}>{team1.schools_teams?.school?.abbreviation || 'Team 1'}</SelectItem>
+                                    <SelectItem value={String(team2.id)}>{team2.schools_teams?.school?.abbreviation || 'Team 2'}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Overrides the coin toss winner for side selection / first pick mechanics.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Side Selection / Starting Side</label>
+                            <Select 
+                                disabled={isUpdatingAttr}
+                                value={game.side_selection || 'none'}
+                                onValueChange={(val) => handleUpdateGameAttr('side_selection', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select side" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
+                                    <SelectItem value="blue">Blue Side</SelectItem>
+                                    <SelectItem value="red">Red Side</SelectItem>
+                                    {isValorant && <SelectItem value="attack">Attack</SelectItem>}
+                                    {isValorant && <SelectItem value="defend">Defend</SelectItem>}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Force assigns the starting side for the advantage team.</p>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* ── API Export Link ── */}

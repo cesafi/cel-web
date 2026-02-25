@@ -41,7 +41,9 @@ export class ValorantMapVetoService extends BaseService {
 
   static async insert(veto: ValorantMapVetoInsert): Promise<ServiceResponse<undefined>> {
     try {
-      const supabase = await this.getClient();
+      // Use Admin Client to bypass RLS because this is triggered by anonymous public users 
+      // (team captains) via Server Actions that handle the logic/validation.
+      const supabase = await this.getAdminClient();
       const { error } = await supabase.from(TABLE_NAME).insert(veto);
       if (error) throw error;
       return { success: true, data: undefined };

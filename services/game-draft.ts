@@ -39,7 +39,9 @@ export class GameDraftService extends BaseService {
    */
   static async insert(action: GameDraftActionInsert): Promise<ServiceResponse<undefined>> {
     try {
-      const supabase = await this.getClient();
+      // Use Admin Client to bypass RLS because this might be triggered by anonymous public users 
+      // via Server Actions that handle the logic/validation.
+      const supabase = await this.getAdminClient();
       const { error } = await supabase.from(TABLE_NAME).insert(action);
       if (error) throw error;
       return { success: true, data: undefined };
