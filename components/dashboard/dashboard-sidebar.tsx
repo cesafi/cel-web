@@ -21,7 +21,8 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  UsersRound
+  UsersRound,
+  BarChart3
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -73,12 +74,14 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
           { href: '/admin/esports', label: 'Esports', icon: Gamepad2 },
           { href: '/admin/sponsors', label: 'Sponsors', icon: HandHeart },
           { href: '/admin/articles', label: 'Articles', icon: FileText },
-          { href: '/admin/departments', label: 'Departments', icon: Users }
+          { href: '/admin/departments', label: 'Departments', icon: Users },
+          { href: '/admin/production', label: 'Production', icon: BarChart3 }
         ];
       case 'head_writer':
         return [
           { href: '/head-writer', label: 'Overview', icon: Grid3X3 },
-          { href: '/head-writer/articles', label: 'Articles', icon: FileText }
+          { href: '/head-writer/articles', label: 'Articles', icon: FileText },
+          { href: '/head-writer/production', label: 'Production', icon: BarChart3 }
         ];
       case 'writer':
         return [
@@ -88,7 +91,8 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
       case 'league_operator':
         return [
           { href: '/league-operator', label: 'Overview', icon: Grid3X3 },
-          { href: '/league-operator/matches', label: 'Matches', icon: Target }
+          { href: '/league-operator/matches', label: 'Matches', icon: Target },
+          { href: '/league-operator/production', label: 'Production', icon: BarChart3 }
         ];
       default:
         return [{ href: '/admin', label: 'Overview', icon: Grid3X3 }];

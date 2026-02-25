@@ -40,6 +40,17 @@ export const PUBLIC_ROUTES = [
   '/api/image-proxy',
   '/api/games/draft/[gameId]',
   '/api/games/stats/[gameId]',
+  '/api/production/filters',
+  '/api/production/players/stats',
+  '/api/production/players/leaderboard',
+  '/api/production/characters/stats',
+  '/api/production/teams/stats',
+  '/api/production/head-to-head/teams',
+  '/api/production/head-to-head/players',
+  '/api/production/maps/stats',
+  '/api/production/maps/vetoes/[matchId]',
+  '/api/production/matches/[matchId]',
+  '/api/production/standings',
 
   // Map Veto
   '/veto/[token]'
@@ -70,6 +81,7 @@ export const PROTECTED_ROUTES = [
   '/admin/volunteers',
   '/admin/game-data/[esportId]/characters',
   '/admin/players',
+  '/admin/production',
 
   // Head Writer routes
   '/head-writer',
@@ -78,12 +90,14 @@ export const PROTECTED_ROUTES = [
   '/head-writer/articles/new',
   '/head-writer/faq',
   '/head-writer/timeline',
+  '/head-writer/production',
 
   // League Operator routes
   '/league-operator',
   '/league-operator/matches',
   '/league-operator/matches/[id]',
   '/league-operator/matches/[id]/games/[gameId]',
+  '/league-operator/production',
 
   // Writer routes
   '/writer',
@@ -127,6 +141,7 @@ export const ROUTE_PATTERNS = {
     /^\/api\/image-proxy(\?.*)?$/,
     /^\/api\/games\/draft\/[^\/]+$/, // /api/games/draft/[gameId]
     /^\/api\/games\/stats\/[^\/]+$/, // /api/games/stats/[gameId]
+    /^\/api\/production\/.*$/, // /api/production/* (all production endpoints)
     /^\/lobby\/[^\/]+$/, // /lobby/[matchId]
     /^\/veto(\/.*)?$/ // /veto/[token] and /veto
   ],
@@ -156,6 +171,7 @@ export const ROUTE_PATTERNS = {
     /^\/admin\/volunteers$/,
     /^\/admin\/game-data\/[^\/]+\/characters$/, // /admin/game-data/[esportId]/characters
     /^\/admin\/players$/,
+    /^\/admin\/production$/,
 
     // Head Writer routes
     /^\/head-writer$/,
@@ -164,12 +180,14 @@ export const ROUTE_PATTERNS = {
     /^\/head-writer\/articles\/new$/,
     /^\/head-writer\/faq$/,
     /^\/head-writer\/timeline$/,
+    /^\/head-writer\/production$/,
 
     // League Operator routes
     /^\/league-operator$/,
     /^\/league-operator\/matches$/,
     /^\/league-operator\/matches\/[^\/]+$/, // /league-operator/matches/[id]
     /^\/league-operator\/matches\/[^\/]+\/games\/[^\/]+$/, // /league-operator/matches/[id]/games/[gameId]
+    /^\/league-operator\/production$/,
 
     // Writer routes
     /^\/writer$/,
