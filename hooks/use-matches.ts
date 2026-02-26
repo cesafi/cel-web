@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getMatchById, 
   getMatchesByStageId, 
+  getMatchesBySchoolId as getMatchesBySchoolIdAction,
   createMatch as createMatchAction, 
   updateMatchById as updateMatchByIdAction,
   deleteMatchById as deleteMatchByIdAction 
@@ -201,12 +202,17 @@ export function useMatchesTable(stageId: number | null) {
     };
 }
 
+
 export function useMatchesBySchoolId(schoolId: string, options?: { limit?: number; season_id?: number; direction?: 'past' | 'future' }) {
-    // Stub - returns empty data until proper implementation
-    return {
-        data: [] as MatchWithFullDetails[],
-        isLoading: false
-    };
+    return useQuery({
+        queryKey: ['matches', 'bySchool', schoolId, options],
+        queryFn: async () => {
+            const result = await getMatchesBySchoolIdAction(schoolId, options);
+            if (!result.success) throw new Error(result.error);
+            return result.data as MatchWithFullDetails[];
+        },
+        enabled: !!schoolId,
+    });
 }
 
 export function useMatchRefetch() {

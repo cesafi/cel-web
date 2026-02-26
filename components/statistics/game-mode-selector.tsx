@@ -9,6 +9,7 @@ interface GameModeSelectorProps {
     game: 'mlbb' | 'valorant';
     onGameChange: (game: 'mlbb' | 'valorant') => void;
     className?: string;
+    subtitle?: string;
 }
 
 // Fallback game config when DB data isn't available
@@ -61,7 +62,7 @@ function getGameStyling(gameId: 'mlbb' | 'valorant') {
     };
 }
 
-export function GameModeSelector({ game, onGameChange, className }: GameModeSelectorProps) {
+export function GameModeSelector({ game, onGameChange, className, subtitle }: GameModeSelectorProps) {
     const [esportsData, setEsportsData] = useState<EsportGame[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -92,7 +93,7 @@ export function GameModeSelector({ game, onGameChange, className }: GameModeSele
                     id: gameId,
                     name: esport.name,
                     shortName: esport.abbreviation || gameId.toUpperCase(),
-                    description: 'Click to view statistics',
+                    description: subtitle || 'Click to view statistics',
                     logo: esport.logo_url,
                     ...styling,
                 };

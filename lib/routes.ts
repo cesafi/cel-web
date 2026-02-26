@@ -28,6 +28,9 @@ export const PUBLIC_ROUTES = [
   '/standings',
   '/schools',
   '/schools/[slug]', // Dynamic route pattern
+  '/schools/[slug]/teams/[teamId]', // Team profile
+  '/players',
+  '/players/[playerId]', // Player profile
   '/volunteers',
   '/sponsors',
   '/statistics',
@@ -133,6 +136,9 @@ export const ROUTE_PATTERNS = {
     /^\/statistics$/,
     /^\/schools$/,
     /^\/schools\/[^\/]+$/, // /schools/[slug]
+    /^\/schools\/[^\/]+\/teams\/[^\/]+$/, // /schools/[slug]/teams/[teamId]
+    /^\/players$/,
+    /^\/players\/[^\/]+$/, // /players/[playerId]
     /^\/volunteers$/,
     /^\/sponsors$/,
     /^\/matches\/[^\/]+$/, // /matches/[matchId]

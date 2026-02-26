@@ -17,6 +17,13 @@ export async function getUpcomingMatches(limit?: number) {
 
 export const getUpcomingMatchesWithDetails = getUpcomingMatches;
 
+export async function getMatchesBySchoolId(
+  schoolId: string,
+  options?: { limit?: number; season_id?: number; direction?: 'past' | 'future' }
+) {
+  return MatchesService.getMatchesBySchoolId(schoolId, options);
+}
+
 export async function getScheduleMatches(options?: SchedulePaginationOptions) {
   return MatchesService.getScheduleMatches(options);
 }

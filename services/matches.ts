@@ -278,6 +278,88 @@ export class MatchesService extends BaseService {
   }
 
   /**
+   * Get matches by school ID
+   * Finds all teams for the school, then fetches matches where those teams participate
+   */
+  static async getMatchesBySchoolId(
+    schoolId: string,
+    options: { limit?: number; season_id?: number; direction?: 'past' | 'future' } = {}
+  ) {
+    try {
+      const supabase = await this.getClient();
+      const { limit = 5, season_id, direction = 'past' } = options;
+
+      // Step 1: Get all team IDs for this school
+      let teamsQuery = supabase
+        .from('schools_teams')
+        .select('id')
+        .eq('school_id', schoolId);
+
+      if (season_id) {
+        teamsQuery = teamsQuery.eq('season_id', season_id);
+      }
+
+      const { data: teams, error: teamsError } = await teamsQuery;
+      if (teamsError) throw teamsError;
+
+      const teamIds = (teams || []).map(t => t.id);
+      if (teamIds.length === 0) {
+        return { success: true as const, data: [] as MatchWithFullDetails[] };
+      }
+
+      // Step 2: Get match IDs where these teams participate
+      const { data: participants, error: partError } = await supabase
+        .from('match_participants')
+        .select('match_id')
+        .in('team_id', teamIds);
+
+      if (partError) throw partError;
+
+      const matchIds = [...new Set((participants || []).map(p => p.match_id))];
+      if (matchIds.length === 0) {
+        return { success: true as const, data: [] as MatchWithFullDetails[] };
+      }
+
+      // Step 3: Fetch full match details
+      let matchQuery = supabase
+        .from('matches')
+        .select(this.MATCH_SELECT)
+        .in('id', matchIds);
+
+      // Apply season filter via stage
+      if (season_id) {
+        // Get stage IDs for this season
+        const { data: stages } = await supabase
+          .from('esports_seasons_stages')
+          .select('id')
+          .eq('season_id', season_id);
+
+        const stageIds = (stages || []).map(s => s.id);
+        if (stageIds.length > 0) {
+          matchQuery = matchQuery.in('stage_id', stageIds);
+        }
+      }
+
+      // Apply direction & ordering
+      const now = new Date().toISOString();
+      if (direction === 'past') {
+        matchQuery = matchQuery.lte('scheduled_at', now).order('scheduled_at', { ascending: false });
+      } else {
+        matchQuery = matchQuery.gte('scheduled_at', now).order('scheduled_at', { ascending: true });
+      }
+
+      matchQuery = matchQuery.limit(limit);
+
+      const { data, error } = await matchQuery;
+      if (error) throw error;
+
+      return { success: true as const, data: data as unknown as MatchWithFullDetails[] };
+    } catch (error) {
+      return this.formatError<MatchWithFullDetails[]>(error, 'Failed to fetch matches by school');
+    }
+  }
+
+  /**
    * Get available sport categories with logo and details
    */
 

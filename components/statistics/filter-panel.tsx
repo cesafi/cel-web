@@ -79,16 +79,16 @@ export function FilterPanel({
                             placeholder="Search players, teams, heroes..."
                             value={searchQuery}
                             onChange={(e) => onSearchChange?.(e.target.value)}
-                            className="pl-9 pr-8 h-9 text-sm bg-background/50 border-border/50 hover:border-primary/50 focus:border-primary transition-all duration-200"
+                            className="pl-10 pr-10 h-12 text-base border-2 transition-all duration-200 hover:border-primary/50 focus:border-primary focus:shadow-lg focus:shadow-primary/20"
                         />
                         {searchQuery && (
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onSearchChange?.('')}
-                                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-muted"
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
                             >
-                                <X className="h-3 w-3" />
+                                <X className="h-4 w-4" />
                             </Button>
                         )}
                      </div>

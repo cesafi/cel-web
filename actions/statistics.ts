@@ -57,6 +57,10 @@ export async function getStagesBySeason(seasonId: number) {
   return StatisticsService.getStagesBySeason(seasonId);
 }
 
+export async function getPlayerCharacterStats(playerId: string, game: 'mlbb' | 'valorant') {
+  return StatisticsService.getPlayerCharacterStats(playerId, game);
+}
+
 // Esports (Games) Data Action
 
 export interface EsportGame {

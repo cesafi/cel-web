@@ -793,6 +793,110 @@ export class StatisticsService extends BaseService {
   }
 
   /**
+   * Get per-player character (hero/agent) stats from raw game tables
+   */
+  static async getPlayerCharacterStats(
+    playerId: string,
+    game: 'mlbb' | 'valorant'
+  ) {
+    try {
+      const supabase = await this.getClient();
+      const tableName = game === 'mlbb' ? 'stats_mlbb_game_player' : 'stats_valorant_game_player';
+
+      const { data, error } = await supabase
+        .from(tableName as any)
+        .select(`
+          *,
+          game_characters (
+            id,
+            name,
+            icon_url
+          )
+        `)
+        .eq('player_id', playerId);
+
+      if (error) throw error;
+
+      const rows = (data as any[]) || [];
+
+      // Aggregate by character
+      const charMap = new Map<number, any>();
+      for (const row of rows) {
+        const charId = row.game_character_id;
+        if (!charId) continue;
+        const existing = charMap.get(charId);
+        const wins = row.is_mvp != null ? 1 : 0; // Placeholder — we don't have win data per-row directly
+
+        if (existing) {
+          existing.games_played += 1;
+          existing.total_kills += row.kills || 0;
+          existing.total_deaths += row.deaths || 0;
+          existing.total_assists += row.assists || 0;
+          existing.total_mvps += row.is_mvp ? 1 : 0;
+          if (game === 'mlbb') {
+            existing.total_gold += row.gold || 0;
+            existing.total_damage += row.damage_dealt || 0;
+            existing.rating_sum += row.rating || 0;
+          }
+          if (game === 'valorant') {
+            existing.total_acs += row.acs || 0;
+            existing.total_first_bloods += row.first_bloods || 0;
+          }
+        } else {
+          charMap.set(charId, {
+            character_id: charId,
+            character_name: row.game_characters?.name || 'Unknown',
+            icon_url: row.game_characters?.icon_url || null,
+            games_played: 1,
+            total_kills: row.kills || 0,
+            total_deaths: row.deaths || 0,
+            total_assists: row.assists || 0,
+            total_mvps: row.is_mvp ? 1 : 0,
+            ...(game === 'mlbb' ? {
+              total_gold: row.gold || 0,
+              total_damage: row.damage_dealt || 0,
+              rating_sum: row.rating || 0,
+            } : {
+              total_acs: row.acs || 0,
+              total_first_bloods: row.first_bloods || 0,
+            }),
+          });
+        }
+      }
+
+      // Calculate averages
+      const results = Array.from(charMap.values()).map(c => {
+        const g = c.games_played || 1;
+        const kda = c.total_deaths > 0
+          ? ((c.total_kills + c.total_assists) / c.total_deaths)
+          : (c.total_kills + c.total_assists);
+        return {
+          ...c,
+          avg_kills: c.total_kills / g,
+          avg_deaths: c.total_deaths / g,
+          avg_assists: c.total_assists / g,
+          avg_kda: kda,
+          ...(game === 'mlbb' ? {
+            avg_gold: c.total_gold / g,
+            avg_damage: c.total_damage / g,
+            avg_rating: c.rating_sum / g,
+          } : {
+            avg_acs: c.total_acs / g,
+            avg_first_bloods: c.total_first_bloods / g,
+          }),
+        };
+      });
+
+      // Sort by games played desc
+      results.sort((a, b) => b.games_played - a.games_played);
+
+      return { success: true as const, data: results };
+    } catch (error) {
+      return this.formatError<any[]>(error, `Failed to fetch player character stats`);
+    }
+  }
+
+  /**
    * Get available seasons for filter dropdown
    */
   static async getAvailableSeasons() {

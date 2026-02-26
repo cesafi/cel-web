@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ChevronDown, Youtube, Facebook, Calendar, Trophy, GraduationCap, HeartHandshake, Info, HelpCircle, Mail, Circle, Activity, LucideIcon, Newspaper, Home } from 'lucide-react'
+import { Menu, X, ChevronDown, Youtube, Facebook, Calendar, Trophy, GraduationCap, HeartHandshake, Info, HelpCircle, Mail, Circle, Activity, LucideIcon, Newspaper, Home, Gamepad2, UsersRound, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { roboto } from '@/lib/fonts'
 import ThemeSwitcher from '@/components/theme-switcher'
@@ -17,7 +17,8 @@ const iconMap: Record<string, LucideIcon> = {
   'Schedule': Calendar,
   'Standings': Trophy,
   'Schools': GraduationCap,
-  'Volunteers': HeartHandshake,
+  'Players': UsersRound,
+  'Volunteers': Sparkles,
   'About Us': Info,
   'FAQ': HelpCircle,
   'Contact Us': Mail,
@@ -33,6 +34,7 @@ const subtitleMap: Record<string, string> = {
   'Standings': 'Current team rankings',
   'Statistics': 'Player & team stats',
   'Schools': 'Our member institutions',
+  'Players': 'Browse all competitors',
   'Volunteers': 'Join the community',
   'About Us': 'Learn about the league',
   'FAQ': 'Frequently asked questions',

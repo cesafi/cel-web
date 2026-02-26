@@ -18,6 +18,7 @@ export const navItems: NavItem[] = [
     name: 'Community',
     children: [
       { name: 'Schools', href: '/schools' },
+      { name: 'Players', href: '/players' },
       { name: 'Volunteers', href: '/volunteers' },
       { name: 'Sponsors', href: '/sponsors' },
     ]
