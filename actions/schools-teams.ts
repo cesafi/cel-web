@@ -24,6 +24,10 @@ export async function getSchoolsTeamById(id: string) {
   return SchoolsTeamService.getById(id);
 }
 
+export async function getSchoolsTeamBySlug(teamSlug: string, schoolAbbreviation: string) {
+  return SchoolsTeamService.getBySlugAndSchool(teamSlug, schoolAbbreviation);
+}
+
 export async function createSchoolsTeam(data: SchoolsTeamInsert) {
   const result = await SchoolsTeamService.insert(data);
   if (result.success) revalidatePath('/dashboard/schools-teams');

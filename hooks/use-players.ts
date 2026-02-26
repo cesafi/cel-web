@@ -13,6 +13,7 @@ import {
   getPlayersByTeamId,
   getActivePlayers,
   getPlayerById,
+  getPlayerByIgnAndSchool,
   createPlayer,
   updatePlayerById,
   deletePlayerById
@@ -28,6 +29,7 @@ export const playerKeys = {
   paginated: (options: PlayerPaginationOptions) =>
     [...playerKeys.all, 'paginated', options] as const,
   details: (id: string) => [...playerKeys.all, id] as const,
+  byIgnAndSchool: (ign: string, school: string) => [...playerKeys.all, 'byIgnAndSchool', ign, school] as const,
   byTeam: (teamId: string) => [...playerKeys.all, 'byTeam', teamId] as const,
   active: ['players', 'active'] as const,
   withTeams: ['players', 'withTeams'] as const
@@ -131,6 +133,25 @@ export function usePlayerById(
     select: (data) => {
       if (!data.success || !data.data) {
         throw new Error(data.success === false ? data.error : `Player with ID ${id} not found.`);
+      }
+      return data.data;
+    },
+    ...queryOptions
+  });
+}
+
+export function usePlayerByIgnAndSchool(
+  ign: string,
+  schoolAbbreviation: string,
+  queryOptions?: UseQueryOptions<ServiceResponse<PlayerWithTeam>, Error, PlayerWithTeam>
+) {
+  return useQuery({
+    queryKey: playerKeys.byIgnAndSchool(ign, schoolAbbreviation),
+    queryFn: () => getPlayerByIgnAndSchool(ign, schoolAbbreviation),
+    enabled: !!ign && !!schoolAbbreviation,
+    select: (data) => {
+      if (!data.success || !data.data) {
+        throw new Error(data.success === false ? data.error : `Player not found.`);
       }
       return data.data;
     },

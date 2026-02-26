@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSchoolByAbbreviation } from '@/hooks/use-schools';
 import { useSchoolsTeamsBySchoolAndSeason, useActiveTeamsBySchool } from '@/hooks/use-schools-teams';
@@ -26,6 +27,7 @@ import {
   Swords,
 } from 'lucide-react';
 import { roboto, moderniz } from '@/lib/fonts';
+import { toTeamSlug } from '@/lib/utils/team-slug';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -36,6 +38,7 @@ interface SchoolProfileProps {
 }
 
 export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps) {
+  const router = useRouter();
   const { data: school, isLoading: schoolLoading, error: schoolError } = useSchoolByAbbreviation(schoolAbbreviation);
   const { data: seasons, isLoading: seasonsLoading } = useAllSeasons();
   const { currentSeason: selectedSeason, setCurrentSeason: setSelectedSeason } = useSeason();
@@ -99,11 +102,9 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
             <h1 className="text-2xl font-bold text-foreground">School Not Found</h1>
             <p className="text-muted-foreground">The school you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           </div>
-          <Button asChild>
-            <Link href="/schools">
+          <Button onClick={() => router.back()}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Schools
-            </Link>
+              Go Back
           </Button>
         </div>
       </div>
@@ -149,11 +150,9 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
 
         {/* Back Button */}
         <div className="absolute top-6 left-6 z-10">
-          <Button variant="ghost" size="sm" asChild className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
-            <Link href="/schools">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Schools
-            </Link>
+              Go Back
           </Button>
         </div>
 
@@ -270,7 +269,12 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
                     transition={{ duration: 0.4, delay: index * 0.06 }}
                   >
                     <Link
-                      href={`/schools/${schoolAbbreviation}/teams/${team.id}`}
+                      href={`/schools/${schoolAbbreviation.toLowerCase()}/teams/${toTeamSlug({
+                        seasonName: (team as any).seasons?.name || '',
+                        esportName: team.esports_categories?.esports?.name || '',
+                        division: team.esports_categories?.division || '',
+                        teamName: team.name,
+                      })}`}
                       className="group block"
                     >
                       <div className="relative rounded-xl border border-border/40 bg-card/60 p-5 hover:border-border/60 hover:bg-card/80 transition-all duration-300 overflow-hidden">

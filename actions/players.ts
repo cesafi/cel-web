@@ -29,6 +29,10 @@ export async function getPlayerById(id: string) {
   return PlayerService.getById(id);
 }
 
+export async function getPlayerByIgnAndSchool(ign: string, schoolAbbreviation: string) {
+  return PlayerService.getByIgnAndSchool(ign, schoolAbbreviation);
+}
+
 export async function createPlayer(data: PlayerInsert, teamId?: string | null, seasonId?: number) {
   const result = await PlayerService.insert(data);
   

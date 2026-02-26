@@ -3,9 +3,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSchoolByAbbreviation } from '@/hooks/use-schools';
-import { useSchoolsTeamById } from '@/hooks/use-schools-teams';
+import { useSchoolsTeamBySlug } from '@/hooks/use-schools-teams';
 import { usePlayersByTeamId } from '@/hooks/use-players';
 import { useMatchesBySchoolId } from '@/hooks/use-matches';
 import { MatchWithFullDetails } from '@/lib/types/matches';
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getMlbbStats, getValorantStats, getHeroStats, getAgentStats, getMapStats } from '@/actions/statistics';
+import { toPlayerSlug } from '@/lib/utils/player-slug';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -33,12 +35,14 @@ function cn(...classes: (string | undefined | null | false)[]) {
 
 interface TeamProfileProps {
   schoolAbbreviation: string;
-  teamId: string;
+  teamSlug: string;
 }
 
-export default function TeamProfile({ schoolAbbreviation, teamId }: TeamProfileProps) {
+export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfileProps) {
+  const router = useRouter();
   const { data: school, isLoading: schoolLoading } = useSchoolByAbbreviation(schoolAbbreviation);
-  const { data: team, isLoading: teamLoading } = useSchoolsTeamById(teamId);
+  const { data: team, isLoading: teamLoading } = useSchoolsTeamBySlug(teamSlug, schoolAbbreviation);
+  const teamId = (team as any)?.id || '';
   const { data: players, isLoading: playersLoading } = usePlayersByTeamId(teamId);
 
   // Determine the esport
@@ -144,10 +148,8 @@ export default function TeamProfile({ schoolAbbreviation, teamId }: TeamProfileP
         <div className="text-center space-y-6">
           <Users className="h-16 w-16 text-muted-foreground mx-auto" />
           <h1 className="text-2xl font-bold">Team Not Found</h1>
-          <Button asChild>
-            <Link href={`/schools/${schoolAbbreviation}`}>
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to School
-            </Link>
+          <Button onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
           </Button>
         </div>
       </div>
@@ -179,10 +181,8 @@ export default function TeamProfile({ schoolAbbreviation, teamId }: TeamProfileP
         </div>
 
         <div className="absolute top-6 left-6 z-10">
-          <Button variant="ghost" size="sm" asChild className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
-            <Link href={`/schools/${schoolAbbreviation}`}>
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to {school.abbreviation}
-            </Link>
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
           </Button>
         </div>
 
@@ -269,7 +269,7 @@ export default function TeamProfile({ schoolAbbreviation, teamId }: TeamProfileP
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                    <Link href={`/players/${player.id}`} className="group block">
+                    <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(player.ign)}`} className="group block">
                       <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 hover:bg-card/80 transition-all duration-300 p-4 text-center">
                         <div className="relative h-14 w-14 mx-auto mb-3">
                           {player.photo_url ? (
@@ -347,7 +347,7 @@ export default function TeamProfile({ schoolAbbreviation, teamId }: TeamProfileP
                       return (
                         <tr key={stat.player_id} className={cn('border-b border-border/10 hover:bg-muted/20 transition-colors', i === 0 && 'bg-primary/5')}>
                           <td className="px-4 py-3">
-                            <Link href={`/players/${stat.player_id}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                            <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(stat.player_ign || '')}`} className="flex items-center gap-2 hover:text-primary transition-colors">
                               <span className="font-medium text-foreground">{stat.player_ign || 'Unknown'}</span>
                             </Link>
                           </td>

@@ -68,6 +68,10 @@ export class SchoolsTeamService extends BaseService {
               id,
               name
             )
+          ),
+          seasons (
+            id,
+            name
           )
         `)
         .eq('school_id', schoolId)
@@ -96,6 +100,10 @@ export class SchoolsTeamService extends BaseService {
               id,
               name
             )
+          ),
+          seasons (
+            id,
+            name
           )
         `)
         .eq('school_id', schoolId)
@@ -153,6 +161,7 @@ export class SchoolsTeamService extends BaseService {
           ),
           seasons (
             id,
+            name,
             start_at,
             end_at
           ),
@@ -169,6 +178,79 @@ export class SchoolsTeamService extends BaseService {
       return { success: true, data: data as unknown as SchoolsTeamWithFullDetails };
     } catch (err) {
       return this.formatError(err, `Failed to fetch team by ID`);
+    }
+  }
+
+  /**
+   * Find a team by slugified name and school abbreviation (for clean URLs)
+   * Slug format: season-esport-division-teamname
+   */
+  static async getBySlugAndSchool(teamSlug: string, schoolAbbreviation: string): Promise<ServiceResponse<SchoolsTeamWithFullDetails>> {
+    try {
+      const supabase = await this.getClient();
+      const { teamMatchesSlug } = await import('@/lib/utils/team-slug');
+
+      // First get the school ID from abbreviation
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('id')
+        .ilike('abbreviation', schoolAbbreviation)
+        .single();
+
+      if (schoolError || !school) {
+        return { success: false, error: 'School not found' };
+      }
+
+      // Fetch all teams for this school with full details
+      const { data: teams, error } = await supabase
+        .from(TABLE_NAME)
+        .select(`
+          *,
+          esports_categories (
+            id,
+            division,
+            levels,
+            esports (
+              id,
+              name
+            )
+          ),
+          seasons (
+            id,
+            name,
+            start_at,
+            end_at
+          ),
+          schools (
+            name,
+            abbreviation,
+            logo_url
+          )
+        `)
+        .eq('school_id', school.id);
+
+      if (error) throw error;
+      if (!teams || teams.length === 0) {
+        return { success: false, error: 'No teams found for this school' };
+      }
+
+      // Match by slug
+      const match = teams.find((t: any) =>
+        teamMatchesSlug({
+          seasonName: t.seasons?.name || '',
+          esportName: t.esports_categories?.esports?.name || '',
+          division: t.esports_categories?.division || '',
+          teamName: t.name || '',
+        }, teamSlug)
+      );
+
+      if (!match) {
+        return { success: false, error: 'Team not found' };
+      }
+
+      return { success: true, data: match as unknown as SchoolsTeamWithFullDetails };
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch team by slug and school`);
     }
   }
 

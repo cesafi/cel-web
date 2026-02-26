@@ -3,8 +3,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { usePlayerById } from '@/hooks/use-players';
+import { usePlayerByIgnAndSchool } from '@/hooks/use-players';
 import { usePlayerSeasonsByPlayerId } from '@/hooks/use-player-seasons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,11 +29,14 @@ function cn(...classes: (string | undefined | null | false)[]) {
 }
 
 interface PlayerProfileProps {
-  playerId: string;
+  schoolSlug: string;
+  playerIGN: string;
 }
 
-export default function PlayerProfile({ playerId }: PlayerProfileProps) {
-  const { data: player, isLoading: playerLoading, error: playerError } = usePlayerById(playerId);
+export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfileProps) {
+  const router = useRouter();
+  const { data: player, isLoading: playerLoading, error: playerError } = usePlayerByIgnAndSchool(playerIGN, schoolSlug);
+  const playerId = player?.id || '';
   const { data: playerSeasons } = usePlayerSeasonsByPlayerId(playerId);
 
   // Determine team context from player_seasons
@@ -123,10 +127,8 @@ export default function PlayerProfile({ playerId }: PlayerProfileProps) {
           <Users className="h-16 w-16 text-muted-foreground mx-auto" />
           <h1 className="text-2xl font-bold">Player Not Found</h1>
           <p className="text-muted-foreground">This player doesn&apos;t exist or has been removed.</p>
-          <Button asChild>
-            <Link href="/players">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Players
-            </Link>
+          <Button onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
           </Button>
         </div>
       </div>
@@ -154,11 +156,9 @@ export default function PlayerProfile({ playerId }: PlayerProfileProps) {
         </div>
 
         <div className="absolute top-6 left-6 z-10">
-          <Button variant="ghost" size="sm" asChild className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
-            <Link href={schoolInfo ? `/schools/${schoolInfo.abbreviation}` : '/players'}>
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              {schoolInfo ? `Back to ${schoolInfo.abbreviation}` : 'Back to Players'}
-            </Link>
+              Go Back
           </Button>
         </div>
 

@@ -10,6 +10,7 @@ import { getMlbbStats, getValorantStats, getAvailableSeasons, getTeamStats } fro
 import { GameModeSelector } from '@/components/statistics/game-mode-selector';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { toPlayerSlug } from '@/lib/utils/player-slug';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -222,72 +223,83 @@ export default function PlayersGrid() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.5) }}
               >
-                <Link href={`/players/${player.player_id}`} className="group block">
-                  <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 hover:bg-card/80 transition-all duration-300 p-3 sm:p-4 text-center">
-                    {/* Photo */}
-                    <div className="relative h-12 w-12 sm:h-14 sm:w-14 mx-auto mb-2 sm:mb-3">
-                      {player.player_photo_url ? (
-                        <Image
-                          src={player.player_photo_url}
-                          alt={player.player_ign || ''}
-                          fill
-                          className="rounded-full object-cover border border-border/40"
-                        />
-                      ) : (
-                        <div className="h-full w-full rounded-full bg-muted/50 flex items-center justify-center border border-border/40">
-                          <span className="text-base sm:text-lg font-bold text-muted-foreground/30">
-                            {player.player_ign?.charAt(0) || '?'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* IGN */}
-                    <h3 className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                      {player.player_ign || 'Unknown'}
-                    </h3>
-
-                    {/* Team / School */}
-                    <div className="mt-1 sm:mt-1.5 flex items-center justify-center gap-1.5">
-                      {player.team_logo_url && (
-                        <Image
-                          src={player.team_logo_url}
-                          alt=""
-                          width={14}
-                          height={14}
-                          className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full object-cover"
-                        />
-                      )}
-                      <span className="text-[9px] sm:text-[10px] text-muted-foreground/50 truncate">
-                        {player.school_abbreviation || player.team_name || ''}
-                      </span>
-                    </div>
-
-                    {/* Stats preview */}
-                    <div className="mt-2 pt-2 border-t border-border/20 space-y-0.5">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground/40">KDA</span>
-                        <span className="font-medium text-foreground/70">{kda}</span>
+                {(() => {
+                  const schoolAbbr = player.school_abbreviation || player.team_name?.split(' ')[0] || '';
+                  const playerHref = schoolAbbr
+                    ? `/schools/${schoolAbbr.toLowerCase()}/players/${toPlayerSlug(player.player_ign || '')}`
+                    : null;
+                  const cardContent = (
+                    <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 hover:bg-card/80 transition-all duration-300 p-3 sm:p-4 text-center">
+                      {/* Photo */}
+                      <div className="relative h-12 w-12 sm:h-14 sm:w-14 mx-auto mb-2 sm:mb-3">
+                        {player.player_photo_url ? (
+                          <Image
+                            src={player.player_photo_url}
+                            alt={player.player_ign || ''}
+                            fill
+                            className="rounded-full object-cover border border-border/40"
+                          />
+                        ) : (
+                          <div className="h-full w-full rounded-full bg-muted/50 flex items-center justify-center border border-border/40">
+                            <span className="text-base sm:text-lg font-bold text-muted-foreground/30">
+                              {player.player_ign?.charAt(0) || '?'}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground/40">GP</span>
-                        <span className="font-medium text-foreground/70">{player.games_played || 0}</span>
+
+                      {/* IGN */}
+                      <h3 className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                        {player.player_ign || 'Unknown'}
+                      </h3>
+
+                      {/* Team / School */}
+                      <div className="mt-1 sm:mt-1.5 flex items-center justify-center gap-1.5">
+                        {player.team_logo_url && (
+                          <Image
+                            src={player.team_logo_url}
+                            alt=""
+                            width={14}
+                            height={14}
+                            className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full object-cover"
+                          />
+                        )}
+                        <span className="text-[9px] sm:text-[10px] text-muted-foreground/50 truncate">
+                          {player.school_abbreviation || player.team_name || ''}
+                        </span>
                       </div>
-                      {game === 'mlbb' && player.avg_rating != null && (
+
+                      {/* Stats preview */}
+                      <div className="mt-2 pt-2 border-t border-border/20 space-y-0.5">
                         <div className="flex justify-between text-[10px]">
-                          <span className="text-muted-foreground/40">Rating</span>
-                          <span className="font-medium text-foreground/70">{Number(player.avg_rating).toFixed(2)}</span>
+                          <span className="text-muted-foreground/40">KDA</span>
+                          <span className="font-medium text-foreground/70">{kda}</span>
                         </div>
-                      )}
-                      {game === 'valorant' && player.avg_acs != null && (
                         <div className="flex justify-between text-[10px]">
-                          <span className="text-muted-foreground/40">ACS</span>
-                          <span className="font-medium text-foreground/70">{Math.round(player.avg_acs)}</span>
+                          <span className="text-muted-foreground/40">GP</span>
+                          <span className="font-medium text-foreground/70">{player.games_played || 0}</span>
                         </div>
-                      )}
+                        {game === 'mlbb' && player.avg_rating != null && (
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground/40">Rating</span>
+                            <span className="font-medium text-foreground/70">{Number(player.avg_rating).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {game === 'valorant' && player.avg_acs != null && (
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground/40">ACS</span>
+                            <span className="font-medium text-foreground/70">{Math.round(player.avg_acs)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  );
+                  return playerHref ? (
+                    <Link href={playerHref} className="group block">{cardContent}</Link>
+                  ) : (
+                    <div className="group block">{cardContent}</div>
+                  );
+                })()}
               </motion.div>
             );
           })}

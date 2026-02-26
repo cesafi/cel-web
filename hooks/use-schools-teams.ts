@@ -5,6 +5,7 @@ import {
   getActiveTeamsBySchool,
   getAllSchoolsTeams,
   getSchoolsTeamById,
+  getSchoolsTeamBySlug,
   createSchoolsTeam,
   updateSchoolsTeamById,
   deleteSchoolsTeamById
@@ -17,7 +18,8 @@ export const schoolsTeamKeys = {
   byStage: (stageId: number) => [...schoolsTeamKeys.all, 'byStage', stageId] as const,
   bySchoolAndSeason: (schoolId: string, seasonId: number) => [...schoolsTeamKeys.all, 'bySchoolAndSeason', schoolId, seasonId] as const,
   activeBySchool: (schoolId: string) => [...schoolsTeamKeys.all, 'activeBySchool', schoolId] as const,
-  details: (id: string) => [...schoolsTeamKeys.all, id] as const
+  details: (id: string) => [...schoolsTeamKeys.all, id] as const,
+  bySlug: (slug: string, school: string) => [...schoolsTeamKeys.all, 'bySlug', slug, school] as const
 };
 
 export function useTeamsByStageId(stageId: number) {
@@ -72,6 +74,18 @@ export function useSchoolsTeamById(id: string) {
     queryKey: schoolsTeamKeys.details(id),
     queryFn: () => getSchoolsTeamById(id),
     enabled: !!id,
+    select: (data) => {
+      if (!data.success || !data.data) throw new Error(data.error || 'Team not found.');
+      return data.data;
+    }
+  });
+}
+
+export function useSchoolsTeamBySlug(teamSlug: string, schoolAbbreviation: string) {
+  return useQuery({
+    queryKey: schoolsTeamKeys.bySlug(teamSlug, schoolAbbreviation),
+    queryFn: () => getSchoolsTeamBySlug(teamSlug, schoolAbbreviation),
+    enabled: !!teamSlug && !!schoolAbbreviation,
     select: (data) => {
       if (!data.success || !data.data) throw new Error(data.error || 'Team not found.');
       return data.data;

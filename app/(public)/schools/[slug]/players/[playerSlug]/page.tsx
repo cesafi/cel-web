@@ -3,16 +3,17 @@ import PlayerProfile from '@/components/players/player-profile';
 
 interface PlayerProfilePageProps {
   params: Promise<{
-    playerId: string;
+    slug: string;
+    playerSlug: string;
   }>;
 }
 
 export default async function PlayerProfilePage({ params }: PlayerProfilePageProps) {
-  const { playerId } = await params;
+  const { slug, playerSlug } = await params;
 
-  if (!playerId) {
+  if (!slug || !playerSlug) {
     notFound();
   }
 
-  return <PlayerProfile playerId={playerId} />;
+  return <PlayerProfile schoolSlug={slug} playerIGN={decodeURIComponent(playerSlug)} />;
 }

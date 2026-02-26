@@ -4,16 +4,16 @@ import TeamProfile from '@/components/schools/team-profile';
 interface TeamProfilePageProps {
   params: Promise<{
     slug: string;
-    teamId: string;
+    teamSlug: string;
   }>;
 }
 
 export default async function TeamProfilePage({ params }: TeamProfilePageProps) {
-  const { slug, teamId } = await params;
+  const { slug, teamSlug } = await params;
 
-  if (!slug || !teamId) {
+  if (!slug || !teamSlug) {
     notFound();
   }
 
-  return <TeamProfile schoolAbbreviation={slug} teamId={teamId} />;
+  return <TeamProfile schoolAbbreviation={slug} teamSlug={teamSlug} />;
 }
