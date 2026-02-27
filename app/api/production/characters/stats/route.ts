@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get hero/agent pick-ban statistics
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return formatResponse(
-      { success: true, data: result.data },
+    return vmixResponse(
+      result.data,
       format,
       'character_stats'
     );

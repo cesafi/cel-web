@@ -129,7 +129,7 @@ export function MatchModal({
           ((match.match_participants as any[]) || [])
             .map((p: any) => p?.schools_teams?.id)
             .filter(Boolean) as string[]
-        ); 
+        );
       } else {
         setFormData({
           name: '',
@@ -273,45 +273,45 @@ export function MatchModal({
         )}
 
         {/* Match Participants */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                Match Participants
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              Match Participants
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
 
 
-              {teamsLoading ? (
-                <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-                  Loading available teams...
-                </div>
-              ) : availableTeams.length === 0 ? (
-                <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-                  No teams available for this stage. Please ensure teams are registered for this sport category and season.
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                  {availableTeams.filter(team => team.schools != null).map((team) => (
-                    <div key={team.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`team-${team.id}`}
-                        checked={selectedTeamIds.includes(team.id)}
-                        onCheckedChange={(checked) => handleTeamSelection(team.id, checked as boolean)}
-                      />
-                      <Label htmlFor={`team-${team.id}`} className="flex-1 cursor-pointer">
-                        <div className="font-medium">{team.name}</div>
-                        <div className="text-sm text-muted-foreground">{team.schools!.name}</div>
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {errors.participants && (
-                <p className="text-sm text-red-500">{errors.participants}</p>
-              )}
-            </CardContent>
-          </Card>
+            {teamsLoading ? (
+              <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                Loading available teams...
+              </div>
+            ) : availableTeams.length === 0 ? (
+              <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                No teams available for this stage. Please ensure teams are registered for this sport category and season.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                {availableTeams.filter(team => team.schools != null).map((team) => (
+                  <div key={team.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`team-${team.id}`}
+                      checked={selectedTeamIds.includes(team.id)}
+                      onCheckedChange={(checked) => handleTeamSelection(team.id, checked as boolean)}
+                    />
+                    <Label htmlFor={`team-${team.id}`} className="flex-1 cursor-pointer">
+                      <div className="font-medium">{team.name}</div>
+                      <div className="text-sm text-muted-foreground">{team.schools!.name}</div>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            )}
+            {errors.participants && (
+              <p className="text-sm text-red-500">{errors.participants}</p>
+            )}
+          </CardContent>
+        </Card>
         {/* Match Details */}
         <Card>
           <CardHeader>
@@ -408,7 +408,7 @@ export function MatchModal({
               onChange={(utcIsoString) => handleDateChange('scheduled_at', utcIsoString || '')}
               helpText="When the match is scheduled to take place"
             />
-            
+
             {/* Coin Toss Overrides */}
             {mode === 'edit' && selectedTeamIds.length >= 2 && (
               <div className="pt-4 border-t space-y-4">
@@ -416,8 +416,8 @@ export function MatchModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Coin Toss Winner</Label>
-                    <Select 
-                      value={formData.coin_toss_winner_id || 'none'} 
+                    <Select
+                      value={formData.coin_toss_winner_id || 'none'}
                       onValueChange={(val) => setFormData(prev => ({ ...prev, coin_toss_winner_id: val === 'none' ? null : val }))}
                     >
                       <SelectTrigger>
@@ -439,8 +439,8 @@ export function MatchModal({
                   </div>
                   <div className="space-y-2">
                     <Label>Coin Toss Result</Label>
-                    <Select 
-                      value={formData.coin_toss_result || 'none'} 
+                    <Select
+                      value={formData.coin_toss_result || 'none'}
                       onValueChange={(val) => setFormData(prev => ({ ...prev, coin_toss_result: val === 'none' ? null : val as any }))}
                     >
                       <SelectTrigger>
@@ -468,16 +468,41 @@ export function MatchModal({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="p-3 bg-muted rounded-lg text-sm">
-              <div className="font-medium text-primary">Upcoming</div>
-              <div className="text-muted-foreground text-xs">
-                Status is automatically set to &quot;upcoming&quot; for new matches
+            {mode === 'add' ? (
+              <>
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <div className="font-medium text-primary">Upcoming</div>
+                  <div className="text-muted-foreground text-xs">
+                    Status is automatically set to &quot;upcoming&quot; for new matches
+                  </div>
+                </div>
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Match start and end times will be set when the match actually begins and ends.
+                  These can be updated later during match management.
+                </p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Select
+                  value={formData.status || 'upcoming'}
+                  onValueChange={(val: any) => setFormData(prev => ({ ...prev, status: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="finished">Finished</SelectItem>
+                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    <SelectItem value="canceled">Canceled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Update the match status. This will affect how the match is displayed throughout the application.
+                </p>
               </div>
-            </div>
-            <p className="text-muted-foreground mt-2 text-xs">
-              Match start and end times will be set when the match actually begins and ends.
-              These can be updated later during match management.
-            </p>
+            )}
           </CardContent>
         </Card>
       </form>

@@ -23,7 +23,7 @@ interface MatchStatusModalProps {
   isSubmitting: boolean;
 }
 
-type MatchStatus = 'upcoming' | 'live' | 'finished' | 'completed' | 'rescheduled' | 'canceled';
+type MatchStatus = 'upcoming' | 'live' | 'finished' | 'rescheduled' | 'canceled';
 
 const statusConfig: Record<MatchStatus, { label: string; color: string; icon: typeof Calendar; description: string }> = {
   upcoming: {
@@ -40,12 +40,6 @@ const statusConfig: Record<MatchStatus, { label: string; color: string; icon: ty
   },
   finished: {
     label: 'Finished',
-    color: 'bg-green-100 text-green-800',
-    icon: Square,
-    description: 'Match has been completed'
-  },
-  completed: {
-    label: 'Completed',
     color: 'bg-green-100 text-green-800',
     icon: Square,
     description: 'Match has been completed'
@@ -108,10 +102,10 @@ export function MatchStatusModal({
 
   const handleStatusChange = (status: MatchStatus) => {
     setFormData(prev => ({ ...prev, status }));
-    
+
     // Auto-set timing based on status
     const now = new Date().toISOString().slice(0, 16);
-    
+
     if (status === 'live' && !formData.start_at) {
       setFormData(prev => ({ ...prev, start_at: now }));
     } else if (status === 'finished' && !formData.end_at) {
@@ -144,7 +138,7 @@ export function MatchStatusModal({
     if (formData.start_at && formData.end_at) {
       const startTime = new Date(formData.start_at);
       const endTime = new Date(formData.end_at);
-      
+
       if (endTime <= startTime) {
         newErrors.end_at = 'End time must be after start time';
       }
@@ -154,7 +148,7 @@ export function MatchStatusModal({
     if (formData.status === 'live' && !formData.start_at) {
       newErrors.start_at = 'Start time is required for ongoing matches';
     }
-    
+
     if (formData.status === 'finished') {
       if (!formData.start_at) {
         newErrors.start_at = 'Start time is required for finished matches';
@@ -190,7 +184,7 @@ export function MatchStatusModal({
         team_id: teamId,
         match_score: score
       }));
-      
+
       if (scoreUpdates.length > 0) {
         const scoreResult = await updateMatchScores(scoreUpdates);
         if (!scoreResult.success) {
@@ -292,7 +286,7 @@ export function MatchStatusModal({
                   })}
                 </SelectContent>
               </Select>
-              
+
               {/* Status Preview */}
               <div className="flex items-center space-x-2">
                 <StatusIcon className="h-4 w-4" />
@@ -402,12 +396,12 @@ export function MatchStatusModal({
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              {formData.status === 'upcoming' 
+              {formData.status === 'upcoming'
                 ? 'Scores can be entered once the match starts.'
                 : 'Enter the final scores for each team when the match is finished.'
               }
             </p>
-            
+
             {/* Winner Display */}
             {formData.status === 'finished' && Object.values(formData.scores).some(score => score !== null) && (
               <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
@@ -415,20 +409,20 @@ export function MatchStatusModal({
                 {(() => {
                   const scores = Object.entries(formData.scores);
                   const validScores = scores.filter(([_, score]) => score !== null);
-                  
+
                   if (validScores.length < 2) return <span className="text-muted-foreground">Enter scores for both teams to see the result.</span>;
-                  
+
                   const [team1Id, score1] = validScores[0];
                   const [team2Id, score2] = validScores[1];
                   const team1 = match.match_participants.find(p => p.team_id === team1Id);
                   const team2 = match.match_participants.find(p => p.team_id === team2Id);
-                  
+
                   if (!team1 || !team2) return <span className="text-muted-foreground">Team information not found.</span>;
-                  
+
                   const winner = (score1 as number) > (score2 as number) ? team1 : team2;
                   const winnerScore = Math.max(score1 as number, score2 as number);
                   const loserScore = Math.min(score1 as number, score2 as number);
-                  
+
                   return (
                     <div className="space-y-1">
                       <div className="font-semibold text-green-600">
@@ -490,7 +484,7 @@ export function MatchStatusModal({
           <CardContent>
             <div className="p-3 bg-muted border rounded-lg">
               <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> Changing the match status will affect how the match appears throughout the system. 
+                <strong>Note:</strong> Changing the match status will affect how the match appears throughout the system.
                 Make sure to set accurate timing information for proper tracking and reporting.
               </p>
             </div>

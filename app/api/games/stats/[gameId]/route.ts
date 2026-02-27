@@ -3,7 +3,7 @@ import { getValorantStatsByGameId } from '@/actions/stats-valorant';
 import { getMlbbStatsByGameId } from '@/actions/stats-mlbb';
 import { getGameById } from '@/actions/games';
 import { getMatchById } from '@/actions/matches';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 export async function GET(
   request: NextRequest,
@@ -61,8 +61,8 @@ export async function GET(
     }
 
     // 3. Return the data
-    return formatResponse(
-      { success: true, data: stats },
+    return vmixResponse(
+      stats,
       format,
       'game_stats'
     );

@@ -21,6 +21,7 @@ import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     ArrowLeft,
+    Loader2,
     CheckCircle2,
     XCircle,
     Clock,
@@ -44,7 +45,7 @@ export default function GameDetailPage() {
     const queryClient = useQueryClient();
     const matchId = Number(params.matchId);
     const gameId = Number(params.gameId);
-    
+
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUpdatingAttr, setIsUpdatingAttr] = useState(false);
@@ -55,7 +56,7 @@ export default function GameDetailPage() {
     const team2 = match?.match_participants?.[1];
 
     // Fetch players for stats
-    const { data: team1Players = [] } = useQuery({
+    const { data: team1Players = [], isLoading: isLoadingTeam1 } = useQuery({
         queryKey: ['players', team1?.schools_teams?.id],
         queryFn: async () => {
             if (!team1?.schools_teams?.id) return [];
@@ -65,7 +66,7 @@ export default function GameDetailPage() {
         enabled: !!team1?.schools_teams?.id,
     });
 
-    const { data: team2Players = [] } = useQuery({
+    const { data: team2Players = [], isLoading: isLoadingTeam2 } = useQuery({
         queryKey: ['players', team2?.schools_teams?.id],
         queryFn: async () => {
             if (!team2?.schools_teams?.id) return [];
@@ -158,7 +159,7 @@ export default function GameDetailPage() {
             const data: any = { id: gameId };
             // If value is 'none', map it to null to clear it
             data[field] = value === 'none' ? null : value;
-            
+
             const result = await updateGameById(data);
             if (result.success) {
                 toast.success('Game updated');
@@ -275,7 +276,7 @@ export default function GameDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Coin Toss Winner / Advantage</label>
-                            <Select 
+                            <Select
                                 disabled={isUpdatingAttr}
                                 value={game.coin_toss_winner || 'none'}
                                 onValueChange={(val) => handleUpdateGameAttr('coin_toss_winner', val)}
@@ -285,15 +286,15 @@ export default function GameDetailPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
-                                    <SelectItem value={String(team1.id)}>{team1.schools_teams?.school?.abbreviation || 'Team 1'}</SelectItem>
-                                    <SelectItem value={String(team2.id)}>{team2.schools_teams?.school?.abbreviation || 'Team 2'}</SelectItem>
+                                    {team1?.schools_teams?.id && <SelectItem value={team1.schools_teams.id}>{team1.schools_teams?.school?.abbreviation || 'Team 1'}</SelectItem>}
+                                    {team2?.schools_teams?.id && <SelectItem value={team2.schools_teams.id}>{team2.schools_teams?.school?.abbreviation || 'Team 2'}</SelectItem>}
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground">Overrides the coin toss winner for side selection / first pick mechanics.</p>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Side Selection / Starting Side</label>
-                            <Select 
+                            <Select
                                 disabled={isUpdatingAttr}
                                 value={game.side_selection || 'none'}
                                 onValueChange={(val) => handleUpdateGameAttr('side_selection', val)}
@@ -360,6 +361,9 @@ export default function GameDetailPage() {
                         isAdmin={true}
                         isValorant={isValorant}
                         gameNumber={game.game_number}
+                        coinTossWinnerId={game.coin_toss_winner || match.coin_toss_winner_id || undefined}
+                        coinTossResult={match.coin_toss_result || undefined}
+                        sideSelection={game.side_selection || undefined}
                     />
                 </div>
             )}
@@ -393,7 +397,12 @@ export default function GameDetailPage() {
                         Post-Game Statistics
                     </h2>
 
-                    {isValorant ? (
+                    {(isLoadingTeam1 || isLoadingTeam2) ? (
+                        <div className="flex flex-col items-center justify-center p-8 space-y-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <p className="text-muted-foreground">Loading rosters...</p>
+                        </div>
+                    ) : isValorant ? (
                         <ValorantStatsUpload
                             gameId={gameId}
                             team1={{

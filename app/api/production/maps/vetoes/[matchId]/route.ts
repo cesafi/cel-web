@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ValorantMapVetoService } from '@/services/valorant-map-vetoes';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get map veto sequence for a specific Valorant match
@@ -31,8 +31,8 @@ export async function GET(
       );
     }
 
-    return formatResponse(
-      { success: true, data: result.data },
+    return vmixResponse(
+      result.data,
       format,
       'map_vetoes'
     );

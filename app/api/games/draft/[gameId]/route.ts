@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GameDraftService } from '@/services/game-draft';
 import { GameRosterService } from '@/services/game-roster';
-import { formatResponse, getFormatParam, VmixFormat } from '@/lib/utils/vmix-format';
+import { formatResponse, getFormatParam, vmixResponse } from '@/lib/utils/vmix-format';
 import { getSupabaseServer } from '@/lib/supabase/server';
 
 /**
@@ -192,58 +192,84 @@ export async function GET(
             }
         }
 
-        const gameInfo = {
-            id: game.id,
-            game_number: game.game_number,
-            map_name: (game as any).map_name
-        };
-
-        // Enrich draft actions with character stats for flat format convenience
-        const enrichedDraftActions = (draftRes.data || []).map((action: any) => {
-            const stats = action.hero_id ? characterStatsMap[action.hero_id] : null;
-            if (!stats) return action;
-            return {
-                ...action,
-                character_name: stats.character_name,
-                character_icon_url: stats.icon_url,
-                character_role: stats.role || null,
-                character_total_picks: stats.total_picks,
-                character_win_rate: stats.win_rate,
-                character_avg_kills: stats.avg_kills,
-                character_avg_deaths: stats.avg_deaths,
-                character_avg_assists: stats.avg_assists,
-                character_avg_kda: stats.avg_kda,
-            };
-        });
-
-        // If a specific table is requested (for vMix single data source per title)
-        if (format !== 'json' && table) {
-            const tables: Record<string, any> = {
-                game: [gameInfo],
-                teams: teams,
-                draft_actions: enrichedDraftActions,
-                rosters: rosterRes.data || [],
-            };
-            const selected = tables[table];
-            if (!selected) {
-                return NextResponse.json(
-                    { error: `Unknown table: ${table}. Available: ${Object.keys(tables).join(', ')}` },
-                    { status: 400 }
-                );
-            }
-            return formatResponse(selected, format, table);
+        // Build a team ID → display info lookup
+        const teamLookup: Record<string, { name: string; abbreviation: string }> = {};
+        for (const t of teams) {
+            if (t) teamLookup[t.id] = { name: t.name, abbreviation: t.abbreviation || '' };
         }
 
-        // Default: return full payload
-        const fullPayload = {
-            game: gameInfo,
+        // Build roster lookup: team_id → sort_order → player IGN
+        const rosterLookup: Record<string, Record<number, string>> = {};
+        for (const r of (rosterRes.data || []) as any[]) {
+            const tid = r.team_id;
+            if (!rosterLookup[tid]) rosterLookup[tid] = {};
+            rosterLookup[tid][r.sort_order] = r.player?.ign || '';
+        }
+
+        // ── vMix-friendly flat output (csv / json-flat / xml) ──
+        // Each row = one draft action, ordered like an actual draft board
+        if (format !== 'json') {
+            const draftBoard = (draftRes.data || []).map((action: any, idx: number) => {
+                const stats = action.hero_id ? characterStatsMap[action.hero_id] : null;
+                const teamInfo = action.team_id ? teamLookup[action.team_id] : null;
+
+                // Resolve player IGN from joined player relation
+                const playerIgn = action.player?.ign || '';
+
+                return {
+                    order: idx + 1,
+                    action: action.action_type || '',           // ban / pick
+                    team: teamInfo?.abbreviation || teamInfo?.name || '',
+                    hero: stats?.character_name || action.hero_name || '',
+                    player: playerIgn,
+                    win_rate: stats?.win_rate ? `${stats.win_rate}%` : '',
+                    total_picks: stats?.total_picks ?? '',
+                    avg_kda: stats?.avg_kda || '',
+                };
+            });
+
+            // Support ?table= for pulling specific sub-data
+            if (table) {
+                const tables: Record<string, any[]> = {
+                    draft: draftBoard,
+                    teams: teams.map((t: any) => ({
+                        team: t.name,
+                        school: t.abbreviation || '',
+                        logo_url: t.logo_url || '',
+                    })),
+                    rosters: (rosterRes.data || []).map((r: any) => ({
+                        team: teamLookup[r.team_id]?.abbreviation || teamLookup[r.team_id]?.name || '',
+                        slot: r.sort_order,
+                        player: r.player?.ign || '',
+                        role: r.player?.role || '',
+                    })),
+                };
+                const selected = tables[table];
+                if (!selected) {
+                    return NextResponse.json(
+                        { error: `Unknown table: ${table}. Available: ${Object.keys(tables).join(', ')}` },
+                        { status: 400 }
+                    );
+                }
+                return vmixResponse(selected, format, table);
+            }
+
+            // Default flat: return the draft board
+            return vmixResponse(draftBoard, format, 'draft');
+        }
+
+        // ── Default JSON (backward compatible, full payload) ──
+        return vmixResponse({
+            game: {
+                id: game.id,
+                game_number: game.game_number,
+                map_name: (game as any).map_name,
+            },
             teams,
-            draft_actions: enrichedDraftActions,
+            draft_actions: draftRes.data,
             rosters: rosterRes.data,
             character_stats: characterStatsMap
-        };
-
-        return formatResponse(fullPayload, format, 'draft');
+        }, format, 'draft');
 
     } catch (error) {
         console.error('Error fetching game draft:', error);

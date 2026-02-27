@@ -65,6 +65,56 @@ export function flattenArray(arr: any[]): Record<string, any>[] {
 }
 
 // ---------------------------------------------------------------------------
+// 1b. Clean for vMix (flatten + strip IDs/timestamps)
+// ---------------------------------------------------------------------------
+
+/** Fields to strip from vMix output */
+const STRIP_PATTERNS = [
+    /^id$/,              // exact 'id'
+    /_id$/,              // any field ending in '_id'
+    /^created_at$/,      // timestamps
+    /^updated_at$/,
+    /^game_id$/,
+    /^match_id$/,
+    /^team_id$/,
+    /^player_id$/,
+    /^hero_id$/,
+    /^stage_id$/,
+    /^season_id$/,
+    /^esport_id$/,
+    /^esport_category_id$/,
+    /^school_id$/,
+];
+
+function shouldStrip(key: string): boolean {
+    return STRIP_PATTERNS.some((p) => p.test(key));
+}
+
+/**
+ * Flatten a nested object and strip ID/timestamp fields.
+ * Keeps names, IGNs, URLs, stats, etc.
+ */
+export function cleanRow(obj: Record<string, any>): Record<string, any> {
+    const flat = flattenObject(obj);
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(flat)) {
+        if (!shouldStrip(key)) {
+            cleaned[key] = value;
+        }
+    }
+    return cleaned;
+}
+
+/**
+ * Clean an array of objects for vMix — flatten each and strip IDs/timestamps.
+ */
+export function cleanArrayForVmix(arr: any[]): Record<string, any>[] {
+    return arr.map((item) =>
+        typeof item === 'object' && item !== null ? cleanRow(item) : { value: item }
+    );
+}
+
+// ---------------------------------------------------------------------------
 // 2. XML
 // ---------------------------------------------------------------------------
 
@@ -199,7 +249,7 @@ export function formatResponse(
         }
 
         case 'csv': {
-            const rows = Array.isArray(data) ? flattenArray(data) : [flattenObject(data)];
+            const rows = Array.isArray(data) ? cleanArrayForVmix(data) : [cleanRow(data)];
             const csv = toCsv(rows);
             return new NextResponse(csv, {
                 headers: {
@@ -207,6 +257,13 @@ export function formatResponse(
                     'Content-Type': 'text/csv; charset=utf-8',
                 },
             });
+        }
+
+        case 'json-flat': {
+            const flat = Array.isArray(data)
+                ? cleanArrayForVmix(data)
+                : cleanRow(data);
+            return NextResponse.json(flat, { headers: CORS_HEADERS });
         }
 
         default:
@@ -217,10 +274,40 @@ export function formatResponse(
 
 /**
  * Extract the `format` query parameter from a request URL.
+ * Defaults to 'csv' for production/game routes (vMix-optimised).
+ * Use ?format=json to get the original nested JSON.
  */
-export function getFormatParam(request: Request): VmixFormat {
+export function getFormatParam(request: Request, defaultFormat: VmixFormat = 'csv'): VmixFormat {
     const url = new URL(request.url);
     const f = url.searchParams.get('format');
-    if (f === 'json-flat' || f === 'xml' || f === 'csv') return f;
-    return 'json';
+    if (f === 'json' || f === 'json-flat' || f === 'xml' || f === 'csv') return f;
+    return defaultFormat;
+}
+
+/**
+ * Smart response helper for production/game API routes.
+ *
+ * - **JSON**: returns `{ success: true, data: rawData }` (backward compatible)
+ * - **CSV / json-flat / XML**: returns just `rawData` — clean rows, no wrapper
+ *
+ * @param rawData   The actual data (array of objects, or a single object).
+ * @param format    The requested format.
+ * @param rootName  XML root element name.
+ * @param extra     Extra fields to include in the JSON wrapper (e.g. `count`).
+ */
+export function vmixResponse(
+    rawData: any,
+    format: VmixFormat,
+    rootName = 'data',
+    extra: Record<string, any> = {}
+): NextResponse {
+    if (format === 'json') {
+        return formatResponse(
+            { success: true, data: rawData, ...extra },
+            format,
+            rootName
+        );
+    }
+    // For CSV / json-flat / XML — pass raw data directly (no wrapper)
+    return formatResponse(rawData, format, rootName);
 }

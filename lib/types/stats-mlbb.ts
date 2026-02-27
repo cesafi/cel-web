@@ -39,6 +39,7 @@ export interface MlbbScreenshotData {
 
 export interface MlbbPlayerScreenshotStat {
   heroName: string;
+  game_character_id?: number | null; // Used to map the parsed heroName to a database character
   playerName: string;
   team: 'Blue' | 'Red'; // Left is Blue, Right is Red
   kda: {

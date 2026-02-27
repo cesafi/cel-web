@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { StatisticsService } from '@/services/statistics';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Head-to-Head Team Comparison
@@ -167,11 +167,11 @@ export async function GET(request: NextRequest) {
       };
       const selected = tables[table];
       if (selected) {
-        return formatResponse(selected, format, table);
+        return vmixResponse(selected, format, table);
       }
     }
 
-    return formatResponse(response, format, 'head_to_head_teams');
+    return vmixResponse(response.data, format, 'head_to_head_teams');
   } catch (error: any) {
     console.error('Error in production H2H teams API:', error);
     return NextResponse.json(

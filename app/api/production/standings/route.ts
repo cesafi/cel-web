@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get current standings
@@ -149,8 +149,8 @@ export async function GET(request: NextRequest) {
       }),
     }));
 
-    return formatResponse(
-      { success: true, data: standingsResult },
+    return vmixResponse(
+      standingsResult,
       format,
       'standings'
     );

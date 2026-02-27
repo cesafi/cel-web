@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MatchesService } from '@/services/matches';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get match overview (details, participants, scores)
@@ -32,8 +32,8 @@ export async function GET(
       );
     }
 
-    return formatResponse(
-      { success: true, data: result.data },
+    return vmixResponse(
+      result.data,
       format,
       'match'
     );

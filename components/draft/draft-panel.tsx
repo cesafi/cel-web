@@ -42,6 +42,7 @@ import {
 
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
 import { autoFillRosterFromGame1 } from '@/actions/game-roster';
+import { updateGameDraftAction } from '@/actions/game-draft';
 import { GameRosterService } from '@/services/game-roster';
 import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUndoLastGameDraftAction, useUpdateGameDraftAction } from '@/hooks/use-game-draft';
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
@@ -67,6 +68,9 @@ interface DraftPanelProps {
     isAdmin?: boolean;
     isValorant?: boolean;
     gameNumber?: number;
+    coinTossWinnerId?: string;
+    coinTossResult?: string;
+    sideSelection?: string;
 }
 
 // Role colors for visual distinction
@@ -113,6 +117,9 @@ export function DraftPanel({
     isAdmin = false,
     isValorant = false,
     gameNumber = 1,
+    coinTossWinnerId,
+    coinTossResult,
+    sideSelection,
 }: DraftPanelProps) {
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
@@ -153,9 +160,28 @@ export function DraftPanel({
     });
 
     // 5. Derive State (MLBB only)
+    const { blueSideTeamId, redSideTeamId } = useMemo(() => {
+        let blue = team1.id;
+        let red = team2.id;
+
+        if (sideSelection === 'blue' && coinTossWinnerId) {
+            blue = coinTossWinnerId;
+            red = coinTossWinnerId === team1.id ? team2.id : team1.id;
+        } else if (sideSelection === 'red' && coinTossWinnerId) {
+            red = coinTossWinnerId;
+            blue = coinTossWinnerId === team1.id ? team2.id : team1.id;
+        } else if (coinTossWinnerId) {
+            // Default: Coin toss winner gets blue side if no explicit side chosen
+            blue = coinTossWinnerId;
+            red = coinTossWinnerId === team1.id ? team2.id : team1.id;
+        }
+
+        return { blueSideTeamId: blue, redSideTeamId: red };
+    }, [team1.id, team2.id, coinTossWinnerId, sideSelection]);
+
     const draftState = useMemo(() =>
-        calculateDraftState(gameId, matchId, team1.id, team2.id, actions),
-        [gameId, matchId, team1.id, team2.id, actions]
+        calculateDraftState(gameId, matchId, blueSideTeamId, redSideTeamId, actions),
+        [gameId, matchId, blueSideTeamId, redSideTeamId, actions]
     );
 
     const team1Roster = useMemo(() => rosters.filter(r => r.team_id === team1.id), [rosters, team1.id]);
@@ -226,6 +252,29 @@ export function DraftPanel({
         onSuccess: () => refetchActions()
     });
 
+    const tradeActionMutation = useMutation({
+        mutationFn: async (data: { action1: any; action2: any }) => {
+            // Sequential updates to avoid complex backend changes for this simple swap
+            const res1 = await updateGameDraftAction(data.action1.id, {
+                hero_id: data.action2.hero_id,
+                hero_name: data.action2.hero_name
+            });
+            if (!res1.success) throw new Error(res1.error);
+
+            const res2 = await updateGameDraftAction(data.action2.id, {
+                hero_id: data.action1.hero_id,
+                hero_name: data.action1.hero_name
+            });
+            if (!res2.success) throw new Error(res2.error);
+            return true;
+        },
+        onSuccess: () => {
+            refetchActions();
+            toast.success("Heroes traded successfully");
+        },
+        onError: () => toast.error("Failed to trade heroes")
+    });
+
     // MLBB handler
     const handleCharacterSelect = (character: GameCharacter) => {
         if (!draftState.nextAction || !isAdmin) return;
@@ -235,7 +284,7 @@ export function DraftPanel({
         }
         submitActionMutation.mutate({
             game_id: gameId,
-            team_id: draftState.nextAction.team === 'team1' ? team1.id : team2.id,
+            team_id: draftState.nextAction.team === 'team1' ? blueSideTeamId : redSideTeamId,
             hero_name: character.name,
             hero_id: character.id,
             action_type: draftState.nextAction.action,
@@ -272,6 +321,14 @@ export function DraftPanel({
                 hero_id: newCharacter.id
             }
         });
+    };
+
+    const handleCharacterTrade = (action1Id: string, action2Id: string) => {
+        if (!isAdmin) return;
+        const action1 = actions.find(a => a.id === action1Id);
+        const action2 = actions.find(a => a.id === action2Id);
+        if (!action1 || !action2) return;
+        tradeActionMutation.mutate({ action1, action2 });
     };
 
     // Smart Auto-Fill
@@ -445,7 +502,11 @@ export function DraftPanel({
 
     // ── MLBB Sequential Draft Mode ──
     const currentAction = draftState.nextAction;
-    const activeTeam = currentAction?.team === 'team1' ? team1 : team2;
+
+    // In MLBB_DRAFT_SEQUENCE, 'team1' always goes first (Blue Side). 
+    // We map 'team1' -> blueSideTeamId and 'team2' -> redSideTeamId.
+    const activeTeamId = currentAction?.team === 'team1' ? blueSideTeamId : redSideTeamId;
+    const activeTeam = activeTeamId === team1.id ? team1 : team2;
     const isBanPhase = currentAction?.action === 'ban';
 
     return (
@@ -531,19 +592,22 @@ export function DraftPanel({
 
             {/* Main Draft Area */}
             <div className="grid grid-cols-12 gap-4">
-                {/* Team 1 */}
+                {/* Team 1 (Left Side Visuals) */}
                 <div className="col-span-12 md:col-span-3">
                     <MlbbTeamColumn
                         team={team1}
-                        bans={draftState.team1Bans}
-                        picks={draftState.team1Picks}
+                        // If team1 is blueSide (team1 in sequence), use team1Bans/team1Picks from calculateDraftState
+                        // If team1 is redSide (team2 in sequence), use team2Bans/team2Picks
+                        bans={team1.id === blueSideTeamId ? draftState.team1Bans : draftState.team2Bans}
+                        picks={team1.id === blueSideTeamId ? draftState.team1Picks : draftState.team2Picks}
                         roster={team1Roster}
                         players={team1Players || []}
                         characters={characters}
                         takenCharacters={takenCharacters}
-                        isActive={currentAction?.team === 'team1'}
+                        isActive={activeTeamId === team1.id}
                         isAdmin={isAdmin}
                         onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
+                        onTradeCharacter={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
@@ -605,20 +669,21 @@ export function DraftPanel({
                     </div>
                 </div>
 
-                {/* Team 2 */}
+                {/* Team 2 (Right Side Visuals) */}
                 <div className="col-span-12 md:col-span-3">
                     <MlbbTeamColumn
                         team={team2}
-                        bans={draftState.team2Bans}
-                        picks={draftState.team2Picks}
+                        bans={team2.id === blueSideTeamId ? draftState.team1Bans : draftState.team2Bans}
+                        picks={team2.id === blueSideTeamId ? draftState.team1Picks : draftState.team2Picks}
                         roster={team2Roster}
                         players={team2Players || []}
                         characters={characters}
                         takenCharacters={takenCharacters}
-                        isActive={currentAction?.team === 'team2'}
+                        isActive={activeTeamId === team2.id}
                         isRightSide
                         isAdmin={isAdmin}
                         onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
+                        onTradeCharacter={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
@@ -705,44 +770,44 @@ function ValorantTeamPanel({
                             {/* Agent pick */}
                             <div className="flex-1">
                                 {pick ? (
-                                        <div className={cn(
-                                            "flex items-center gap-3 p-2.5 rounded-lg border group relative",
-                                            heroRole ? roleColors[heroRole]?.replace('/10', '/5') : 'bg-muted/30'
-                                        )}>
-                                            <LazyImage src={icon} alt={pick.hero_name} className="w-10 h-10 rounded-md" />
-                                            <div className="min-w-0 flex-1 relative z-0">
-                                                <p className="font-semibold text-sm truncate">{pick.hero_name}</p>
-                                                {heroRole && (
-                                                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", roleColors[heroRole])}>
-                                                        {heroRole}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            {isAdmin && (
-                                                <div className={cn(
-                                                    "absolute inset-x-0 bottom-0 top-0 flex items-center justify-end px-2 bg-background/80 backdrop-blur-sm z-10 transition-all duration-200",
-                                                    "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
-                                                )}>
-                                                    <CharacterPickerPopover
-                                                        slotIndex={i}
-                                                        characters={characters}
-                                                        takenCharacters={takenCharacters}
-                                                        isAdmin={isAdmin}
-                                                        onPick={(char) => onSwapAgent(pick.id, char)}
-                                                        isSwapMode={true}
-                                                    />
-                                                </div>
+                                    <div className={cn(
+                                        "flex items-center gap-3 p-2.5 rounded-lg border group relative",
+                                        heroRole ? roleColors[heroRole]?.replace('/10', '/5') : 'bg-muted/30'
+                                    )}>
+                                        <LazyImage src={icon} alt={pick.hero_name} className="w-10 h-10 rounded-md" />
+                                        <div className="min-w-0 flex-1 relative z-0">
+                                            <p className="font-semibold text-sm truncate">{pick.hero_name}</p>
+                                            {heroRole && (
+                                                <Badge variant="outline" className={cn("text-[10px] h-4 px-1", roleColors[heroRole])}>
+                                                    {heroRole}
+                                                </Badge>
                                             )}
                                         </div>
-                                    ) : (
-                                        <CharacterPickerPopover
-                                            slotIndex={i}
-                                            characters={characters}
-                                            takenCharacters={takenCharacters}
-                                            isAdmin={isAdmin}
-                                            onPick={(char) => onPickAgent(char, i)}
-                                        />
-                                    )}
+                                        {isAdmin && (
+                                            <div className={cn(
+                                                "absolute inset-x-0 bottom-0 top-0 flex items-center justify-end px-2 bg-background/80 backdrop-blur-sm z-10 transition-all duration-200",
+                                                "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
+                                            )}>
+                                                <CharacterPickerPopover
+                                                    slotIndex={i}
+                                                    characters={characters}
+                                                    takenCharacters={takenCharacters}
+                                                    isAdmin={isAdmin}
+                                                    onPick={(char) => onSwapAgent(pick.id, char)}
+                                                    isSwapMode={true}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <CharacterPickerPopover
+                                        slotIndex={i}
+                                        characters={characters}
+                                        takenCharacters={takenCharacters}
+                                        isAdmin={isAdmin}
+                                        onPick={(char) => onPickAgent(char, i)}
+                                    />
+                                )}
                             </div>
 
                             {/* Player assignment */}
@@ -816,9 +881,9 @@ function CharacterPickerPopover({
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 {isSwapMode ? (
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
+                    <Button
+                        variant="outline"
+                        size="sm"
                         className="h-7 text-xs px-2 shadow-sm rounded-md border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
                     >
                         Swap
@@ -917,7 +982,7 @@ function PlayerPickerPopover({
 
 function MlbbTeamColumn({
     team, bans, picks, roster, players, characters, takenCharacters, isActive, isRightSide = false, isAdmin,
-    onSwapCharacter, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
+    onSwapCharacter, onTradeCharacter, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
 }: {
     team: DraftPanelProps['team1'];
     bans: GameDraftAction[];
@@ -930,11 +995,13 @@ function MlbbTeamColumn({
     isRightSide?: boolean;
     isAdmin: boolean;
     onSwapCharacter: (actionId: string, char: GameCharacter) => void;
+    onTradeCharacter?: (action1Id: string, action2Id: string) => void;
     onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void;
     onUnassignPlayer: (sortOrder: number) => void;
     onAutoFill: () => void;
     onAutoFillGame1?: () => void;
 }) {
+    const [tradeTargetId, setTradeTargetId] = useState<string | null>(null);
     const pickSlots = Array.from({ length: 5 });
     const banSlots = Array.from({ length: 5 });
 
@@ -1016,17 +1083,45 @@ function MlbbTeamColumn({
                                         </div>
                                         {isAdmin && (
                                             <div className={cn(
-                                                "absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20 transition-all duration-200",
-                                                "opacity-0 pointer-events-none group-hover/pick:opacity-100 group-hover/pick:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
+                                                "absolute inset-0 flex items-center justify-center gap-1 bg-background/80 backdrop-blur-sm z-20 transition-all duration-200",
+                                                tradeTargetId ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover/pick:opacity-100 group-hover/pick:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
                                             )}>
-                                                <CharacterPickerPopover
-                                                    slotIndex={i}
-                                                    characters={characters}
-                                                    takenCharacters={takenCharacters}
-                                                    isAdmin={isAdmin}
-                                                    onPick={(char) => onSwapCharacter(pick.id, char)}
-                                                    isSwapMode={true}
-                                                />
+                                                {tradeTargetId && tradeTargetId !== pick.id ? (
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="h-7 text-xs px-2 shadow-sm rounded-md"
+                                                        onClick={() => {
+                                                            onTradeCharacter?.(tradeTargetId, pick.id);
+                                                            setTradeTargetId(null);
+                                                        }}
+                                                    >
+                                                        Swap Here
+                                                    </Button>
+                                                ) : (
+                                                    <CharacterPickerPopover
+                                                        slotIndex={i}
+                                                        characters={characters}
+                                                        takenCharacters={takenCharacters}
+                                                        isAdmin={isAdmin}
+                                                        onPick={(char) => onSwapCharacter(pick.id, char)}
+                                                        isSwapMode={true}
+                                                    />
+                                                )}
+
+                                                <Button
+                                                    variant={tradeTargetId === pick.id ? "secondary" : "outline"}
+                                                    size="sm"
+                                                    className={cn(
+                                                        "h-7 text-xs px-2 shadow-sm rounded-md",
+                                                        tradeTargetId === pick.id
+                                                            ? ""
+                                                            : "border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                                    )}
+                                                    onClick={() => setTradeTargetId(tradeTargetId === pick.id ? null : pick.id)}
+                                                >
+                                                    {tradeTargetId === pick.id ? "Cancel" : "Trade"}
+                                                </Button>
                                             </div>
                                         )}
                                     </>

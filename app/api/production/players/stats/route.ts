@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get aggregated player statistics
@@ -39,10 +39,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return formatResponse(
-      { success: true, data: result.data, count: (result as any).count },
+    return vmixResponse(
+      result.data,
       format,
-      'player_stats'
+      'player_stats',
+      { count: (result as any).count }
     );
   } catch (error: any) {
     console.error('Error in production player stats API:', error);
