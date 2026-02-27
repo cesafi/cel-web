@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get Valorant map pick/ban rate statistics
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
+    const format = getFormatParam(request);
 
     const result = await StatisticsService.getMapStats(seasonId, stageId);
 
@@ -20,14 +22,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
+    return formatResponse(
       { success: true, data: result.data },
-      {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-store, max-age=0',
-        }
-      }
+      format,
+      'map_stats'
     );
   } catch (error: any) {
     console.error('Error in production map stats API:', error);

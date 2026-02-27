@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { StatisticsService } from '@/services/statistics';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Head-to-Head Team Comparison
@@ -16,6 +17,8 @@ export async function GET(request: NextRequest) {
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
     const mode = (searchParams.get('mode') || 'both') as 'direct' | 'overall' | 'both';
+    const format = getFormatParam(request);
+    const table = searchParams.get('table') as string | null;
 
     if (!teamA || !teamB) {
       return NextResponse.json(
@@ -152,12 +155,23 @@ export async function GET(request: NextRequest) {
       team_b: (teamsInfo || []).find((t: any) => t.id === teamB) || null,
     };
 
-    return NextResponse.json(response, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store, max-age=0',
+    // If a specific table is requested (for vMix single data source)
+    if (format !== 'json' && table) {
+      const tables: Record<string, any> = {
+        teams: [response.data.teams?.team_a, response.data.teams?.team_b].filter(Boolean),
+        direct: response.data.direct ? [response.data.direct] : [],
+        overall: response.data.overall ? [
+          { side: 'team_a', ...response.data.overall.team_a },
+          { side: 'team_b', ...response.data.overall.team_b },
+        ].filter(e => e.side) : [],
+      };
+      const selected = tables[table];
+      if (selected) {
+        return formatResponse(selected, format, table);
       }
-    });
+    }
+
+    return formatResponse(response, format, 'head_to_head_teams');
   } catch (error: any) {
     console.error('Error in production H2H teams API:', error);
     return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ValorantMapVetoService } from '@/services/valorant-map-vetoes';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get map veto sequence for a specific Valorant match
@@ -19,6 +20,8 @@ export async function GET(
       );
     }
 
+    const format = getFormatParam(request);
+
     const result = await ValorantMapVetoService.getByMatchId(id);
 
     if (!result.success) {
@@ -28,14 +31,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(
+    return formatResponse(
       { success: true, data: result.data },
-      {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-store, max-age=0',
-        }
-      }
+      format,
+      'map_vetoes'
     );
   } catch (error: any) {
     console.error('Error in production map vetoes API:', error);

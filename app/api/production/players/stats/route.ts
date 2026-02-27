@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get aggregated player statistics
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get('teamId') || undefined;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined;
+    const format = getFormatParam(request);
 
     const filters = {
       game: game as 'mlbb' | 'valorant',
@@ -37,14 +39,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
+    return formatResponse(
       { success: true, data: result.data, count: (result as any).count },
-      {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-store, max-age=0',
-        }
-      }
+      format,
+      'player_stats'
     );
   } catch (error: any) {
     console.error('Error in production player stats API:', error);

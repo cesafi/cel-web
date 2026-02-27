@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get current standings
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
     const categoryId = searchParams.get('categoryId') ? parseInt(searchParams.get('categoryId')!) : undefined;
+    const format = getFormatParam(request);
 
     const supabase = await getSupabaseServer();
 
@@ -91,8 +93,8 @@ export async function GET(request: NextRequest) {
       for (const p of participants) {
         const teamId = p.team_id;
         if (!standingsMap[stageId][teamId]) {
-          const schoolData = Array.isArray(p.schools_teams?.schools) 
-            ? p.schools_teams.schools[0] 
+          const schoolData = Array.isArray(p.schools_teams?.schools)
+            ? p.schools_teams.schools[0]
             : p.schools_teams?.schools;
 
           standingsMap[stageId][teamId] = {
@@ -147,14 +149,10 @@ export async function GET(request: NextRequest) {
       }),
     }));
 
-    return NextResponse.json(
+    return formatResponse(
       { success: true, data: standingsResult },
-      {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-store, max-age=0',
-        }
-      }
+      format,
+      'standings'
     );
   } catch (error: any) {
     console.error('Error in production standings API:', error);

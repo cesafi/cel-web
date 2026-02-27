@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { StatisticsService } from '@/services/statistics';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Head-to-Head Player Comparison
@@ -15,6 +16,8 @@ export async function GET(request: NextRequest) {
     const game = (searchParams.get('game') || 'mlbb') as 'mlbb' | 'valorant';
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const mode = (searchParams.get('mode') || 'both') as 'direct' | 'overall' | 'both';
+    const format = getFormatParam(request);
+    const table = searchParams.get('table') as string | null;
 
     if (!playerA || !playerB) {
       return NextResponse.json(
@@ -129,12 +132,23 @@ export async function GET(request: NextRequest) {
       player_b: (playersInfo || []).find((p: any) => p.id === playerB) || null,
     };
 
-    return NextResponse.json(response, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store, max-age=0',
+    // If a specific table is requested (for vMix single data source)
+    if (format !== 'json' && table) {
+      const tables: Record<string, any> = {
+        players: [response.data.players?.player_a, response.data.players?.player_b].filter(Boolean),
+        direct: response.data.direct ? [response.data.direct] : [],
+        overall: response.data.overall ? [
+          { side: 'player_a', ...response.data.overall.player_a },
+          { side: 'player_b', ...response.data.overall.player_b },
+        ].filter(e => e.side) : [],
+      };
+      const selected = tables[table];
+      if (selected) {
+        return formatResponse(selected, format, table);
       }
-    });
+    }
+
+    return formatResponse(response, format, 'head_to_head_players');
   } catch (error: any) {
     console.error('Error in production H2H players API:', error);
     return NextResponse.json(

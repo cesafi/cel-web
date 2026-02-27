@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GameDraftService } from '@/services/game-draft';
 import { GameRosterService } from '@/services/game-roster';
+import { formatResponse, getFormatParam, VmixFormat } from '@/lib/utils/vmix-format';
 import { getSupabaseServer } from '@/lib/supabase/server';
 
 /**
@@ -15,6 +16,8 @@ export async function GET(
     try {
         const { gameId: gameIdStr } = await params;
         const gameId = parseInt(gameIdStr, 10);
+        const format = getFormatParam(request);
+        const table = new URL(request.url).searchParams.get('table') as string | null;
 
         if (isNaN(gameId)) {
             return NextResponse.json({ error: 'Invalid game ID' }, { status: 400 });
@@ -81,7 +84,7 @@ export async function GET(
         const esportName = (game.match as any)?.esports_seasons_stages?.esports_categories?.esports?.name || '';
         const seasonId = (game.match as any)?.esports_seasons_stages?.season_id;
         const isValorant = esportName.toLowerCase().includes('valorant');
-        
+
         let characterStatsMap: Record<number, any> = {};
 
         // Collect unique hero/agent IDs from draft actions
@@ -129,8 +132,8 @@ export async function GET(
                             avg_kills: picks > 0 ? (row.total_kills / picks).toFixed(1) : '0.0',
                             avg_deaths: picks > 0 ? (row.total_deaths / picks).toFixed(1) : '0.0',
                             avg_assists: picks > 0 ? (row.total_assists / picks).toFixed(1) : '0.0',
-                            avg_kda: row.total_deaths > 0 
-                                ? ((row.total_kills + row.total_assists) / row.total_deaths).toFixed(2) 
+                            avg_kda: row.total_deaths > 0
+                                ? ((row.total_kills + row.total_assists) / row.total_deaths).toFixed(2)
                                 : (row.total_kills + row.total_assists).toFixed(2),
                         };
                     }
@@ -175,8 +178,8 @@ export async function GET(
                             avg_kills: picks > 0 ? (row.total_kills / picks).toFixed(1) : '0.0',
                             avg_deaths: picks > 0 ? (row.total_deaths / picks).toFixed(1) : '0.0',
                             avg_assists: picks > 0 ? (row.total_assists / picks).toFixed(1) : '0.0',
-                            avg_kda: row.total_deaths > 0 
-                                ? ((row.total_kills + row.total_assists) / row.total_deaths).toFixed(2) 
+                            avg_kda: row.total_deaths > 0
+                                ? ((row.total_kills + row.total_assists) / row.total_deaths).toFixed(2)
                                 : (row.total_kills + row.total_assists).toFixed(2),
                             avg_gold: picks > 0 ? Math.round(row.avg_gold_weighted / picks) : 0,
                             avg_damage: picks > 0 ? Math.round(row.avg_damage_weighted / picks) : 0,
@@ -189,23 +192,58 @@ export async function GET(
             }
         }
 
-        return NextResponse.json({
-            game: {
-                id: game.id,
-                game_number: game.game_number,
-                map_name: (game as any).map_name
-            },
+        const gameInfo = {
+            id: game.id,
+            game_number: game.game_number,
+            map_name: (game as any).map_name
+        };
+
+        // Enrich draft actions with character stats for flat format convenience
+        const enrichedDraftActions = (draftRes.data || []).map((action: any) => {
+            const stats = action.hero_id ? characterStatsMap[action.hero_id] : null;
+            if (!stats) return action;
+            return {
+                ...action,
+                character_name: stats.character_name,
+                character_icon_url: stats.icon_url,
+                character_role: stats.role || null,
+                character_total_picks: stats.total_picks,
+                character_win_rate: stats.win_rate,
+                character_avg_kills: stats.avg_kills,
+                character_avg_deaths: stats.avg_deaths,
+                character_avg_assists: stats.avg_assists,
+                character_avg_kda: stats.avg_kda,
+            };
+        });
+
+        // If a specific table is requested (for vMix single data source per title)
+        if (format !== 'json' && table) {
+            const tables: Record<string, any> = {
+                game: [gameInfo],
+                teams: teams,
+                draft_actions: enrichedDraftActions,
+                rosters: rosterRes.data || [],
+            };
+            const selected = tables[table];
+            if (!selected) {
+                return NextResponse.json(
+                    { error: `Unknown table: ${table}. Available: ${Object.keys(tables).join(', ')}` },
+                    { status: 400 }
+                );
+            }
+            return formatResponse(selected, format, table);
+        }
+
+        // Default: return full payload
+        const fullPayload = {
+            game: gameInfo,
             teams,
-            draft_actions: draftRes.data,
+            draft_actions: enrichedDraftActions,
             rosters: rosterRes.data,
             character_stats: characterStatsMap
-        }, {
-            headers: {
-                // Enable CORS for external overlays
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-store, max-age=0'
-            }
-        });
+        };
+
+        return formatResponse(fullPayload, format, 'draft');
 
     } catch (error) {
         console.error('Error fetching game draft:', error);

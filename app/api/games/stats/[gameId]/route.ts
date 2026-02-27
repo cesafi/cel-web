@@ -3,6 +3,7 @@ import { getValorantStatsByGameId } from '@/actions/stats-valorant';
 import { getMlbbStatsByGameId } from '@/actions/stats-mlbb';
 import { getGameById } from '@/actions/games';
 import { getMatchById } from '@/actions/matches';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +19,8 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    const format = getFormatParam(request);
 
     // 1. Fetch the game to find out which esport it belongs to
     const gameResult = await getGameById(id);
@@ -51,22 +54,17 @@ export async function GET(
         stats = statsResult.data;
       }
     } else {
-       return NextResponse.json(
+      return NextResponse.json(
         { success: false, error: `Statistics are not implemented for sport: ${sport}` },
         { status: 501 }
       );
     }
 
     // 3. Return the data
-    return NextResponse.json(
+    return formatResponse(
       { success: true, data: stats },
-      { 
-        status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-store, max-age=0',
-        }
-      }
+      format,
+      'game_stats'
     );
   } catch (error: any) {
     console.error('Error in game stats API:', error);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get available filter options
@@ -11,6 +12,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const teamId = searchParams.get('teamId') || undefined;
+    const format = getFormatParam(request);
+    const table = searchParams.get('table') as string | null;
 
     const supabase = await getSupabaseServer();
 
@@ -89,7 +92,7 @@ export async function GET(request: NextRequest) {
     // Find live matches
     const liveMatches = (matches || []).filter((m: any) => m.status === 'live');
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       data: {
         seasons: seasons || [],
@@ -107,12 +110,17 @@ export async function GET(request: NextRequest) {
         matches: matches || [],
         live_matches: liveMatches,
       }
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store, max-age=0',
+    };
+
+    // If a specific table is requested (for vMix single data source)
+    if (format !== 'json' && table) {
+      const selected = (responseData.data as any)[table];
+      if (Array.isArray(selected)) {
+        return formatResponse(selected, format, table);
       }
-    });
+    }
+
+    return formatResponse(responseData, format, 'filters');
   } catch (error: any) {
     console.error('Error in production filters API:', error);
     return NextResponse.json(

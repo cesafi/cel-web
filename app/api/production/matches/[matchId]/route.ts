@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MatchesService } from '@/services/matches';
+import { formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
 
 /**
  * Production API: Get match overview (details, participants, scores)
@@ -20,6 +21,8 @@ export async function GET(
       );
     }
 
+    const format = getFormatParam(request);
+
     const result = await MatchesService.getMatchById(id);
 
     if (!result.success || !result.data) {
@@ -29,14 +32,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(
+    return formatResponse(
       { success: true, data: result.data },
-      {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-store, max-age=0',
-        }
-      }
+      format,
+      'match'
     );
   } catch (error: any) {
     console.error('Error in production match overview API:', error);
