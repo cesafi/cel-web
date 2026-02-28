@@ -11,26 +11,26 @@ import { revalidatePath } from 'next/cache';
 export async function validatePublicVetoAccess(matchId: number, teamId: string) {
   try {
     const result = await MatchesService.getMatchById(matchId);
-    
+
     if (!result.success || !result.data) {
       return { success: false, error: 'Match not found' };
     }
-    
+
     const match = result.data;
-    
+
     // Check if the provided teamId is actually part of this match
     let teamSide: 'team1' | 'team2' | undefined;
-    
+
     if (match.match_participants?.[0]?.team_id === teamId) {
       teamSide = 'team1';
     } else if (match.match_participants?.[1]?.team_id === teamId) {
       teamSide = 'team2';
     }
-    
+
     if (!teamSide) {
       return { success: false, error: 'Team is not a participant in this match' };
     }
-    
+
     return {
       success: true as const,
       data: {
@@ -57,7 +57,7 @@ export async function performPublicVeto(
   try {
     // 1. Validate Access
     const result = await validatePublicVetoAccess(matchId, teamId);
-    
+
     if (!result.success) {
       const errorMsg = (result as any).error;
       return { success: false, error: errorMsg || 'Invalid access' };
@@ -65,7 +65,7 @@ export async function performPublicVeto(
 
     const successData = (result as any).data;
     if (!successData) {
-       return { success: false, error: 'Match data not found' };
+      return { success: false, error: 'Match data not found' };
     }
 
     const { match, teamSide } = successData;
@@ -77,7 +77,7 @@ export async function performPublicVeto(
     }
 
     const vetoes = vetoesResult.data;
-    
+
     // Check if map already vetoed
     if (vetoes.some(v => v.map_name === mapName)) {
       return { success: false, error: 'Map has already been selected' };
@@ -125,6 +125,65 @@ export async function performPublicVeto(
 
   } catch (error) {
     console.error('Public Veto Error:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Performs side selection using public access parameters
+ */
+export async function selectPublicVetoSide(
+  matchId: number,
+  teamId: string,
+  vetoId: string,
+  side: 'attack' | 'defense'
+) {
+  try {
+    // 1. Validate Access
+    const result = await validatePublicVetoAccess(matchId, teamId);
+
+    if (!result.success) {
+      const errorMsg = (result as any).error;
+      return { success: false, error: errorMsg || 'Invalid access' };
+    }
+
+    const successData = (result as any).data;
+    if (!successData) {
+      return { success: false, error: 'Match data not found' };
+    }
+
+    const { match } = successData;
+
+    // 2. Fetch Veto
+    const vetoesResult = await ValorantMapVetoService.getByMatchId(match.id);
+    if (!vetoesResult.success || !vetoesResult.data) {
+      return { success: false, error: 'Failed to fetch current match state' };
+    }
+
+    const vetoes = vetoesResult.data;
+    const veto = vetoes.find(v => v.id === vetoId);
+
+    if (!veto) {
+      return { success: false, error: 'Veto not found' };
+    }
+
+    // 3. Update Veto
+    const updateResult = await ValorantMapVetoService.updateById({
+      id: vetoId,
+      side_selected: side
+    });
+
+    if (!updateResult.success) {
+      return { success: false, error: updateResult.error || 'Failed to select side' };
+    }
+
+    revalidatePath(`/veto/${matchId}`);
+    revalidatePath(`/admin/matches/${match.id}`);
+
+    return { success: true };
+
+  } catch (error) {
+    console.error('Public Side Selection Error:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }

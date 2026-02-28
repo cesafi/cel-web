@@ -509,6 +509,13 @@ export function DraftPanel({
     const activeTeam = activeTeamId === team1.id ? team1 : team2;
     const isBanPhase = currentAction?.action === 'ban';
 
+    const leftTeam = blueSideTeamId === team1.id ? team1 : team2;
+    const rightTeam = blueSideTeamId === team1.id ? team2 : team1;
+    const leftTeamPlayers = blueSideTeamId === team1.id ? team1Players : team2Players;
+    const rightTeamPlayers = blueSideTeamId === team1.id ? team2Players : team1Players;
+    const leftTeamRoster = blueSideTeamId === team1.id ? team1Roster : team2Roster;
+    const rightTeamRoster = blueSideTeamId === team1.id ? team2Roster : team1Roster;
+
     return (
         <div className="space-y-6 pb-10">
             {/* Draft Header */}
@@ -519,9 +526,9 @@ export function DraftPanel({
                             variant="outline"
                             className={cn(
                                 'text-sm px-4 py-1.5 border-2',
-                                isBanPhase
-                                    ? 'border-red-500/50 text-red-500 bg-red-500/10'
-                                    : 'border-blue-500/50 text-blue-500 bg-blue-500/10'
+                                activeTeamId === blueSideTeamId
+                                    ? 'border-blue-500/50 text-blue-500 bg-blue-500/10'
+                                    : 'border-red-500/50 text-red-500 bg-red-500/10'
                             )}
                         >
                             <span className="flex items-center gap-2">
@@ -592,25 +599,25 @@ export function DraftPanel({
 
             {/* Main Draft Area */}
             <div className="grid grid-cols-12 gap-4">
-                {/* Team 1 (Left Side Visuals) */}
+                {/* Team 1 (Left Side Visuals / Blue Side) */}
                 <div className="col-span-12 md:col-span-3">
                     <MlbbTeamColumn
-                        team={team1}
-                        // If team1 is blueSide (team1 in sequence), use team1Bans/team1Picks from calculateDraftState
-                        // If team1 is redSide (team2 in sequence), use team2Bans/team2Picks
-                        bans={team1.id === blueSideTeamId ? draftState.team1Bans : draftState.team2Bans}
-                        picks={team1.id === blueSideTeamId ? draftState.team1Picks : draftState.team2Picks}
-                        roster={team1Roster}
-                        players={team1Players || []}
+                        team={leftTeam}
+                        bans={draftState.team1Bans}
+                        picks={draftState.team1Picks}
+                        roster={leftTeamRoster}
+                        players={leftTeamPlayers || []}
                         characters={characters}
                         takenCharacters={takenCharacters}
-                        isActive={activeTeamId === team1.id}
+                        isActive={activeTeamId === leftTeam.id}
+                        activeAction={activeTeamId === leftTeam.id ? currentAction?.action : null}
+                        themeColor="blue"
                         isAdmin={isAdmin}
                         onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeCharacter={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
-                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
-                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
-                        onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: leftTeam.id, playerId: pid, role, sortOrder: idx })}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: leftTeam.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(leftTeam.id, leftTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                 </div>
@@ -669,24 +676,26 @@ export function DraftPanel({
                     </div>
                 </div>
 
-                {/* Team 2 (Right Side Visuals) */}
+                {/* Team 2 (Right Side Visuals / Red Side) */}
                 <div className="col-span-12 md:col-span-3">
                     <MlbbTeamColumn
-                        team={team2}
-                        bans={team2.id === blueSideTeamId ? draftState.team1Bans : draftState.team2Bans}
-                        picks={team2.id === blueSideTeamId ? draftState.team1Picks : draftState.team2Picks}
-                        roster={team2Roster}
-                        players={team2Players || []}
+                        team={rightTeam}
+                        bans={draftState.team2Bans}
+                        picks={draftState.team2Picks}
+                        roster={rightTeamRoster}
+                        players={rightTeamPlayers || []}
                         characters={characters}
                         takenCharacters={takenCharacters}
-                        isActive={activeTeamId === team2.id}
+                        isActive={activeTeamId === rightTeam.id}
+                        activeAction={activeTeamId === rightTeam.id ? currentAction?.action : null}
+                        themeColor="red"
                         isRightSide
                         isAdmin={isAdmin}
                         onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeCharacter={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
-                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
-                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
-                        onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: rightTeam.id, playerId: pid, role, sortOrder: idx })}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: rightTeam.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(rightTeam.id, rightTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                 </div>
@@ -981,7 +990,7 @@ function PlayerPickerPopover({
 // ══════════════════════════════════
 
 function MlbbTeamColumn({
-    team, bans, picks, roster, players, characters, takenCharacters, isActive, isRightSide = false, isAdmin,
+    team, bans, picks, roster, players, characters, takenCharacters, isActive, activeAction, themeColor, isRightSide = false, isAdmin,
     onSwapCharacter, onTradeCharacter, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
 }: {
     team: DraftPanelProps['team1'];
@@ -992,6 +1001,8 @@ function MlbbTeamColumn({
     characters: GameCharacter[];
     takenCharacters: Set<string>;
     isActive: boolean;
+    activeAction?: 'pick' | 'ban' | null;
+    themeColor: 'blue' | 'red';
     isRightSide?: boolean;
     isAdmin: boolean;
     onSwapCharacter: (actionId: string, char: GameCharacter) => void;
@@ -1007,17 +1018,24 @@ function MlbbTeamColumn({
 
     const getHeroIcon = (name: string) => characters.find(c => c.name === name)?.icon_url;
 
+    const nextPickIndex = isActive && activeAction === 'pick' ? picks.length : -1;
+    const nextBanIndex = isActive && activeAction === 'ban' ? bans.length : -1;
+
+    const themeBorderClass = themeColor === 'blue' ? 'border-blue-500' : 'border-red-500';
+    const themeShadowClass = themeColor === 'blue' ? 'shadow-[0_0_12px_rgba(59,130,246,0.2)]' : 'shadow-[0_0_12px_rgba(239,68,68,0.2)]';
+    const themeBgClass = themeColor === 'blue' ? 'bg-blue-500/5' : 'bg-red-500/5';
+
     return (
         <div className={cn("space-y-4", isRightSide ? "text-right" : "text-left")}>
             {/* Team Header */}
             <div className={cn(
                 "relative p-3 rounded-xl border transition-all overflow-hidden",
                 isActive
-                    ? "bg-primary/5 border-primary shadow-[0_0_12px_rgba(var(--primary),0.2)]"
+                    ? `${themeBgClass} ${themeBorderClass} ${themeShadowClass}`
                     : "bg-card border-border"
             )}>
                 {isActive && (
-                    <div className="absolute inset-0 border-2 border-primary rounded-xl animate-pulse pointer-events-none" />
+                    <div className={cn("absolute inset-0 border-2 rounded-xl pointer-events-none", themeBorderClass)} />
                 )}
                 <div className={cn("flex items-center gap-3", isRightSide ? "flex-row-reverse" : "flex-row")}>
                     <div className="w-10 h-10 shrink-0 bg-background rounded-full overflow-hidden border">
@@ -1065,9 +1083,11 @@ function MlbbTeamColumn({
                     return (
                         <div key={i} className="space-y-0.5 group/pick">
                             <div className={cn(
-                                "h-14 relative rounded-lg border flex items-center overflow-hidden transition-colors",
+                                "h-14 relative rounded-lg border flex items-center overflow-hidden transition-all duration-300",
                                 pick ? "border-border bg-muted/20" : "border-border border-dashed bg-muted/10",
-                                isActive && !pick && "border-primary/50 bg-primary/5"
+                                i === nextPickIndex && cn(
+                                    themeBorderClass, themeBgClass, "border-2 shadow-lg animate-pulse"
+                                )
                             )}>
                                 {pick ? (
                                     <>
@@ -1180,8 +1200,11 @@ function MlbbTeamColumn({
                         const icon = ban ? getHeroIcon(ban.hero_name) : null;
                         return (
                             <div key={i} className={cn(
-                                "w-10 h-10 relative rounded-md border flex items-center justify-center overflow-hidden group/ban",
-                                ban ? "border-destructive/40 bg-destructive/5" : "border-border border-dashed bg-muted/30"
+                                "w-10 h-10 relative rounded-md border flex items-center justify-center overflow-hidden group/ban transition-all duration-300",
+                                ban ? "border-destructive/40 bg-destructive/5" : "border-border border-dashed bg-muted/30",
+                                i === nextBanIndex && cn(
+                                    themeBorderClass, themeBgClass, "border-2 shadow-lg animate-pulse"
+                                )
                             )}>
                                 {ban ? (
                                     <>

@@ -133,31 +133,44 @@ export default function MatchDetailPage() {
     // Fetch vetoes from cache manually since this is fired right after a Pick/Ban completes
     const vetoes: any[] = queryClient.getQueryData(['valorant-map-vetoes', matchId]) || [];
     const pickedVetoes = vetoes.filter(v => v.action === 'pick' || v.action === 'remain');
-    
+
     // Map veto text names to map database IDs
     const pickedMapIds = pickedVetoes.map(v => {
       const mapObj = valorantMaps.find(m => m.name === v.map_name);
       return mapObj?.id;
     }).filter(Boolean);
 
-    if (!match?.games || match.games.length === 0) return;
-
-    const sortedGames = [...match.games].sort((a, b) => a.game_number - b.game_number);
+    let sortedGames = match?.games ? [...match.games].sort((a, b) => a.game_number - b.game_number) : [];
     let updateCount = 0;
 
-    for (let i = 0; i < Math.min(pickedMapIds.length, sortedGames.length); i++) {
-       const game = sortedGames[i];
-       const newMapId = pickedMapIds[i];
+    // Auto-create missing games if needed
+    const gamesNeeded = pickedMapIds.length;
+    for (let i = sortedGames.length; i < gamesNeeded; i++) {
+      const result = await createGame({
+        match_id: matchId,
+        game_number: i + 1,
+      });
+      if (result.success && result.data) {
+        sortedGames.push(result.data as any);
+        // We do not increment updateCount here to specifically count map assignments
+      }
+    }
 
-       if (game.valorant_map_id !== newMapId) {
-          await updateGameById({ id: game.id, valorant_map_id: newMapId });
-          updateCount++;
-       }
+    for (let i = 0; i < pickedMapIds.length; i++) {
+      const game = sortedGames[i];
+      if (!game) continue;
+
+      const newMapId = pickedMapIds[i];
+
+      if (game.valorant_map_id !== newMapId) {
+        await updateGameById({ id: game.id, valorant_map_id: newMapId });
+        updateCount++;
+      }
     }
 
     if (updateCount > 0) {
-       toast.success(`Auto-assigned ${updateCount} map(s) to games from Map Veto`);
-       queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+      toast.success(`Auto-assigned ${updateCount} map(s) to games from Map Veto`);
+      queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
     }
   };
 
@@ -230,9 +243,24 @@ export default function MatchDetailPage() {
         {/* Top bar */}
         <div className="px-6 py-4 border-b bg-muted/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant={status.variant} className={status.className}>
-              {status.label}
-            </Badge>
+            <Select
+              value={match.status || 'upcoming'}
+              onValueChange={(val) => handleUpdateMatch({ id: match.id, status: val as any })}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger className={`h-6 text-xs px-2.5 py-0.5 rounded-full border shadow-none font-semibold ${status.className} bg-background w-auto`}>
+                <div className="flex items-center gap-1">
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+                <SelectItem value="live">Live</SelectItem>
+                <SelectItem value="finished">Finished</SelectItem>
+                <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                <SelectItem value="canceled">Canceled</SelectItem>
+              </SelectContent>
+            </Select>
             <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
               {match.esports_seasons_stages?.competition_stage?.replace(/_/g, ' ') || 'Stage'}
             </span>
@@ -541,22 +569,22 @@ export default function MatchDetailPage() {
                           <>
                             <span>•</span>
                             <div onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
-                                <Select
-                                  value={game.valorant_map_id ? String(game.valorant_map_id) : 'unassigned'}
-                                  onValueChange={(val) => handleMapAssign(game.id, val)}
-                                >
-                                  <SelectTrigger className="h-6 text-xs bg-muted/50 border-transparent hover:border-border w-[130px] px-2 py-0">
-                                    <SelectValue placeholder="Assign map" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
-                                    {valorantMaps.map((m: any) => (
-                                      <SelectItem key={m.id} value={String(m.id)}>
-                                        {m.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                              <Select
+                                value={game.valorant_map_id ? String(game.valorant_map_id) : 'unassigned'}
+                                onValueChange={(val) => handleMapAssign(game.id, val)}
+                              >
+                                <SelectTrigger className="h-6 text-xs bg-muted/50 border-transparent hover:border-border w-[130px] px-2 py-0">
+                                  <SelectValue placeholder="Assign map" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
+                                  {valorantMaps.map((m: any) => (
+                                    <SelectItem key={m.id} value={String(m.id)}>
+                                      {m.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </>
                         )}

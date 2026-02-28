@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Ban, 
+import {
+  Ban,
   Check,
   RotateCcw,
   Map,
@@ -31,12 +31,13 @@ import { getVetoSequence, getCurrentVetoStep, VetoAction, GameSide } from '@/lib
 
 // Actions
 import { getActiveValorantMaps } from '@/actions/valorant-maps';
-import { 
-  getValorantMapVetoesByMatchId, 
-  createValorantMapVeto, 
-  deleteValorantMapVetoesByMatchId 
+import {
+  getValorantMapVetoesByMatchId,
+  createValorantMapVeto,
+  deleteValorantMapVetoesByMatchId,
+  updateValorantMapVetoById
 } from '@/actions/valorant-map-vetoes';
-import { performPublicVeto } from '@/actions/veto-public';
+import { performPublicVeto, selectPublicVetoSide } from '@/actions/veto-public';
 import { performMatchCoinToss, resetMatchCoinToss, switchMatchCoinTossWinner } from '@/actions/matches';
 import { ConfirmationModal } from '@/components/shared/confirmation-modal';
 
@@ -170,23 +171,23 @@ export function MapVetoPanel({
 
   // Add veto mutation
   const addVetoMutation = useMutation({
-    mutationFn: async ({ 
-      mapName, 
-      teamId, 
-      action, 
-      sequenceOrder 
-    }: { 
-      mapName: string; 
-      teamId: string; 
+    mutationFn: async ({
+      mapName,
+      teamId,
+      action,
+      sequenceOrder
+    }: {
+      mapName: string;
+      teamId: string;
       action: VetoAction;
       sequenceOrder: number;
     }) => {
-      const result = await createValorantMapVeto({ 
-        match_id: matchId, 
-        map_name: mapName, 
-        team_id: teamId, 
+      const result = await createValorantMapVeto({
+        match_id: matchId,
+        map_name: mapName,
+        team_id: teamId,
         action,
-        sequence_order: sequenceOrder 
+        sequence_order: sequenceOrder
       });
       if (!result.success) throw new Error(result.error);
       return result;
@@ -198,12 +199,12 @@ export function MapVetoPanel({
 
   // Public veto mutation
   const publicVetoMutation = useMutation({
-    mutationFn: async ({ 
-      mapName, 
-      action, 
-      sequenceOrder 
-    }: { 
-      mapName: string; 
+    mutationFn: async ({
+      mapName,
+      action,
+      sequenceOrder
+    }: {
+      mapName: string;
       action: VetoAction;
       sequenceOrder: number;
     }) => {
@@ -221,6 +222,36 @@ export function MapVetoPanel({
     }
   });
 
+  // Side selection mutation
+  const selectSideMutation = useMutation({
+    mutationFn: async ({ vetoId, side }: { vetoId: string, side: GameSide }) => {
+      if (isPublicView) {
+        if (!publicTeamId) throw new Error('No team ID provided');
+        const result = await selectPublicVetoSide(matchId, publicTeamId, vetoId, side);
+        if (!result.success) throw new Error(result.error);
+        return result;
+      } else {
+        const result = await updateValorantMapVetoById({
+          id: vetoId,
+          side_selected: side
+        });
+        if (!result.success) throw new Error(result.error);
+        return result;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
+      toast.success('Side selected successfully');
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    }
+  });
+
+  const handleSideSelect = async (vetoId: string, side: GameSide) => {
+    await selectSideMutation.mutateAsync({ vetoId, side });
+  };
+
   // Reset veto mutation
   const resetVetoMutation = useMutation({
     mutationFn: async () => {
@@ -232,6 +263,7 @@ export function MapVetoPanel({
       queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
       toast.success('Map veto reset successfully');
       setIsResetVetoModalOpen(false);
+      router.refresh();
     },
   });
 
@@ -263,6 +295,7 @@ export function MapVetoPanel({
       return result.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
       toast.success('Coin toss reset successfully');
       setIsResetModalOpen(false);
       router.refresh();
@@ -290,25 +323,55 @@ export function MapVetoPanel({
   });
 
   // Get vetoed map names
-  const vetoedMapNames = useMemo(() => 
+  const vetoedMapNames = useMemo(() =>
     vetoes.map((v: ValorantMapVetoWithTeam) => v.map_name),
     [vetoes]
   );
 
-  // Get current veto step
-  const vetoSequence = getVetoSequence(bestOf);
-  const currentStep = getCurrentVetoStep(vetoes as ValorantMapVetoWithTeam[], bestOf);
-
   // Get available maps (not yet vetoed)
-  const availableMaps = useMemo(() => 
+  const availableMaps = useMemo(() =>
     maps.filter((map: ValorantMap) => !vetoedMapNames.includes(map.name)),
     [maps, vetoedMapNames]
   );
 
+  // Get current veto step
+  const vetoSequence = getVetoSequence(bestOf);
+
+  // Helper to determine which team should pick a side for a given veto
+  const getSideSelectionTeam = (vetoIndex: number) => {
+    const step = vetoSequence[vetoIndex];
+    if (!step) return null;
+
+    // For picks, the other team chooses the side
+    if (step.action === 'pick') {
+      return step.team === 'team1' ? team2.id : team1.id;
+    }
+
+    // For the remaining map (decider), the team that didn't act last chooses
+    if (step.action === 'remain' && vetoIndex > 0) {
+      const lastStep = vetoSequence[vetoIndex - 1];
+      return lastStep.team === 'team1' ? team2.id : team1.id;
+    }
+
+    return null;
+  };
+
+  // Find if there's a pending side selection
+  const pendingSideVeto = vetoes.find((v: ValorantMapVetoWithTeam) => (v.action === 'pick' || v.action === 'remain') && !v.side_selected);
+  let sideSelectionTeamSide: 'team1' | 'team2' | null = null;
+
+  if (pendingSideVeto) {
+    const vetoIndex = vetoes.findIndex((v: ValorantMapVetoWithTeam) => v.id === pendingSideVeto.id);
+    const teamId = getSideSelectionTeam(vetoIndex);
+    sideSelectionTeamSide = teamId === team1.id ? 'team1' : 'team2';
+  }
+
+  const currentStep = pendingSideVeto ? null : getCurrentVetoStep(vetoes as ValorantMapVetoWithTeam[], bestOf);
+
   // Handle map selection
   const handleMapSelect = async (map: ValorantMap) => {
     if (!currentStep) return;
-    
+
     // Auth check
     if (!isAdmin && !isPublicView) return;
     if (isPublicView) {
@@ -363,9 +426,19 @@ export function MapVetoPanel({
       {/* Veto Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          {currentStep ? (
-            <Badge 
-              variant="outline" 
+          {pendingSideVeto ? (
+            <Badge
+              variant="outline"
+              className="text-lg px-4 py-2 border-primary/50 bg-primary/10 text-primary"
+            >
+              <ArrowLeftRight className="w-4 h-4 mr-2 inline" />
+              <span>
+                Side Selection: {sideSelectionTeamSide === 'team1' ? team1.abbreviation : team2.abbreviation} picking side for {pendingSideVeto.map_name}
+              </span>
+            </Badge>
+          ) : currentStep ? (
+            <Badge
+              variant="outline"
               className={cn('text-lg px-4 py-2', actionColors[currentStep.action])}
             >
               {actionIcons[currentStep.action]}
@@ -375,7 +448,7 @@ export function MapVetoPanel({
             </Badge>
           ) : (
             <Badge variant="outline" className="text-lg px-4 py-2 border-green-500/50 text-green-400 bg-green-500/10">
-              <Check className="w-4 h-4 mr-2" />
+              <Check className="w-4 h-4 mr-2 inline" />
               Veto Complete
             </Badge>
           )}
@@ -412,7 +485,7 @@ export function MapVetoPanel({
         )}
       </div>
 
-      <ConfirmationModal 
+      <ConfirmationModal
         open={isResetVetoModalOpen}
         onOpenChange={setIsResetVetoModalOpen}
         title="Reset Map Veto Sequence?"
@@ -436,15 +509,15 @@ export function MapVetoPanel({
                 <span className="text-4xl font-bold text-muted-foreground/30">?</span>
               )}
             </div>
-            
+
             <div className="text-center max-w-sm">
               <p className="text-muted-foreground mb-6">
                 A coin toss determines which team gets the opening advantage in the Map Veto sequence.
               </p>
-              
+
               {isAdmin ? (
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="w-full text-lg shadow-lg hover:shadow-xl transition-all"
                   onClick={() => coinTossMutation.mutate()}
                   disabled={isTossing || coinTossMutation.isPending}
@@ -476,8 +549,8 @@ export function MapVetoPanel({
             </div>
             {isAdmin && (
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setIsSwitchModalOpen(true)}
                   disabled={switchCoinTossMutation.isPending}
@@ -485,8 +558,8 @@ export function MapVetoPanel({
                   <ArrowLeftRight className="w-4 h-4 mr-2" />
                   Switch Winner
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
                   onClick={() => setIsResetModalOpen(true)}
                   disabled={resetCoinTossMutation.isPending}
@@ -498,7 +571,7 @@ export function MapVetoPanel({
             )}
           </div>
 
-          <ConfirmationModal 
+          <ConfirmationModal
             open={isResetModalOpen}
             onOpenChange={setIsResetModalOpen}
             title="Reset Coin Toss?"
@@ -509,7 +582,7 @@ export function MapVetoPanel({
             variant="destructive"
           />
 
-          <ConfirmationModal 
+          <ConfirmationModal
             open={isSwitchModalOpen}
             onOpenChange={setIsSwitchModalOpen}
             title="Switch Winner?"
@@ -524,77 +597,92 @@ export function MapVetoPanel({
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Veto Sequence</CardTitle>
             </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {vetoSequence.map((step, index) => {
-              const veto = vetoes[index] as ValorantMapVetoWithTeam | undefined;
-              const isCompleted = !!veto;
-              const isCurrent = index === vetoes.length;
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                {vetoSequence.map((step, index) => {
+                  const veto = vetoes[index] as ValorantMapVetoWithTeam | undefined;
+                  const isCompleted = !!veto;
+                  const isPendingSide = isCompleted && ['pick', 'remain'].includes(veto.action) && !veto.side_selected;
+                  const isCurrent = pendingSideVeto ? isPendingSide : index === vetoes.length;
 
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all',
-                    isCompleted && actionColors[step.action],
-                    isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-                    !isCompleted && !isCurrent && 'border-dashed border-muted-foreground/30 text-muted-foreground'
-                  )}
-                >
-                  <div className="flex items-center gap-1">
-                    {actionIcons[step.action]}
-                    <span className="text-sm font-medium">
-                      {step.team === 'team1' ? team1.abbreviation : team2.abbreviation}
-                    </span>
-                  </div>
-                  {isCompleted && veto && (
-                    <Badge variant="secondary" className="text-xs">
-                      {veto.map_name}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all',
+                        isCompleted && actionColors[step.action],
+                        // If it's waiting for side, highlight with pulse
+                        isPendingSide && 'ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse',
+                        isCurrent && !isPendingSide && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+                        !isCompleted && !isCurrent && 'border-dashed border-muted-foreground/30 text-muted-foreground'
+                      )}
+                    >
+                      <div className="flex items-center gap-1">
+                        {actionIcons[step.action]}
+                        <span className="text-sm font-medium">
+                          {step.team === 'team1' ? team1.abbreviation : team2.abbreviation}
+                        </span>
+                      </div>
+                      {isCompleted && veto && (
+                        <Badge variant="secondary" className="text-xs">
+                          {veto.map_name}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Map Pool Grid */}
-      <Card className="bg-gradient-to-b from-background to-muted/20 border-muted">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Map Pool</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {maps.map((map: ValorantMap) => {
-              const veto = vetoes.find((v: ValorantMapVetoWithTeam) => v.map_name === map.name) as ValorantMapVetoWithTeam | undefined;
-              const isBanned = veto?.action === 'ban';
-              const isPicked = veto?.action === 'pick';
-              const isRemaining = veto?.action === 'remain';
-              const isAvailable = !vetoedMapNames.includes(map.name);
-              
-              // Interaction logic
-              const isMyTurn = isPublicView ? currentStep?.team === userSide : isAdmin;
-              const canSelect = isAvailable && isMyTurn && !!currentStep;
+          {/* Map Pool Grid */}
+          <Card className="bg-gradient-to-b from-background to-muted/20 border-muted">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Map Pool</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {maps.map((map: ValorantMap) => {
+                  const veto = vetoes.find((v: ValorantMapVetoWithTeam) => v.map_name === map.name) as ValorantMapVetoWithTeam | undefined;
+                  const isBanned = veto?.action === 'ban';
+                  const isPicked = veto?.action === 'pick';
+                  const isRemaining = veto?.action === 'remain';
+                  const isAvailable = !vetoedMapNames.includes(map.name);
 
-              return (
-                <MapCard
-                  key={map.id}
-                  map={map}
-                  veto={veto}
-                  isBanned={isBanned}
-                  isPicked={isPicked}
-                  isRemaining={isRemaining}
-                  isSelectable={canSelect}
-                  vetoedByTeam={veto?.schools_teams?.schools?.abbreviation}
-                  onClick={() => handleMapSelect(map)}
-                />
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-      </>
+                  // Interaction logic
+                  const isMyTurn = isPublicView ? currentStep?.team === userSide : isAdmin;
+                  const canSelect = !pendingSideVeto && isAvailable && isMyTurn && !!currentStep;
+
+                  // Side selection logic
+                  let canSelectSide = false;
+                  if (pendingSideVeto && pendingSideVeto.id === veto?.id) {
+                    if (isAdmin) {
+                      canSelectSide = true;
+                    } else if (isPublicView && sideSelectionTeamSide === userSide) {
+                      canSelectSide = true;
+                    }
+                  }
+
+                  return (
+                    <MapCard
+                      key={map.id}
+                      map={map}
+                      veto={veto}
+                      isBanned={isBanned}
+                      isPicked={isPicked}
+                      isRemaining={isRemaining}
+                      isSelectable={canSelect}
+                      canSelectSide={canSelectSide}
+                      vetoedByTeam={veto?.schools_teams?.schools?.abbreviation}
+                      onClick={() => handleMapSelect(map)}
+                      onSelectSide={(side) => veto?.id ? handleSideSelect(veto.id, side) : null}
+                    />
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
@@ -608,31 +696,46 @@ interface MapCardProps {
   isPicked: boolean;
   isRemaining: boolean;
   isSelectable: boolean;
+  canSelectSide?: boolean;
   vetoedByTeam?: string;
   onClick: () => void;
+  onSelectSide?: (side: GameSide) => void;
 }
 
-function MapCard({ 
-  map, 
+function MapCard({
+  map,
   veto,
-  isBanned, 
-  isPicked, 
+  isBanned,
+  isPicked,
   isRemaining,
-  isSelectable, 
+  isSelectable,
+  canSelectSide,
   vetoedByTeam,
-  onClick 
+  onClick,
+  onSelectSide
 }: MapCardProps) {
   return (
-    <button
-      onClick={onClick}
-      disabled={!isSelectable}
+    <div
+      onClick={() => {
+        if (isSelectable) onClick();
+      }}
+      role="button"
+      tabIndex={isSelectable ? 0 : -1}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (isSelectable) onClick();
+        }
+      }}
       className={cn(
-        'relative group aspect-video rounded-xl overflow-hidden border-2 transition-all duration-200',
+        'relative group aspect-video rounded-xl overflow-hidden border-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         isSelectable && 'hover:scale-105 hover:shadow-xl hover:z-10 cursor-pointer',
+        (!isSelectable && !canSelectSide) && 'cursor-default',
         isBanned && 'border-red-500/50 grayscale',
         isPicked && 'border-green-500 ring-2 ring-green-500/30',
         isRemaining && 'border-amber-500 ring-2 ring-amber-500/30',
-        !isBanned && !isPicked && !isRemaining && 'border-muted hover:border-primary'
+        !isBanned && !isPicked && !isRemaining && 'border-muted',
+        (isSelectable || canSelectSide) && !isBanned && !isPicked && !isRemaining && 'hover:border-primary'
       )}
     >
       {/* Map Image */}
@@ -660,10 +763,10 @@ function MapCard({
           {isBanned && <Ban className="w-10 h-10 text-red-500" />}
           {isPicked && <Check className="w-10 h-10 text-green-500" />}
           {isRemaining && <Map className="w-10 h-10 text-amber-500" />}
-          
+
           {vetoedByTeam && (
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={cn(
                 'mt-2',
                 isBanned && 'border-red-500/50 text-red-400',
@@ -677,13 +780,37 @@ function MapCard({
 
           {/* Side Selection for picked maps */}
           {(isPicked || isRemaining) && veto?.side_selected && (
-            <div className="mt-2 flex items-center gap-1">
+            <div className="mt-2 flex items-center gap-1 bg-black/50 px-2 py-1 rounded-md">
               {veto.side_selected === 'attack' ? (
                 <Sword className="w-4 h-4 text-orange-400" />
               ) : (
                 <Shield className="w-4 h-4 text-blue-400" />
               )}
               <span className="text-xs capitalize">{veto.side_selected}</span>
+            </div>
+          )}
+
+          {/* Side Selection Buttons */}
+          {(isPicked || isRemaining) && !veto?.side_selected && canSelectSide && (
+            <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 bg-black/50 border-orange-500/50 hover:bg-orange-500/20 hover:text-orange-400 text-white"
+                onClick={() => onSelectSide?.('attack')}
+              >
+                <Sword className="w-3 h-3 mr-1 text-orange-400" />
+                Attack
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 bg-black/50 border-blue-500/50 hover:bg-blue-500/20 hover:text-blue-400 text-white"
+                onClick={() => onSelectSide?.('defense')}
+              >
+                <Shield className="w-3 h-3 mr-1 text-blue-400" />
+                Defense
+              </Button>
             </div>
           )}
         </div>
@@ -696,13 +823,13 @@ function MapCard({
 
       {/* Hover Effect */}
       {isSelectable && (
-        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-          <span className="text-white font-bold text-lg bg-black/50 px-4 py-2 rounded-lg">
+        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+          <span className="text-white font-bold text-lg bg-black/50 px-4 py-2 rounded-lg pointer-events-none">
             Select
           </span>
         </div>
       )}
-    </button>
+    </div>
   );
 }
 

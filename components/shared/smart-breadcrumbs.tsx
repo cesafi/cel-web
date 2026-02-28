@@ -83,20 +83,38 @@ export default function SmartBreadcrumbs({
 
     // Build breadcrumbs from path segments
     let currentPath = '';
-    pathSegments.forEach((segment, index) => {
+
+    for (let index = 0; index < pathSegments.length; index++) {
+      const segment = pathSegments[index];
       currentPath += `/${segment}`;
 
       // Skip the first segment if it matches the role's base path since we already have Home
       const roleBasePath = dashboardInfo.href.replace('/', '');
       if (index === 0 && segment === roleBasePath) {
-        return;
+        continue;
       }
 
       // Format the segment label (capitalize, replace hyphens with spaces)
-      const label = segment
+      let label = segment
         .split('-')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+
+      // Smart formatting for IDs
+      if (!isNaN(Number(segment))) {
+        const prevSegment = index > 0 ? pathSegments[index - 1] : '';
+        if (prevSegment === 'matches') label = `Match ${segment}`;
+        else if (prevSegment === 'games') label = `Game ${segment}`;
+        else if (prevSegment === 'teams') label = `Team ${segment}`;
+        else if (prevSegment === 'tournaments') label = `Tournament ${segment}`;
+        else if (prevSegment === 'users') label = `User ${segment}`;
+      }
+
+      // Omit redundant plural segments in a nested resource path
+      // e.g. /matches/123/games/456 -> skip 'games'
+      if (segment === 'games' && index > 1 && pathSegments[index - 2] === 'matches') {
+        continue;
+      }
 
       const isCurrent = index === pathSegments.length - 1;
 
@@ -105,7 +123,7 @@ export default function SmartBreadcrumbs({
         href: isCurrent ? undefined : currentPath,
         isCurrent
       });
-    });
+    }
 
     return breadcrumbs;
   };
@@ -120,13 +138,13 @@ export default function SmartBreadcrumbs({
 
     // Always show first item (home)
     const firstItem = allBreadcrumbs[0];
-    
+
     // Always show last item (current page)
     const lastItem = allBreadcrumbs[allBreadcrumbs.length - 1];
-    
+
     // Calculate how many middle items we can show
     const middleItemsCount = maxVisibleItems - 2; // -2 for first and last
-    
+
     // Show some middle items if possible
     let middleItems: BreadcrumbItem[] = [];
     if (middleItemsCount > 0) {
@@ -136,17 +154,17 @@ export default function SmartBreadcrumbs({
     }
 
     const result: (BreadcrumbItem | 'ellipsis')[] = [firstItem];
-    
+
     if (middleItems.length > 0) {
       result.push(...middleItems);
     }
-    
+
     if (allBreadcrumbs.length > maxVisibleItems) {
       result.push('ellipsis');
     }
-    
+
     result.push(lastItem);
-    
+
     return result;
   };
 

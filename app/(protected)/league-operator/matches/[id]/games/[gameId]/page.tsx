@@ -267,7 +267,7 @@ export default function LeagueOperatorGameDetailPage() {
             )}
 
             {/* ── Game Attributes Editor ── */}
-            {team1 && team2 && (
+            {team1 && team2 && !isValorant && (
                 <div className="rounded-xl border bg-card p-5 space-y-4">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <Swords className="h-4 w-4" />

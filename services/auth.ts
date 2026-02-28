@@ -48,7 +48,7 @@ export class AuthService extends BaseService {
   static async logout(): Promise<ServiceResponse<undefined>> {
     try {
       const supabase = await this.getClient();
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
 
       if (error) {
         return { success: false, error: error.message };

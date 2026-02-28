@@ -17,6 +17,7 @@ import { Loader2, Upload, Save, RefreshCcw, Coins, FileImage, ShieldAlert, Sword
 import { toast } from 'sonner';
 import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
+import { cn } from '@/lib/utils';
 
 interface MlbbStatsUploadProps {
   gameId: number;
@@ -288,6 +289,59 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
     setPlayerMapping(newMapping);
     setHeroMapping(newHeroMapping);
+
+    // Auto-map draft mapping after setting initial mappings
+    if (gameDraftActions) {
+      setPreviewData(prevData => {
+        const newPlayers = [...prevData.players];
+        const updatedHeroMapping = { ...newHeroMapping };
+
+        for (let i = 0; i < 10; i++) {
+          const pId = newMapping[i.toString()];
+          if (pId) {
+            const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
+            if (pickAction && pickAction.hero_name) {
+              const matchedChar = chars?.find((c: any) => c.name.toLowerCase() === pickAction.hero_name?.toLowerCase());
+              if (matchedChar) {
+                updatedHeroMapping[i.toString()] = matchedChar.id.toString();
+                newPlayers[i].heroName = matchedChar.name;
+              }
+            }
+          }
+        }
+        setHeroMapping(updatedHeroMapping);
+        return { ...prevData, players: newPlayers };
+      });
+    }
+  };
+
+  const handleCopyFromDraft = () => {
+    if (!gameDraftActions || gameDraftActions.length === 0) {
+      toast.error('No draft data available for this game.');
+      return;
+    }
+
+    setPreviewData(prevData => {
+      const newPlayers = [...prevData.players];
+      const newHeroMapping = { ...heroMapping };
+
+      for (let i = 0; i < 10; i++) {
+        const pId = playerMapping[i.toString()];
+        if (pId && pId !== 'skip') {
+          const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
+          if (pickAction && pickAction.hero_name) {
+            const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pickAction.hero_name?.toLowerCase());
+            if (matchingChar) {
+              newHeroMapping[i.toString()] = matchingChar.id.toString();
+              newPlayers[i].heroName = matchingChar.name;
+            }
+          }
+        }
+      }
+      setHeroMapping(newHeroMapping);
+      return { ...prevData, players: newPlayers };
+    });
+    toast.success('Heroes mapped from draft');
   };
 
   // Handle manual stat edits
@@ -539,38 +593,44 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                 </Badge>
               </div>
             </div>
-            <Button variant="outline" onClick={() => {
-              // Reset simply clears uploaded data and re-initializes empty framework
-              setPreviewData(() => {
-                return {
-                  matchResult: 'VICTORY',
-                  duration: '',
-                  score: { blue: 0, red: 0 },
-                  players: Array.from({ length: 10 }).map((_, i) => ({
-                    playerName: '',
-                    team: i < 5 ? 'Blue' : 'Red',
-                    heroName: '',
-                    kda: { kills: 0, deaths: 0, assists: 0 },
-                    gold: 0,
-                    rating: 0,
-                    badge: null,
-                    damageDealt: 0,
-                    turretDamage: 0,
-                    damageTaken: 0,
-                    teamfight: 0,
-                    turtlesSlain: 0,
-                    lordsSlain: 0
-                  }))
-                };
-              });
-              setEquipmentFile(null);
-              setDataFile(null);
-              setMvpIndex(null);
-              setHeroMapping({});
-            }}>
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Reset
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={handleCopyFromDraft}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Copy from Draft
+              </Button>
+              <Button variant="outline" onClick={() => {
+                // Reset simply clears uploaded data and re-initializes empty framework
+                setPreviewData(() => {
+                  return {
+                    matchResult: 'VICTORY',
+                    duration: '',
+                    score: { blue: 0, red: 0 },
+                    players: Array.from({ length: 10 }).map((_, i) => ({
+                      playerName: '',
+                      team: i < 5 ? 'Blue' : 'Red',
+                      heroName: '',
+                      kda: { kills: 0, deaths: 0, assists: 0 },
+                      gold: 0,
+                      rating: 0,
+                      badge: null,
+                      damageDealt: 0,
+                      turretDamage: 0,
+                      damageTaken: 0,
+                      teamfight: 0,
+                      turtlesSlain: 0,
+                      lordsSlain: 0
+                    }))
+                  };
+                });
+                setEquipmentFile(null);
+                setDataFile(null);
+                setMvpIndex(null);
+                setHeroMapping({});
+              }}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Reset
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-md border">
@@ -825,8 +885,4 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
       )}
     </div>
   );
-}
-
-function cn(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(' ');
 }

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
 import { cn } from '@/lib/utils';
+import { getGameCharactersByEsportId } from '@/actions/game-characters';
 
 interface ValorantStatsUploadProps {
   gameId: number;
@@ -95,10 +96,30 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
   const [mvpIndex, setMvpIndex] = useState<number | null>(null);
 
   const { data: gameDraftActions } = useGameDraftActions(gameId);
-  const { data: gameCharacters } = useAllGameCharactersWithEsport();
+  const { data: globalCharacters } = useAllGameCharactersWithEsport();
+  const [gameCharacters, setGameCharacters] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchAgents() {
+      const res = await getGameCharactersByEsportId(2); // ES_ID_VALORANT = 2
+      if (res.success && res.data) {
+        setGameCharacters(res.data);
+      }
+    }
+    fetchAgents();
+  }, []);
 
   const [isFetchingStats, setIsFetchingStats] = useState(true);
   const hasFetched = useRef(false);
+
+  // Helper to fetch agent by name or ID
+  const getAgent = (idOrName: string | number) => {
+    if (!gameCharacters.length) return undefined;
+    if (typeof idOrName === 'number' || !isNaN(Number(idOrName))) {
+      return gameCharacters.find(c => c.id === Number(idOrName));
+    }
+    return gameCharacters.find(c => c.name.toLowerCase() === idOrName.toLowerCase());
+  };
 
   useEffect(() => {
     if (hasFetched.current || !gameDraftActions || !gameCharacters) return;
@@ -150,12 +171,12 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
               newPlayerMapping[slot.toString()] = stat.player_id;
               if (stat.is_mvp) mvpIdx = slot;
 
-              const char = gameCharacters?.find(c => c.id === stat.game_character_id);
+              const char = getAgent(stat.game_character_id ?? 0) || globalCharacters?.find(c => c.id === stat.game_character_id);
 
               newPreviewDataPlayers[slot] = {
                 playerName: stat.players?.ign || `Player ${slot + 1}`,
                 team: slot < 5 ? 'Ally' : 'Enemy',
-                agentName: char?.name || '',
+                agentName: char?.id?.toString() || '',
                 acs: stat.acs ?? 0,
                 kda: {
                   kills: stat.kills ?? 0,
@@ -181,8 +202,14 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
               const pId = playerMapping[i.toString()];
               if (pId) {
                 const pickAction = gameDraftActions?.find(a => a.action_type === 'pick' && a.player_id === pId);
-                if (pickAction && pickAction.hero_name) {
-                  newPlayers[i].agentName = pickAction.hero_name;
+                // In game drafts for Valorant, hero_id is stored instead of hero_name usually, or we can look it up
+                if (pickAction && pickAction.hero_id) {
+                  newPlayers[i].agentName = pickAction.hero_id.toString();
+                } else if (pickAction && pickAction.hero_name) {
+                  const matchedAgent = getAgent(pickAction.hero_name);
+                  if (matchedAgent) {
+                    newPlayers[i].agentName = matchedAgent.id.toString();
+                  }
                 }
               }
             }
@@ -247,6 +274,55 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
     });
 
     setPlayerMapping(newMapping);
+
+    // Auto-map draft
+    if (gameDraftActions) {
+      setPreviewData(prevData => {
+        const newPlayers = [...prevData.players];
+        for (let i = 0; i < 10; i++) {
+          const pId = newMapping[i.toString()];
+          if (pId) {
+            const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
+            if (pickAction && pickAction.hero_id) {
+              newPlayers[i].agentName = pickAction.hero_id.toString();
+            } else if (pickAction && pickAction.hero_name) {
+              const matchedAgent = getAgent(pickAction.hero_name);
+              if (matchedAgent) {
+                newPlayers[i].agentName = matchedAgent.id.toString();
+              }
+            }
+          }
+        }
+        return { ...prevData, players: newPlayers };
+      });
+    }
+  };
+
+  const handleCopyFromDraft = () => {
+    if (!gameDraftActions || gameDraftActions.length === 0) {
+      toast.error('No draft data available for this game.');
+      return;
+    }
+
+    setPreviewData(prevData => {
+      const newPlayers = [...prevData.players];
+      for (let i = 0; i < 10; i++) {
+        const pId = playerMapping[i.toString()];
+        if (pId && pId !== 'skip') {
+          const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
+          if (pickAction && pickAction.hero_id) {
+            newPlayers[i].agentName = pickAction.hero_id.toString();
+          } else if (pickAction && pickAction.hero_name) {
+            const matchedAgent = getAgent(pickAction.hero_name);
+            if (matchedAgent) {
+              newPlayers[i].agentName = matchedAgent.id.toString();
+            }
+          }
+        }
+      }
+      return { ...prevData, players: newPlayers };
+    });
+    toast.success('Agents mapped from draft');
   };
 
   // Handle manual stat edits
@@ -296,7 +372,7 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
 
           const teamId = playerInTeam1 ? team1.id : playerInTeam2 ? team2.id : null;
 
-          const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === stat.agentName.toLowerCase());
+          const matchingChar = getAgent(stat.agentName);
 
           return {
             game_id: gameId,
@@ -448,45 +524,51 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                 </Badge>
               </div>
             </div>
-            <Button variant="outline" onClick={() => {
-              setPreviewData(() => {
-                const allPlayers = [...team1.players, ...team2.players];
-                return {
-                  matchResult: 'VICTORY',
-                  matchDuration: '',
-                  mapName: '',
-                  score: { ally: 0, enemy: 0 },
-                  players: Array.from({ length: 10 }).map((_, i) => ({
-                    playerName: '',
-                    team: i < 5 ? 'Ally' : 'Enemy',
-                    agentName: '',
-                    acs: 0,
-                    kda: { kills: 0, deaths: 0, assists: 0 },
-                    firstBloods: 0
-                  }))
-                };
-              });
-              setMvpIndex(null);
-            }}>
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Reset
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={handleCopyFromDraft}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Copy Agents from Draft
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                setPreviewData(() => {
+                  const allPlayers = [...team1.players, ...team2.players];
+                  return {
+                    matchResult: 'VICTORY',
+                    matchDuration: '',
+                    mapName: '',
+                    score: { ally: 0, enemy: 0 },
+                    players: Array.from({ length: 10 }).map((_, i) => ({
+                      playerName: '',
+                      team: i < 5 ? 'Ally' : 'Enemy',
+                      agentName: '',
+                      acs: 0,
+                      kda: { kills: 0, deaths: 0, assists: 0 },
+                      firstBloods: 0
+                    }))
+                  };
+                });
+                setMvpIndex(null);
+              }}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Reset
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Extracted Name</TableHead>
-                  <TableHead>Agent</TableHead>
+                  <TableHead className="w-[180px]">Player & Team</TableHead>
+                  <TableHead className="w-[120px]">Agent</TableHead>
+                  <TableHead className="w-[60px] text-center">MVP</TableHead>
                   <TableHead>ACS</TableHead>
-                  <TableHead className="w-[180px]">K / D / A</TableHead>
+                  <TableHead className="w-[160px] text-center">K / D / A</TableHead>
                   <TableHead>Econ</TableHead>
                   <TableHead>FB</TableHead>
                   <TableHead>PL</TableHead>
                   <TableHead>DF</TableHead>
                   <TableHead className="w-[200px]">Map to Player</TableHead>
-                  <TableHead>Team</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -499,13 +581,7 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span className="flex items-center gap-2">
-                            <Checkbox
-                              checked={mvpIndex === index}
-                              onCheckedChange={() => setMvpIndex(index)}
-                              className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-                            />
                             {stat.playerName}
-                            {mvpIndex === index && <Badge className="bg-yellow-500 hover:bg-yellow-600 text-[10px] px-1 h-5">MVP</Badge>}
                           </span>
                           <div className="flex items-center gap-1.5 mt-1">
                             <div className={cn("w-2 h-2 rounded-full", stat.team === 'Ally' ? "bg-blue-500" : "bg-red-500")} />
@@ -513,11 +589,28 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Input
+                        <Select
                           value={stat.agentName}
-                          onChange={(e) => handleStatChange(index, 'agentName', e.target.value)}
-                          className="h-8 w-[100px]"
-                        />
+                          onValueChange={(value) => handleStatChange(index, 'agentName', value)}
+                        >
+                          <SelectTrigger className="h-8 w-[120px]">
+                            <SelectValue placeholder="Agent" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {gameCharacters.map(char => (
+                              <SelectItem key={char.id} value={char.id.toString()}>{char.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={mvpIndex === index}
+                            onCheckedChange={() => setMvpIndex(index)}
+                            className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Input
@@ -594,13 +687,23 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
 
                             if (value !== 'skip' && gameDraftActions) {
                               const pickAction = gameDraftActions?.find(a => a.action_type === 'pick' && a.player_id === value);
-                              if (pickAction && pickAction.hero_name) {
+                              if (pickAction && pickAction.hero_id) {
                                 setPreviewData(prevData => {
                                   if (!prevData) return prevData;
                                   const newPlayers = [...prevData.players];
-                                  newPlayers[index] = { ...newPlayers[index], agentName: pickAction.hero_name! };
+                                  newPlayers[index] = { ...newPlayers[index], agentName: pickAction.hero_id!.toString() };
                                   return { ...prevData, players: newPlayers };
                                 });
+                              } else if (pickAction && pickAction.hero_name) {
+                                const matchedAgent = getAgent(pickAction.hero_name);
+                                if (matchedAgent) {
+                                  setPreviewData(prevData => {
+                                    if (!prevData) return prevData;
+                                    const newPlayers = [...prevData.players];
+                                    newPlayers[index] = { ...newPlayers[index], agentName: matchedAgent.id.toString() };
+                                    return { ...prevData, players: newPlayers };
+                                  });
+                                }
                               }
                             }
                           }}
@@ -625,17 +728,11 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                             ))}
                           </SelectContent>
                         </Select>
-                      </TableCell>
-                      <TableCell>
                         {team ? (
-                          <Badge variant="outline">{team.abbreviation}</Badge>
+                          <div className="mt-1 text-[10px] text-muted-foreground font-medium">Mapped to • {team.abbreviation}</div>
                         ) : mappedPlayerId === 'skip' ? (
-                          <Badge variant="secondary">Skipped</Badge>
-                        ) : mappedPlayerId ? (
-                          <Badge variant="destructive">Unknown Team</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+                          <div className="mt-1 text-[10px] text-muted-foreground font-medium text-amber-500">Row Skipped</div>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -660,7 +757,8 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
             </Button>
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }

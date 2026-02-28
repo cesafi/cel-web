@@ -16,7 +16,8 @@ import { useStageTeams } from '@/hooks/use-stage-teams';
 import { generateMatchName, generateMatchDescription } from '@/lib/utils/match-naming';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DateTimeInput } from '@/components/ui/datetime-input';
-import { Power } from 'lucide-react';
+import { Power, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { utcToLocal } from '@/lib/utils/utc-time';
 
 interface MatchModalProps {
@@ -39,8 +40,6 @@ export function MatchModal({
   isSubmitting
 }: MatchModalProps) {
   const { data: stages } = useAllEsportsSeasonsStages();
-  const { data: availableTeams = [], isLoading: teamsLoading } = useStageTeams(selectedStageId || 0);
-
   const [formData, setFormData] = useState<MatchInsert | MatchUpdate>({
     name: '',
     description: '',
@@ -52,13 +51,35 @@ export function MatchModal({
     best_of: 1,
     status: 'upcoming'
   });
+
+  const { data: availableTeams = [], isLoading: teamsLoading } = useStageTeams(formData.stage_id || selectedStageId || 0);
+
+  const [filterEsportId, setFilterEsportId] = useState<string>('all');
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const hasStartedCreating = useRef(false);
   const hasStartedUpdating = useRef(false);
 
-  const selectedStage = stages?.find(stage => stage.id === selectedStageId);
+  const selectedStage = stages?.find(stage => stage.id === formData.stage_id);
+
+  const uniqueEsports = Array.from(new Map<number, any>(
+    (stages || [])
+      .filter(s => s.esports_categories?.esports)
+      .map(s => [s.esports_categories!.esports!.id, s.esports_categories!.esports])
+  ).values());
+
+  const uniqueCategories = Array.from(new Map<number, any>(
+    (stages || [])
+      .filter(s => s.esports_categories && (filterEsportId === 'all' || s.esports_categories.esports?.id?.toString() === filterEsportId))
+      .map(s => [s.esports_categories!.id, s.esports_categories])
+  ).values());
+
+  const filteredStages = (stages || []).filter(s =>
+    (filterEsportId === 'all' || s.esports_categories?.esports?.id?.toString() === filterEsportId) &&
+    (filterCategoryId === 'all' || s.esports_categories?.id?.toString() === filterCategoryId)
+  );
 
   const handleClose = useCallback(() => {
     setErrors({});
@@ -117,13 +138,11 @@ export function MatchModal({
           venue: match.venue,
           stage_id: match.stage_id,
           stream_url: match.stream_url || '',
-          scheduled_at: match.scheduled_at ? utcToLocal(match.scheduled_at).toISOString().slice(0, 16) : null,
-          start_at: match.start_at ? utcToLocal(match.start_at).toISOString().slice(0, 16) : null,
-          end_at: match.end_at ? utcToLocal(match.end_at).toISOString().slice(0, 16) : null,
+          scheduled_at: match.scheduled_at || null,
+          start_at: match.start_at || null,
+          end_at: match.end_at || null,
           best_of: match.best_of,
-          coin_toss_winner_id: match.coin_toss_winner_id || null,
-          coin_toss_result: match.coin_toss_result || null,
-          status: 'upcoming'
+          status: match.status || 'upcoming'
         });
         setSelectedTeamIds(
           ((match.match_participants as any[]) || [])
@@ -141,8 +160,6 @@ export function MatchModal({
           start_at: null,
           end_at: null,
           best_of: 1,
-          coin_toss_winner_id: null,
-          coin_toss_result: null,
           status: 'upcoming'
         });
         setSelectedTeamIds([]);
@@ -152,6 +169,17 @@ export function MatchModal({
       hasStartedUpdating.current = false;
     }
   }, [open, mode, match, selectedStageId]);
+
+  // Set initial filter states
+  useEffect(() => {
+    if (open && formData.stage_id && stages?.length) {
+      const currentStage = stages.find(s => s.id === formData.stage_id);
+      if (currentStage) {
+        setFilterEsportId(currentStage.esports_categories?.esports?.id?.toString() || 'all');
+        setFilterCategoryId(currentStage.esports_categories?.id?.toString() || 'all');
+      }
+    }
+  }, [open, formData.stage_id, stages]);
 
   // Handle mutation completion
   useEffect(() => {
@@ -251,26 +279,79 @@ export function MatchModal({
       }
     >
       <form id="match-form" onSubmit={handleSubmit} className="space-y-6">
-        {/* League Stage Display */}
-        {selectedStage && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                League Stage
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="p-3 bg-muted rounded-lg text-sm">
-                <div className="font-medium">
-                  {selectedStage.competition_stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </div>
-                <div className="text-muted-foreground">
-                  Stage ID: {selectedStage.id}
-                </div>
+        {/* League Stage Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              League Stage
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-4">
+              <div className="space-y-2">
+                <Label>Esport</Label>
+                <Select value={filterEsportId} onValueChange={(val) => {
+                  setFilterEsportId(val);
+                  setFilterCategoryId('all'); // Reset category when esport changes
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Esports" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Esports</SelectItem>
+                    {uniqueEsports.map(esport => esport && (
+                      <SelectItem key={esport.id} value={esport.id.toString()}>
+                        {esport.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={filterCategoryId} onValueChange={setFilterCategoryId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {uniqueCategories.map(cat => cat && (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.division} ({cat.levels})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Stage *</Label>
+                <Select
+                  value={formData.stage_id ? formData.stage_id.toString() : ''}
+                  onValueChange={(val) => {
+                    setFormData(prev => ({ ...prev, stage_id: parseInt(val) }));
+                    setSelectedTeamIds([]); // reset selected teams when stage changes
+                  }}
+                >
+                  <SelectTrigger className={errors.stage_id ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredStages.map(stage => (
+                      <SelectItem key={stage.id} value={stage.id.toString()}>
+                        {stage.competition_stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {errors.stage_id && (
+              <p className="text-sm text-red-500">{errors.stage_id}</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Match Participants */}
         <Card>
@@ -291,20 +372,49 @@ export function MatchModal({
                 No teams available for this stage. Please ensure teams are registered for this sport category and season.
               </div>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                {availableTeams.filter(team => team.schools != null).map((team) => (
-                  <div key={team.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`team-${team.id}`}
-                      checked={selectedTeamIds.includes(team.id)}
-                      onCheckedChange={(checked) => handleTeamSelection(team.id, checked as boolean)}
-                    />
-                    <Label htmlFor={`team-${team.id}`} className="flex-1 cursor-pointer">
-                      <div className="font-medium">{team.name}</div>
-                      <div className="text-sm text-muted-foreground">{team.schools!.name}</div>
-                    </Label>
+              <div className="space-y-4">
+                {selectedTeamIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg min-h-[44px]">
+                    {selectedTeamIds.map(id => {
+                      const team = availableTeams.find(t => t.id === id);
+                      if (!team) return null;
+                      return (
+                        <Badge key={id} variant="outline" className="pl-3 pr-1 py-1 flex items-center gap-1.5 text-sm font-normal">
+                          {team.name} ({team.schools?.abbreviation})
+                          <button
+                            type="button"
+                            className="ml-1 rounded-full hover:bg-muted p-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-muted-foreground hover:text-foreground"
+                            onClick={() => handleTeamSelection(id, false)}
+                          >
+                            <X className="h-3 w-3" />
+                            <span className="sr-only">Remove {team.name}</span>
+                          </button>
+                        </Badge>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
+
+                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                  {availableTeams.filter(team => team.schools != null && !selectedTeamIds.includes(team.id)).map((team) => (
+                    <div key={team.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`team-${team.id}`}
+                        checked={selectedTeamIds.includes(team.id)}
+                        onCheckedChange={(checked) => handleTeamSelection(team.id, checked as boolean)}
+                      />
+                      <Label htmlFor={`team-${team.id}`} className="flex-1 cursor-pointer">
+                        <div className="font-medium">{team.name}</div>
+                        <div className="text-sm text-muted-foreground">{team.schools!.name}</div>
+                      </Label>
+                    </div>
+                  ))}
+                  {availableTeams.filter(team => team.schools != null && !selectedTeamIds.includes(team.id)).length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      All available teams selected
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {errors.participants && (
@@ -393,6 +503,7 @@ export function MatchModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
                   <SelectItem value="3">3</SelectItem>
                   <SelectItem value="5">5</SelectItem>
                   <SelectItem value="7">7</SelectItem>
@@ -409,53 +520,7 @@ export function MatchModal({
               helpText="When the match is scheduled to take place"
             />
 
-            {/* Coin Toss Overrides */}
-            {mode === 'edit' && selectedTeamIds.length >= 2 && (
-              <div className="pt-4 border-t space-y-4">
-                <h4 className="font-semibold text-sm">Coin Toss Overrides (Optional)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Coin Toss Winner</Label>
-                    <Select
-                      value={formData.coin_toss_winner_id || 'none'}
-                      onValueChange={(val) => setFormData(prev => ({ ...prev, coin_toss_winner_id: val === 'none' ? null : val }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select team" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
-                        {selectedTeamIds.map(tId => {
-                          const teamInfo = availableTeams.find(t => t.id === tId) || (match?.match_participants as any[])?.find((p: any) => p.schools_teams?.id === tId)?.schools_teams;
-                          if (!teamInfo) return null;
-                          return (
-                            <SelectItem key={tId} value={tId}>
-                              {teamInfo.abbreviation || teamInfo.name || tId}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Coin Toss Result</Label>
-                    <Select
-                      value={formData.coin_toss_result || 'none'}
-                      onValueChange={(val) => setFormData(prev => ({ ...prev, coin_toss_result: val === 'none' ? null : val as any }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select result" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" className="text-muted-foreground italic">None</SelectItem>
-                        <SelectItem value="heads">Heads</SelectItem>
-                        <SelectItem value="tails">Tails</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </CardContent>
         </Card>
 

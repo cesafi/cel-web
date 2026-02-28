@@ -47,13 +47,14 @@ export interface ValorantPlayerScreenshotStat {
     deaths: number;
     assists: number;
   };
-  econRating?: number; 
+  econRating?: number;
   firstBloods: number;
-  plants?: number; 
-  defuses?: number; 
+  plants?: number;
+  defuses?: number;
   // Derived/mapped fields for UI
   mappedPlayerId?: string;
   mappedTeamId?: string;
+  isMvp?: boolean;
 }
 
 // UI State for the Editor
