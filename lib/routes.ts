@@ -83,6 +83,7 @@ export const PROTECTED_ROUTES = [
   '/admin/timeline',
   '/admin/volunteers',
   '/admin/game-data/[esportId]/characters',
+  '/admin/game-data/[esportId]/maps',
   '/admin/players',
   '/admin/production',
 
@@ -100,6 +101,8 @@ export const PROTECTED_ROUTES = [
   '/league-operator/matches',
   '/league-operator/matches/[id]',
   '/league-operator/matches/[id]/games/[gameId]',
+  '/league-operator/game-data/[esportId]/characters',
+  '/league-operator/game-data/[esportId]/maps',
   '/league-operator/production',
 
   // Writer routes
@@ -176,6 +179,7 @@ export const ROUTE_PATTERNS = {
     /^\/admin\/timeline$/,
     /^\/admin\/volunteers$/,
     /^\/admin\/game-data\/[^\/]+\/characters$/, // /admin/game-data/[esportId]/characters
+    /^\/admin\/game-data\/[^\/]+\/maps$/, // /admin/game-data/[esportId]/maps
     /^\/admin\/players$/,
     /^\/admin\/production$/,
 
@@ -193,6 +197,8 @@ export const ROUTE_PATTERNS = {
     /^\/league-operator\/matches$/,
     /^\/league-operator\/matches\/[^\/]+$/, // /league-operator/matches/[id]
     /^\/league-operator\/matches\/[^\/]+\/games\/[^\/]+$/, // /league-operator/matches/[id]/games/[gameId]
+    /^\/league-operator\/game-data\/[^\/]+\/characters$/, // /league-operator/game-data/[esportId]/characters
+    /^\/league-operator\/game-data\/[^\/]+\/maps$/, // /league-operator/game-data/[esportId]/maps
     /^\/league-operator\/production$/,
 
     // Writer routes

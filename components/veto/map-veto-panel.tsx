@@ -30,7 +30,7 @@ import { ValorantMap } from '@/lib/types/valorant-maps';
 import { getVetoSequence, getCurrentVetoStep, VetoAction, GameSide } from '@/lib/types/map-veto';
 
 // Actions
-import { getActiveValorantMaps } from '@/actions/valorant-maps';
+import { getAllValorantMaps } from '@/actions/valorant-maps';
 import {
   getValorantMapVetoesByMatchId,
   createValorantMapVeto,
@@ -148,15 +148,20 @@ export function MapVetoPanel({
     };
   }, [matchId, queryClient, router]);
 
-  // Fetch all active maps
-  const { data: maps = [], isLoading: isLoadingMaps } = useQuery({
-    queryKey: ['valorant-maps-active'],
+  // Fetch all maps
+  const { data: allMaps = [], isLoading: isLoadingMaps } = useQuery({
+    queryKey: ['valorant-maps-all'],
     queryFn: async () => {
-      const result = await getActiveValorantMaps();
+      const result = await getAllValorantMaps();
       if (!result.success) throw new Error(result.error);
       return result.data;
     },
   });
+
+  const maps = useMemo(() => {
+    if (isAdmin) return allMaps;
+    return allMaps.filter((m: ValorantMap) => m.is_active);
+  }, [allMaps, isAdmin]);
 
   // Fetch current vetoes for this match
   const { data: vetoes = [], isLoading: isLoadingVetoes } = useQuery({
@@ -375,13 +380,13 @@ export function MapVetoPanel({
     // Auth check
     if (!isAdmin && !isPublicView) return;
     if (isPublicView) {
-      if (currentStep.team !== userSide) {
+      if (currentStep.team !== 'none' && currentStep.team !== userSide) {
         toast.error('It is not your turn');
         return;
       }
     }
 
-    const teamId = currentStep.team === 'team1' ? team1.id : team2.id;
+    const teamId = currentStep.team === 'team1' ? team1.id : currentStep.team === 'team2' ? team2.id : team1.id;
 
     try {
       if (isPublicView) {
@@ -443,7 +448,7 @@ export function MapVetoPanel({
             >
               {actionIcons[currentStep.action]}
               <span className="ml-2">
-                Step {currentStep.stepNumber}/{currentStep.totalSteps} - {currentStep.team === 'team1' ? team1.abbreviation : team2.abbreviation} {currentStep.action}s
+                Step {currentStep.stepNumber}/{currentStep.totalSteps} - {currentStep.team === 'none' ? 'Remaining Map' : `${currentStep.team === 'team1' ? team1.abbreviation : team2.abbreviation} ${currentStep.action}s`}
               </span>
             </Badge>
           ) : (
@@ -619,9 +624,11 @@ export function MapVetoPanel({
                     >
                       <div className="flex items-center gap-1">
                         {actionIcons[step.action]}
-                        <span className="text-sm font-medium">
-                          {step.team === 'team1' ? team1.abbreviation : team2.abbreviation}
-                        </span>
+                        {step.team !== 'none' && (
+                          <span className="text-sm font-medium">
+                            {step.team === 'team1' ? team1.abbreviation : team2.abbreviation}
+                          </span>
+                        )}
                       </div>
                       {isCompleted && veto && (
                         <Badge variant="secondary" className="text-xs">
@@ -650,7 +657,7 @@ export function MapVetoPanel({
                   const isAvailable = !vetoedMapNames.includes(map.name);
 
                   // Interaction logic
-                  const isMyTurn = isPublicView ? currentStep?.team === userSide : isAdmin;
+                  const isMyTurn = isPublicView ? (currentStep?.team === 'none' || currentStep?.team === userSide) : isAdmin;
                   const canSelect = !pendingSideVeto && isAvailable && isMyTurn && !!currentStep;
 
                   // Side selection logic
@@ -752,6 +759,15 @@ function MapCard({
         </div>
       )}
 
+      {/* Inactive Badge */}
+      {!map.is_active && (
+        <div className="absolute top-2 right-2 z-20">
+          <Badge variant="destructive" className="bg-red-500/80 hover:bg-red-500/80 shadow-sm border-none">
+            Inactive
+          </Badge>
+        </div>
+      )}
+
       {/* Overlay for banned/picked */}
       {(isBanned || isPicked || isRemaining) && (
         <div className={cn(
@@ -764,14 +780,13 @@ function MapCard({
           {isPicked && <Check className="w-10 h-10 text-green-500" />}
           {isRemaining && <Map className="w-10 h-10 text-amber-500" />}
 
-          {vetoedByTeam && (
+          {vetoedByTeam && !isRemaining && (
             <Badge
               variant="outline"
               className={cn(
                 'mt-2',
                 isBanned && 'border-red-500/50 text-red-400',
-                isPicked && 'border-green-500/50 text-green-400',
-                isRemaining && 'border-amber-500/50 text-amber-400'
+                isPicked && 'border-green-500/50 text-green-400'
               )}
             >
               {vetoedByTeam}

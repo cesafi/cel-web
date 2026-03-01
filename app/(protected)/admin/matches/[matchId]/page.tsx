@@ -14,6 +14,7 @@ import { createGame, updateGameById } from '@/actions/games';
 import { MatchInsert, MatchUpdate } from '@/lib/types/matches';
 import { MapVetoPanel } from '@/components/veto/map-veto-panel';
 import { getActiveValorantMaps } from '@/actions/valorant-maps';
+import { getActiveMlbbMaps } from '@/actions/mlbb-maps';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -90,6 +91,17 @@ export default function MatchDetailPage() {
     enabled: isValorant,
   });
 
+  // Global MLBB Maps for assignment
+  const { data: mlbbMaps = [] } = useQuery({
+    queryKey: ['mlbb-maps-active'],
+    queryFn: async () => {
+      const result = await getActiveMlbbMaps();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: isMlbb,
+  });
+
   if (isLoading) {
     return <MatchDetailSkeleton />;
   }
@@ -117,7 +129,8 @@ export default function MatchDetailPage() {
   const handleMapAssign = async (gameId: number, mapIdStr: string) => {
     const mapId = mapIdStr === 'unassigned' ? null : Number(mapIdStr);
     try {
-      const result = await updateGameById({ id: gameId, valorant_map_id: mapId });
+      const updateData = isMlbb ? { id: gameId, mlbb_map_id: mapId } : { id: gameId, valorant_map_id: mapId };
+      const result = await updateGameById(updateData);
       if (result.success) {
         toast.success('Map assigned to game');
         queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
@@ -579,6 +592,30 @@ export default function MatchDetailPage() {
                                 <SelectContent>
                                   <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
                                   {valorantMaps.map((m: any) => (
+                                    <SelectItem key={m.id} value={String(m.id)}>
+                                      {m.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
+                        {/* Inline MLBB Map Selector */}
+                        {isMlbb && (
+                          <>
+                            <span>•</span>
+                            <div onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                              <Select
+                                value={game.mlbb_map_id ? String(game.mlbb_map_id) : 'unassigned'}
+                                onValueChange={(val) => handleMapAssign(game.id, val)}
+                              >
+                                <SelectTrigger className="h-6 text-xs bg-muted/50 border-transparent hover:border-border w-[130px] px-2 py-0">
+                                  <SelectValue placeholder="Assign map" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
+                                  {mlbbMaps.map((m: any) => (
                                     <SelectItem key={m.id} value={String(m.id)}>
                                       {m.name}
                                     </SelectItem>

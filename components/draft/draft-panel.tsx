@@ -420,8 +420,12 @@ export function DraftPanel({
         [characters]
     );
 
-    // Already-taken character names
+    // Already-taken character names (Global for MLBB)
     const takenCharacters = useMemo(() => new Set(actions.map(a => a.hero_name)), [actions]);
+
+    // Team-specific taken characters (For Valorant)
+    const team1TakenCharacters = useMemo(() => new Set(actions.filter(a => a.team_id === team1.id).map(a => a.hero_name)), [actions, team1.id]);
+    const team2TakenCharacters = useMemo(() => new Set(actions.filter(a => a.team_id === team2.id).map(a => a.hero_name)), [actions, team2.id]);
 
     if (isLoadingCharacters || isLoadingActions) {
         return <DraftPanelSkeleton />;
@@ -469,7 +473,7 @@ export function DraftPanel({
                         roster={team1Roster}
                         players={team1Players || []}
                         characters={characters}
-                        takenCharacters={takenCharacters}
+                        takenCharacters={team1TakenCharacters}
                         isAdmin={isAdmin}
                         onPickAgent={(char, slot) => handleValorantPick(team1.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
@@ -486,7 +490,7 @@ export function DraftPanel({
                         roster={team2Roster}
                         players={team2Players || []}
                         characters={characters}
-                        takenCharacters={takenCharacters}
+                        takenCharacters={team2TakenCharacters}
                         isAdmin={isAdmin}
                         onPickAgent={(char, slot) => handleValorantPick(team2.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}

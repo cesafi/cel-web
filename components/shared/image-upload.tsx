@@ -80,6 +80,16 @@ export const UPLOAD_PRESETS = {
     maxFileSize: 50 * 1024, // 50KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
+  VALORANT_MAP: {
+    folder: 'valorant-maps/splash',
+    maxWidth: 1920,
+    maxHeight: 1080,
+    aspectRatio: 16 / 9,
+    quality: 'auto',
+    format: 'auto',
+    maxFileSize: 500 * 1024, // 500KB
+    acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
+  },
   PLAYER_PHOTO: {
     folder: 'players/photos',
     maxWidth: 300,

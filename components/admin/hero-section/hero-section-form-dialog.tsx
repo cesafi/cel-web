@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { DateTimeInput } from '@/components/ui/datetime-input';
 import { Loader2, Video } from 'lucide-react';
-import { utcToLocal } from '@/lib/utils/utc-time';
 
 interface HeroSectionFormDialogProps {
   open: boolean;
@@ -41,13 +40,9 @@ export function HeroSectionFormDialog({ open, onOpenChange, hero, onSubmit }: He
 
   useEffect(() => {
     if (hero) {
-      // Convert UTC date from database to local datetime-local format for the input
-      const localEndDate = utcToLocal(hero.end_at);
-      const localDateTimeString = localEndDate.toISOString().slice(0, 16); // Format for datetime-local input
-      
       reset({
         video_link: hero.video_link,
-        end_at: localDateTimeString,
+        end_at: hero.end_at,
       });
     } else {
       reset({
@@ -117,7 +112,7 @@ export function HeroSectionFormDialog({ open, onOpenChange, hero, onSubmit }: He
                 <Video className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   id="video_link"
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder="https://www.youtube.com/watch?v=... or https://www.facebook.com/..."
                   className="pl-10"
                   {...register('video_link')}
                 />
@@ -126,7 +121,7 @@ export function HeroSectionFormDialog({ open, onOpenChange, hero, onSubmit }: He
                 <p className="text-sm text-red-600">{errors.video_link.message}</p>
               )}
               <p className="text-sm text-gray-500">
-                Enter a YouTube video URL. The video will be embedded on the homepage.
+                Enter a YouTube or Facebook video URL. The video will be embedded on the homepage.
               </p>
             </div>
 

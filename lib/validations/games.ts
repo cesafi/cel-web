@@ -18,8 +18,11 @@ export const createGameSchema = z
 
     start_at: z.string().optional().nullable(),
     end_at: z.string().optional().nullable(),
-    valorant_map_id: z.number().nullable().optional()
+    status: z.enum(['pending', 'drafting', 'in_progress', 'completed', 'cancelled']).optional().default('pending'),
+    valorant_map_id: z.number().nullable().optional(),
+    mlbb_map_id: z.number().nullable().optional()
   })
+  .strict()
   .refine(
     (data) => {
       if (data.start_at && data.end_at) {

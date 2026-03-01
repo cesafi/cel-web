@@ -20,20 +20,21 @@ export default function HeroSection({ initialData }: HeroSectionProps) {
 
   const { data: heroData, isLoading, error } = useCurrentActiveHeroSection(initialData)
 
-  // Fallback video ID (current hardcoded video)
-  const FALLBACK_VIDEO_ID = '8Mz9ytswq7E'
-
-  const getVideoId = (url: string) => {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)
-    return match ? match[1] : null
-  }
-
   // Determine which video to show
-  const isLive = heroData?.data?.is_active && heroData?.data?.video_link
+  const isLive = Boolean(heroData?.data?.is_active && heroData?.data?.video_link);
+  const videoUrl = heroData?.data?.video_link || '';
 
-  const videoId = isLive ? getVideoId(heroData?.data?.video_link || '') || FALLBACK_VIDEO_ID : null // No YouTube video ID needed for local loop
+  const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/.test(videoUrl);
+  const isFacebook = /(?:facebook\.com|fb\.watch)/.test(videoUrl);
 
-  const videoTitle = isLive ? 'CESAFI Live Video' : 'CESAFI Season 25 Trailer'
+  const getYouTubeId = (url: string) => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    return match ? match[1] : null;
+  };
+
+  const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
+
+  const videoTitle = isLive ? 'CESAFI Live Video' : 'CESAFI Season 25 Trailer';
 
   // Handle live button click
   const handleLiveClick = () => {
@@ -67,10 +68,10 @@ export default function HeroSection({ initialData }: HeroSectionProps) {
 
       {/* Video Background */}
       <div className="absolute inset-0 overflow-hidden">
-        {isLive && videoId ? (
+        {isLive && isYouTube && youtubeId ? (
           <div className="absolute inset-0 scale-[2.5] transform sm:scale-[2] md:scale-[1.8] lg:scale-[1.15] xl:scale-108">
             <LazyYouTube
-              videoId={videoId}
+              videoId={youtubeId}
               title={videoTitle}
               autoplay={true}
               muted={false}

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { toUtcIsoString, isValidUtcIsoString } from '@/lib/utils/utc-time';
 
 export const createHeroSectionLiveSchema = z.object({
-  video_link: z.string().url('Please provide a valid video URL'),
+  video_link: z.string().url('Please provide a valid YouTube or Facebook video URL'),
   end_at: z.string()
     .min(1, 'End date is required')
     .transform((date) => {
@@ -30,7 +30,7 @@ export const createHeroSectionLiveSchema = z.object({
 });
 
 export const updateHeroSectionLiveSchema = z.object({
-  video_link: z.string().url('Please provide a valid video URL').optional(),
+  video_link: z.string().url('Please provide a valid YouTube or Facebook video URL').optional(),
   end_at: z.string()
     .min(1, 'End date is required')
     .transform((date) => {

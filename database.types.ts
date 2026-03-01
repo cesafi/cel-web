@@ -506,6 +506,7 @@ export type Database = {
           game_number: number
           id: number
           match_id: number
+          mlbb_map_id: number | null
           side_selection: string | null
           start_at: string | null
           status: string | null
@@ -520,6 +521,7 @@ export type Database = {
           game_number?: number
           id?: number
           match_id: number
+          mlbb_map_id?: number | null
           side_selection?: string | null
           start_at?: string | null
           status?: string | null
@@ -534,6 +536,7 @@ export type Database = {
           game_number?: number
           id?: number
           match_id?: number
+          mlbb_map_id?: number | null
           side_selection?: string | null
           start_at?: string | null
           status?: string | null
@@ -553,6 +556,13 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_mlbb_map_id_fkey"
+            columns: ["mlbb_map_id"]
+            isOneToOne: false
+            referencedRelation: "mlbb_maps"
             referencedColumns: ["id"]
           },
           {
@@ -772,6 +782,36 @@ export type Database = {
           id?: number
           is_active?: boolean | null
           name?: string | null
+        }
+        Relationships: []
+      }
+      mlbb_maps: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          is_active: boolean
+          name: string
+          splash_image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          name: string
+          splash_image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          name?: string
+          splash_image_url?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

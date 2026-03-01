@@ -22,7 +22,8 @@ import {
   ChevronRight,
   User,
   UsersRound,
-  BarChart3
+  BarChart3,
+  Map
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -189,8 +190,8 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
           </div>
         </div>
 
-        {/* GAMES Category - Only show for admin */}
-        {userRole === 'admin' && esports.length > 0 && (
+        {/* GAMES Category - Only show for admin and league_operator */}
+        {(userRole === 'admin' || userRole === 'league_operator') && esports.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sidebar-foreground/70 text-xs font-semibold tracking-wider uppercase">
               Games
@@ -199,9 +200,16 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
               {esports.map((esport) => {
                 const isExpanded = expandedGames.includes(esport.id);
                 const slug = esport.abbreviation?.toLowerCase() || esport.id.toString();
+                const basePath = userRole === 'league_operator' ? '/league-operator' : '/admin';
                 const charactersHref = `/admin/game-data/${slug}/characters`;
+                const mapsHref = `${basePath}/game-data/${slug}/maps`;
+                
                 const isCharactersActive = pathname === charactersHref;
-                const isAnyChildActive = isCharactersActive;
+                const isMapsActive = pathname === mapsHref;
+                
+                // Both Admins and League operators can see characters and maps
+                const canSeeCharacters = userRole === 'admin' || userRole === 'league_operator';
+                const isAnyChildActive = (canSeeCharacters && isCharactersActive) || isMapsActive;
 
                 return (
                   <div key={esport.id}>
@@ -239,17 +247,31 @@ export default function DashboardSidebar({ userRole = 'admin' }: DashboardSideba
                     {/* Sub-menu Items */}
                     {isExpanded && (
                       <div className="ml-4 mt-1 space-y-1 border-l border-border pl-3">
+                        {canSeeCharacters && (
+                          <Link
+                            href={charactersHref}
+                            className={cn(
+                              'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors',
+                              isCharactersActive
+                                ? 'bg-sidebar-primary/10 text-sidebar-primary font-medium'
+                                : 'text-sidebar-foreground hover:bg-sidebar-primary/5 hover:text-sidebar-foreground'
+                            )}
+                          >
+                            <User className="h-4 w-4" />
+                            Characters
+                          </Link>
+                        )}
                         <Link
-                          href={charactersHref}
+                          href={mapsHref}
                           className={cn(
                             'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors',
-                            isCharactersActive
+                            isMapsActive
                               ? 'bg-sidebar-primary/10 text-sidebar-primary font-medium'
                               : 'text-sidebar-foreground hover:bg-sidebar-primary/5 hover:text-sidebar-foreground'
                           )}
                         >
-                          <User className="h-4 w-4" />
-                          Characters
+                          <Map className="h-4 w-4" />
+                          Maps
                         </Link>
                       </div>
                     )}

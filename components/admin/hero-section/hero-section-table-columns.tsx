@@ -32,13 +32,20 @@ export const getHeroSectionColumns = (): TableColumn<HeroSectionLive>[] => [
     sortable: false,
     width: '30%',
     render: (hero) => {
-      const getVideoId = (url: string) => {
+      const getYouTubeId = (url: string) => {
         const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
         return match ? match[1] : null;
       };
 
-      const videoId = getVideoId(hero.video_link);
-      const videoTitle = videoId ? `Video ID: ${videoId}` : 'YouTube Video';
+      const isFacebook = /(?:facebook\.com|fb\.watch)/.test(hero.video_link);
+      const youtubeId = getYouTubeId(hero.video_link);
+      
+      let videoTitle = 'Video Link';
+      if (youtubeId) {
+        videoTitle = `YouTube ID: ${youtubeId}`;
+      } else if (isFacebook) {
+        videoTitle = 'Facebook Video';
+      }
 
       return (
         <div className="space-y-1">
