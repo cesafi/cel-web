@@ -108,37 +108,8 @@ function GameStatsViewer({ gameId, sport, origin }: { gameId: number; sport: str
   // The stats object has schools_teams relation
   const teams = Array.from(new Set(stats.map((s: any) => s.schools_teams?.id))).filter(Boolean);
   
-  const handleCopyLink = async () => {
-    try {
-      const fullUrl = `${origin}/api/games/stats/${gameId}`;
-      await navigator.clipboard.writeText(fullUrl);
-      toast.success('API link copied to clipboard');
-    } catch (error) {
-      toast.error('Failed to copy link');
-    }
-  };
-
-  const apiEndpoint = `${origin}/api/games/stats/${gameId}`;
-
   return (
     <div className="space-y-8 mt-6">
-      {/* ── API Export Link ── */}
-      <div className="rounded-xl border bg-card p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Link2 className="h-4 w-4" />
-              API EXPORT
-          </h3>
-          <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                  {apiEndpoint}
-              </code>
-              <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8">
-                  <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Copy
-              </Button>
-          </div>
-      </div>
-
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2 uppercase">
             <BarChart3 className="h-5 w-5" />

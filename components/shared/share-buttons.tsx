@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Share2, Twitter, Facebook, Link as LinkIcon } from 'lucide-react';
+import { Share2, Facebook, Link as LinkIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { moderniz } from '@/lib/fonts';
@@ -37,15 +37,15 @@ export default function ShareButtons({
     }
 
     try {
-      if (platform === 'twitter') {
-        // Limit title length for Twitter (280 char limit)
+      if (platform === 'x') {
+        // Limit title length for X (280 char limit)
         const truncatedTitle = title.length > 200 ? title.substring(0, 200) + '...' : title;
-        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(truncatedTitle)}&url=${encodeURIComponent(shareUrl)}`;
+        const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(truncatedTitle)}&url=${encodeURIComponent(shareUrl)}`;
 
         // Open with security attributes
-        const popup = window.open(twitterUrl, '_blank', 'noopener,noreferrer,width=600,height=400');
+        const popup = window.open(xUrl, '_blank', 'noopener,noreferrer,width=600,height=400');
         if (!popup) {
-          toast.error('Please allow popups to share on Twitter');
+          toast.error('Please allow popups to share on X');
         }
       } else if (platform === 'facebook') {
         const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
@@ -87,7 +87,7 @@ export default function ShareButtons({
       }
     } catch (error) {
       console.error('Share error:', error);
-      if (platform === 'twitter' || platform === 'facebook') {
+      if (platform === 'x' || platform === 'facebook') {
         toast.error('Failed to open sharing window. Please check your popup blocker.');
       } else {
         toast.error('Failed to copy link to clipboard');
@@ -104,10 +104,10 @@ export default function ShareButtons({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleShare('twitter')}
+          onClick={() => handleShare('x')}
           disabled={disabled || isSharing}
         >
-          <Twitter className="h-4 w-4" />
+          <X className="h-4 w-4" />
         </Button>
         <Button
           variant="outline"
@@ -136,12 +136,12 @@ export default function ShareButtons({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleShare('twitter')}
+          onClick={() => handleShare('x')}
           disabled={disabled || isSharing}
           className="flex items-center gap-2"
         >
-          <Twitter className="h-4 w-4" />
-          Twitter
+          <X className="h-4 w-4" />
+          X
         </Button>
         <Button
           variant="outline"
@@ -174,12 +174,12 @@ export default function ShareButtons({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleShare('twitter')}
+          onClick={() => handleShare('x')}
           disabled={disabled || isSharing}
           className="flex items-center gap-2"
         >
-          <Twitter className="h-4 w-4" />
-          Twitter
+          <X className="h-4 w-4" />
+          X
         </Button>
         <Button
           variant="outline"
@@ -219,11 +219,11 @@ export default function ShareButtons({
           variant="outline"
           size="sm"
           className="w-full justify-start"
-          onClick={() => handleShare('twitter')}
+          onClick={() => handleShare('x')}
           disabled={disabled || isSharing}
         >
-          <Twitter className="mr-2 h-4 w-4" />
-          Twitter
+          <X className="mr-2 h-4 w-4" />
+          X
         </Button>
         <Button
           variant="outline"

@@ -57,9 +57,9 @@ const rankIcons = [
 ];
 
 const rankBadgeColors = [
-  'bg-gradient-to-br from-yellow-300 to-amber-600 text-white shadow-lg shadow-yellow-500/20',
-  'bg-gradient-to-br from-zinc-300 to-zinc-500 text-white shadow-lg shadow-zinc-500/20',
-  'bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-lg shadow-amber-700/20',
+  'border-2 border-yellow-500 text-yellow-500 bg-transparent',
+  'border-2 border-zinc-400 text-zinc-400 bg-transparent',
+  'border-2 border-amber-600 text-amber-600 bg-transparent',
 ];
 
 export function LeaderboardCard({
@@ -157,16 +157,7 @@ export function LeaderboardCard({
                     {index < 3 ? rankIcons[index] : index + 1}
                   </div>
 
-                  {/* Player Avatar */}
-                  <Avatar className={cn(
-                    'h-11 w-11 border-2 shadow-sm z-10 transition-transform duration-300 group-hover/row:scale-105',
-                    index === 0 ? `border-${accentColor}-500/50 shadow-${accentColor}-500/20` : 'border-border'
-                  )}>
-                    <AvatarImage src={player.player_photo_url || ''} alt={player.player_ign} className="object-cover" />
-                    <AvatarFallback className="text-xs font-bold bg-background">
-                      {player.player_ign.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+
 
                   {/* Player Info */}
                   <div className="flex-1 min-w-0 z-10">

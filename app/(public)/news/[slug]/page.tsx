@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, User, Clock, ChevronRight, Home } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Clock, ChevronRight, Home, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -124,20 +124,22 @@ export default function NewsArticlePage() {
             transition={{ duration: 0.8 }}
           >
             <h1
-              className={`${moderniz.className} text-foreground mb-6 text-3xl leading-tight font-bold md:text-4xl lg:text-5xl`}
+              className={`${moderniz.className} text-foreground py-6 sm:py-12 text-3xl leading-tight font-bold md:text-4xl lg:text-5xl`}
             >
               {displayArticle.title}
             </h1>
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-muted-foreground flex items-center gap-6 text-sm">
+              <div className="text-muted-foreground flex flex-col sm:flex-row  gap-6 text-sm">
+                <div className="flex flex-row gap-8">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span className="font-medium">{displayArticle.author}</span>
+                  <Pencil className="h-4 w-4" />
+                  <span>by {displayArticle.author}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span>{formatSmartDate(displayArticle.publishedAt)}</span>
+                </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />

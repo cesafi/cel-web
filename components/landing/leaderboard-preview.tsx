@@ -43,27 +43,7 @@ export default async function LeaderboardPreview() {
         </div>
 
         {/* Leaderboard Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 max-w-7xl mx-auto">
-          <LeaderboardCard
-            title="Combat Score"
-            game="valorant"
-            metric="ACS"
-            data={valorantAcs.data || []}
-            iconImage="/img/valorant.webp"
-            accentColor="red"
-            delay={0.1}
-          />
-
-          <LeaderboardCard
-            title="Average Rating"
-            game="mlbb"
-            metric="Rating"
-            data={mlbbRating.data || []}
-            iconImage="/img/mlbb.webp"
-            accentColor="blue"
-            delay={0.2}
-          />
-
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto">
           <LeaderboardCard
             title="MVP Race"
             game="valorant"
@@ -71,7 +51,7 @@ export default async function LeaderboardPreview() {
             data={valorantMvp.data || []}
             iconImage="/img/valorant.webp"
             accentColor="yellow"
-            delay={0.3}
+            delay={0.1}
           />
 
           <LeaderboardCard
@@ -81,6 +61,26 @@ export default async function LeaderboardPreview() {
             data={mlbbMvp.data || []}
             iconImage="/img/mlbb.webp"
             accentColor="yellow"
+            delay={0.2}
+          />
+
+          <LeaderboardCard
+            title="Average Rating"
+            game="mlbb"
+            metric="Rating"
+            data={mlbbRating.data || []}
+            iconImage="/img/mlbb.webp"
+            accentColor="blue"
+            delay={0.3}
+          />
+
+          <LeaderboardCard
+            title="Combat Score"
+            game="valorant"
+            metric="ACS"
+            data={valorantAcs.data || []}
+            iconImage="/img/valorant.webp"
+            accentColor="red"
             delay={0.4}
           />
         </div>

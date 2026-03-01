@@ -110,16 +110,40 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-background/80 backdrop-blur-lg border-b border-border shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <Image
-              src="/img/cesafi-logo.webp"
-              alt="CESAFI Logo"
-              width={80}
-              height={80}
-              className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 object-contain"
-            />
-          </Link>
+          {/* Logo and Live Indicator */}
+          <div className="flex items-center gap-3 lg:gap-5">
+            <Link href="/" className="flex items-center space-x-3 group flex-shrink-0">
+              <Image
+                src="/img/cesafi-logo.webp"
+                alt="CESAFI Logo"
+                width={80}
+                height={80}
+                className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 object-contain"
+              />
+            </Link>
+
+            {/* Desktop Live Indicator */}
+            <div className="hidden lg:block">
+              <LiveIndicator
+                isLive={heroData?.data?.is_active || false}
+                liveUrl={heroData?.data?.video_link}
+                title="CESAFI Live Stream"
+                timeRemaining={heroData?.data?.time_remaining}
+                variant="navbar"
+              />
+            </div>
+            
+            {/* Mobile Live Indicator */}
+            <div className="block lg:hidden">
+              <LiveIndicator
+                isLive={heroData?.data?.is_active || false}
+                liveUrl={heroData?.data?.video_link}
+                title="CESAFI Live Stream"
+                timeRemaining={heroData?.data?.time_remaining}
+                variant="navbar"
+              />
+            </div>
+          </div>
 
           {/* Desktop Navigation - Centered */}
           <div className="hidden lg:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-1">
@@ -141,14 +165,7 @@ export default function Navbar() {
           {/* Right Side - Desktop: Clock, Live Indicator & Theme Switcher */}
           <div className="hidden lg:flex items-center space-x-4">
             <RealTimeClock className="text-muted-foreground" showIcon={true} showTimezone={false} size="sm" />
-            <div className="w-px h-6 bg-border" />
-            <LiveIndicator
-              isLive={heroData?.data?.is_active || false}
-              liveUrl={heroData?.data?.video_link}
-              title="CESAFI Live Stream"
-              timeRemaining={heroData?.data?.time_remaining}
-              variant="navbar"
-            />
+
             <div className="flex items-center space-x-1">
               <a
                 href="https://www.youtube.com/@cesafiesportsleague"
@@ -191,13 +208,7 @@ export default function Navbar() {
 
           {/* Mobile Right Side - Live Indicator, Theme Switcher & Menu Button */}
           <div className="flex lg:hidden items-center space-x-2">
-            <LiveIndicator
-              isLive={heroData?.data?.is_active || false}
-              liveUrl={heroData?.data?.video_link}
-              title="CESAFI Live Stream"
-              timeRemaining={heroData?.data?.time_remaining}
-              variant="compact"
-            />
+
             <ThemeSwitcher />
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}

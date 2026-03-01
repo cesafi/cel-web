@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Calendar, User, ArrowRight, Clock, Pen } from 'lucide-react';
+import { Calendar, ArrowRight, Clock, Pen } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,7 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground/80">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <Pen className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate max-w-[150px] sm:max-w-none">{article.author}</span>
+                    <span className="truncate max-w-[150px] sm:max-w-none">by {article.author}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -154,7 +154,7 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] sm:text-xs text-muted-foreground/80">
               <div className="flex items-center gap-1.5 min-w-0">
                 <Pen className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
-                <span className="truncate max-w-[120px] sm:max-w-none">{article.author}</span>
+                <span className="truncate max-w-[120px] sm:max-w-none">by {article.author}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
