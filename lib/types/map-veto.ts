@@ -64,7 +64,7 @@ export const BO1_VETO_SEQUENCE: Array<{
   ];
 
 // Standard Valorant veto sequence for Bo2
-// Team1 Ban, Team2 Ban, Team1 Pick, Team2 Pick
+// Team1 Ban, Team2 Ban, Team1 Ban, Team2 Ban, Team1 Ban, Team2 Pick, Team 2 Pick
 export const BO2_VETO_SEQUENCE: Array<{
   action: VetoAction;
   team: 'team1' | 'team2' | 'none';
@@ -74,9 +74,9 @@ export const BO2_VETO_SEQUENCE: Array<{
     { action: 'ban', team: 'team2', description: 'Team 2 bans' },
     { action: 'ban', team: 'team1', description: 'Team 1 bans' },
     { action: 'ban', team: 'team2', description: 'Team 2 bans' },
-    { action: 'pick', team: 'team1', description: 'Team 1 picks' },
+    { action: 'ban', team: 'team1', description: 'Team 1 bans' },
     { action: 'pick', team: 'team2', description: 'Team 2 picks' },
-    { action: 'remain', team: 'none', description: 'Leftover map (Unplayed)' }, 
+    { action: 'pick', team: 'team1', description: 'Team 1 picks' },
   ];
 
 // Standard Valorant veto sequence for Bo3

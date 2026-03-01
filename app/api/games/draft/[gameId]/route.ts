@@ -45,7 +45,9 @@ export async function GET(
                             esports(name)
                         )
                     )
-                )
+                ),
+                mlbb_map:mlbb_maps(name),
+                valorant_map:valorant_maps(name)
             `)
             .eq('id', gameId)
             .single();
@@ -207,26 +209,55 @@ export async function GET(
         }
 
         // ── vMix-friendly flat output (csv / json-flat / xml) ──
-        // Each row = one draft action, ordered like an actual draft board
+        // ── Output padding for vMix ──
+        const mapName = game.mlbb_map?.name || game.valorant_map?.name || '';
+        const gameNumber = game.game_number || 1;
+
         if (format !== 'json') {
-            const draftBoard = (draftRes.data || []).map((action: any, idx: number) => {
+            const rawBoard = (draftRes.data || []).map((action: any, idx: number) => {
                 const stats = action.hero_id ? characterStatsMap[action.hero_id] : null;
                 const teamInfo = action.team_id ? teamLookup[action.team_id] : null;
-
-                // Resolve player IGN from joined player relation
                 const playerIgn = action.player?.ign || '';
 
                 return {
                     order: idx + 1,
-                    action: action.action_type || '',           // ban / pick
+                    action: action.action_type || '',
                     team: teamInfo?.abbreviation || teamInfo?.name || '',
                     hero: stats?.character_name || action.hero_name || '',
                     player: playerIgn,
                     win_rate: stats?.win_rate ? `${stats.win_rate}%` : '',
                     total_picks: stats?.total_picks ?? '',
                     avg_kda: stats?.avg_kda || '',
+                    map: mapName,
+                    game_number: gameNumber
                 };
             });
+
+            // Calculate max rows needed based on format
+            // Valorant: usually 10 picks
+            // MLBB: 10 bans + 10 picks = 20
+            const maxRows = isValorant ? 10 : 20;
+
+            const draftBoard = [];
+            for (let i = 0; i < maxRows; i++) {
+                if (i < rawBoard.length) {
+                    draftBoard.push({ ...rawBoard[i], order: i + 1 });
+                } else {
+                    // Filler row
+                    draftBoard.push({
+                        order: i + 1,
+                        action: '',
+                        team: '',
+                        hero: '',
+                        player: '',
+                        win_rate: '',
+                        total_picks: '',
+                        avg_kda: '',
+                        map: mapName,
+                        game_number: gameNumber
+                    });
+                }
+            }
 
             // Support ?table= for pulling specific sub-data
             if (table) {
@@ -263,7 +294,7 @@ export async function GET(
             game: {
                 id: game.id,
                 game_number: game.game_number,
-                map_name: (game as any).map_name,
+                map_name: game.mlbb_map?.name || game.valorant_map?.name || '',
             },
             teams,
             draft_actions: draftRes.data,
