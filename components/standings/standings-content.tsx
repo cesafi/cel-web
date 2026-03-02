@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CalendarDays, ChevronDown } from 'lucide-react';
@@ -51,6 +51,15 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
 
   // Fetch standings data
   const { data: standingsData, isLoading, error, refetch, isFetching } = useStandings(filters);
+
+  // Detect if we're in the initial loading phase (no data yet, still resolving defaults)
+  const isInitialLoading = useMemo(() => {
+    const hasNoFilters = !filters.season_id && !filters.sport_id && !filters.esport_category_id;
+    const isResolvingDefaults = hasNoFilters && (!seasons || seasons.length === 0);
+    const isWaitingForData = (isLoading || isFetching) && !standingsData;
+    const filtersIncomplete = !filters.season_id || !filters.sport_id || !filters.esport_category_id;
+    return isResolvingDefaults || isWaitingForData || (filtersIncomplete && !standingsData && !error);
+  }, [filters, seasons, isLoading, isFetching, standingsData, error]);
 
   // Auto-select defaults when no filters are present
   useEffect(() => {
@@ -276,7 +285,14 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background min-h-screen relative">
+      {/* Initial Loading Overlay */}
+      {isInitialLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+          <StandingsLoading className="min-h-0 bg-transparent" />
+        </div>
+      )}
+
       {/* Hero Section - Always Visible */}
       <section className="from-primary/10 via-background to-secondary/10 relative bg-gradient-to-br pt-20 pb-8 sm:pt-24 sm:pb-16">
           {/* Background Pattern */}

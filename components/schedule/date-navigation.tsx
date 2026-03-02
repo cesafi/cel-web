@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompactGameSelector, GameOption } from '@/components/shared/filters/compact-game-selector';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { isToday, formatDateHeader } from './utils';
 import { Season } from '@/lib/types/seasons';
 import { EsportsSeasonStageWithDetails } from '@/lib/types/esports-seasons-stages';
@@ -76,6 +77,17 @@ export default function DateNavigation({
   selectedStage = 'all',
   onStageChange
 }: DateNavigationProps) {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  // Count active filters for badge
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedSeason !== 'all') count++;
+    if (selectedEsportId !== 'all') count++;
+    if (selectedDivision !== 'all') count++;
+    if (selectedStage !== 'all') count++;
+    return count;
+  }, [selectedSeason, selectedEsportId, selectedDivision, selectedStage]);
   const goToPreviousDay = () => {
     if (onPreviousDay) {
       onPreviousDay();
@@ -279,40 +291,45 @@ export default function DateNavigation({
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+
+          {/* Mobile Filter Toggle Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+            className="md:hidden h-9 px-3 bg-background shadow-sm shrink-0 ml-auto flex items-center gap-1.5"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span className="text-xs font-medium">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                {activeFilterCount}
+              </span>
+            )}
+            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${mobileFiltersOpen ? 'rotate-180' : ''}`} />
+          </Button>
         </div>
 
-        {/* Right: Filters */}
-        <div className="flex w-full sm:w-auto overflow-x-auto pb-1 md:pb-0">
-          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground mr-1 hidden sm:inline-block">Filters:</span>
+        {/* Desktop Filters (always visible on md+) */}
+        <div className="hidden md:flex w-auto overflow-x-auto pb-0">
+          <div className="flex items-center gap-2 w-auto">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground mr-1">Filters:</span>
             
             {/* Season Selector */}
             {availableSeasons && availableSeasons.length > 0 && (
-              <div className="col-span-2 sm:col-span-auto w-full sm:w-auto order-first sm:order-none mb-1 sm:mb-0">
-                <Select value={selectedSeason} onValueChange={(val) => onSeasonChange?.(val)}>
-                  <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
-                    <SelectValue placeholder="All Seasons" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Seasons</SelectItem>
-                    {availableSeasons.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name || `Season ${s.id}`}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={selectedSeason} onValueChange={(val) => onSeasonChange?.(val)}>
+                <SelectTrigger className="h-9 w-[150px] bg-background shadow-sm font-medium text-xs">
+                  <SelectValue placeholder="All Seasons" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Seasons</SelectItem>
+                  {availableSeasons.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name || `Season ${s.id}`}</SelectItem>)}
+                </SelectContent>
+              </Select>
             )}
 
-            <div className="sm:hidden col-span-2">
-              <CompactGameSelector 
-                options={gameOptions}
-                value={selectedEsportId}
-                onChange={(val) => onEsportChange?.(val)}
-                variant="dropdown"
-                className="w-full"
-              />
-            </div>
-
             <Select value={selectedDivision} onValueChange={(val) => onDivisionChange?.(val)}>
-              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+              <SelectTrigger className="h-9 w-[150px] bg-background shadow-sm font-medium text-xs">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -326,7 +343,7 @@ export default function DateNavigation({
             </Select>
 
             <Select value={selectedStage} onValueChange={(val) => onStageChange?.(val)}>
-              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+              <SelectTrigger className="h-9 w-[150px] bg-background shadow-sm font-medium text-xs">
                 <SelectValue placeholder="Stage" />
               </SelectTrigger>
               <SelectContent>
@@ -341,6 +358,77 @@ export default function DateNavigation({
           </div>
         </div>
       </div>
+
+      {/* Mobile Filters Accordion (visible only on mobile) */}
+      <AnimatePresence>
+        {mobileFiltersOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="md:hidden overflow-hidden"
+          >
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {/* Season Selector */}
+              {availableSeasons && availableSeasons.length > 0 && (
+                <div className="col-span-2">
+                  <Select value={selectedSeason} onValueChange={(val) => onSeasonChange?.(val)}>
+                    <SelectTrigger className="h-9 w-full bg-background shadow-sm font-medium text-xs">
+                      <SelectValue placeholder="All Seasons" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Seasons</SelectItem>
+                      {availableSeasons.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name || `Season ${s.id}`}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Game Selector (mobile only) */}
+              <div className="col-span-2">
+                <CompactGameSelector 
+                  options={gameOptions}
+                  value={selectedEsportId}
+                  onChange={(val) => onEsportChange?.(val)}
+                  variant="dropdown"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Category */}
+              <Select value={selectedDivision} onValueChange={(val) => onDivisionChange?.(val)}>
+                <SelectTrigger className="h-9 w-full bg-background shadow-sm font-medium text-xs">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {uniqueDivisions.map((division) => (
+                    <SelectItem key={division} value={division}>
+                      {division}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Stage */}
+              <Select value={selectedStage} onValueChange={(val) => onStageChange?.(val)}>
+                <SelectTrigger className="h-9 w-full bg-background shadow-sm font-medium text-xs">
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Stages</SelectItem>
+                  {uniqueFilteredStages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.competition_stage}>
+                      {stage.competition_stage}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
