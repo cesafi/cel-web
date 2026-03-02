@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { ScheduleDateGroup, groupMatchesByDate } from './utils';
 import DateGroup from './date-group';
@@ -24,6 +26,8 @@ interface InfiniteScheduleProps {
   readonly hasMoreFuture?: boolean;
   readonly hasMorePast?: boolean;
   readonly isLoading?: boolean;
+  readonly isFetchingNextPage?: boolean;
+  readonly isFetchingPreviousPage?: boolean;
   // New Filters
   readonly selectedEsportId?: string;
   readonly onEsportChange?: (id: string) => void;
@@ -46,6 +50,8 @@ export default function InfiniteSchedule({
   hasMoreFuture = false,
   hasMorePast = false,
   isLoading = false,
+  isFetchingNextPage = false,
+  isFetchingPreviousPage = false,
   selectedEsportId = 'all',
   onEsportChange,
   selectedDivision = 'all',
@@ -67,6 +73,12 @@ export default function InfiniteSchedule({
   };
 
   const [dateGroups, setDateGroups] = useState<ScheduleDateGroup[]>([]);
+  const dateGroupsRef = useRef(dateGroups);
+  useEffect(() => {
+    dateGroupsRef.current = dateGroups;
+  }, [dateGroups]);
+  const prevScrollStateRef = useRef({ height: 0, top: 0, isPrepend: false });
+
   const [displayedDate, setDisplayedDate] = useState(() => getValidDate(new Date())); // Date shown on left side
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [floatingButtonDirection, setFloatingButtonDirection] = useState<'up' | 'down'>('up');
@@ -98,8 +110,35 @@ export default function InfiniteSchedule({
   // Group filtered matches by date
   useEffect(() => {
     const grouped = groupMatchesByDate(filteredMatches);
+    const currentGroups = dateGroupsRef.current;
+    
+    const oldFirstDate = currentGroups.length > 0 ? currentGroups[0].date : null;
+    const newFirstDate = grouped.length > 0 ? grouped[0].date : null;
+    const isPrepend = !!(oldFirstDate && newFirstDate && oldFirstDate !== newFirstDate && grouped.some(g => g.date === oldFirstDate));
+
+    if (isPrepend) {
+      prevScrollStateRef.current = {
+        height: document.documentElement.scrollHeight,
+        top: window.scrollY,
+        isPrepend: true
+      };
+    } else {
+      prevScrollStateRef.current.isPrepend = false;
+    }
+
     setDateGroups(grouped);
   }, [filteredMatches]);
+
+  useLayoutEffect(() => {
+    if (prevScrollStateRef.current.isPrepend) {
+      const newScrollHeight = document.documentElement.scrollHeight;
+      const heightDiff = newScrollHeight - prevScrollStateRef.current.height;
+      if (heightDiff > 0) {
+        window.scrollBy({ top: heightDiff, behavior: 'instant' });
+      }
+      prevScrollStateRef.current.isPrepend = false;
+    }
+  }, [dateGroups]);
 
   // Scroll to today (or nearest date) on initial mount
   const hasScrolledRef = useRef(false);
@@ -209,16 +248,16 @@ export default function InfiniteSchedule({
 
   // Set up intersection observers for infinite scroll
   useEffect(() => {
-    // Top observer for loading past matches
+    // Top observer for loading future matches (since they appear at the top now)
     if (topObserverRef.current) {
       topObserverRef.current.disconnect();
     }
 
     topObserverRef.current = new IntersectionObserver(
       (entries) => {
-        // Only load past if user has actually scrolled near the top (not on initial page load)
-        if (entries[0].isIntersecting && hasMorePast && !isLoading && window.scrollY > 200) {
-          onLoadMore?.('past');
+        // Only load future if user has actually scrolled near the top (not on initial page load)
+        if (entries[0].isIntersecting && hasMoreFuture && !isLoading && window.scrollY > 200) {
+          onLoadMore?.('future');
         }
       },
       { threshold: 1.0, rootMargin: '-100px 0px 0px 0px' }
@@ -228,15 +267,15 @@ export default function InfiniteSchedule({
       topObserverRef.current.observe(topLoadMoreRef.current);
     }
 
-    // Bottom observer for loading future matches
+    // Bottom observer for loading past matches (since they appear at the bottom now)
     if (bottomObserverRef.current) {
       bottomObserverRef.current.disconnect();
     }
 
     bottomObserverRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMoreFuture && !isLoading) {
-          onLoadMore?.('future');
+        if (entries[0].isIntersecting && hasMorePast && !isLoading) {
+          onLoadMore?.('past');
         }
       },
       { threshold: 0.1 }
@@ -350,11 +389,14 @@ export default function InfiniteSchedule({
         onStageChange={onStageChange}
       />
 
-      {/* Load More Past Trigger */}
-      {hasMorePast && (
-        <div ref={topLoadMoreRef} className="flex h-10 items-center justify-center">
-          {isLoading && (
-            <div className="text-muted-foreground font-roboto text-sm">Loading past matches...</div>
+      {/* Load More Future Trigger (Top) */}
+      {hasMoreFuture && (
+        <div ref={topLoadMoreRef} className="flex h-10 items-center justify-center py-4">
+          {isFetchingNextPage && (
+            <div className="flex items-center text-muted-foreground font-roboto text-sm">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading future matches...
+            </div>
           )}
         </div>
       )}
@@ -362,10 +404,16 @@ export default function InfiniteSchedule({
       {/* All Matches - Infinite Scroll */}
       {dateGroups.length > 0 ? (
         <div className="space-y-12">
-          {dateGroups.map((dateGroup) => (
-            <div key={dateGroup.date} id={`date-group-${dateGroup.date}`}>
+          {dateGroups.map((dateGroup, index) => (
+            <motion.div
+              key={dateGroup.date}
+              id={`date-group-${dateGroup.date}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
               <DateGroup dateGroup={dateGroup} />
-            </div>
+            </motion.div>
           ))}
         </div>
       ) : (
@@ -374,12 +422,13 @@ export default function InfiniteSchedule({
         </div>
       )}
 
-      {/* Load More Future Trigger */}
-      {hasMoreFuture && (
-        <div ref={bottomLoadMoreRef} className="flex h-10 items-center justify-center">
-          {isLoading && (
-            <div className="text-muted-foreground font-roboto text-sm">
-              Loading future matches...
+      {/* Load More Past Trigger (Bottom) */}
+      {hasMorePast && (
+        <div ref={bottomLoadMoreRef} className="flex h-10 items-center justify-center py-4">
+          {isFetchingPreviousPage && (
+            <div className="flex items-center text-muted-foreground font-roboto text-sm">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading past matches...
             </div>
           )}
         </div>

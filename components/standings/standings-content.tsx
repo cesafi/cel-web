@@ -309,7 +309,7 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
         <div className="lg:hidden mb-4">
           <div className="relative">
             <select
-              className="w-full appearance-none rounded-lg border border-border bg-card px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full appearance-none rounded-md border border-input bg-background px-3 py-2 h-9 text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={filters.season_id || ''}
               onChange={(e) => handleSeasonChange(Number(e.target.value))}
             >

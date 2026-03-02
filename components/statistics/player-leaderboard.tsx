@@ -51,6 +51,7 @@ const valorantColumns = [
     // Identity column handled separately
     { key: 'games_played', label: 'G', tooltip: 'Games Played', sortable: true, width: 'min-w-[60px] w-[60px]' },
     { key: 'wins', label: 'W', tooltip: 'Wins', sortable: true, width: 'min-w-[60px] w-[60px]' },
+    { key: 'mvp_count', label: 'MVP', tooltip: 'Total MVPs', sortable: true, width: 'min-w-[60px] w-[60px]' },
     { key: 'avg_acs', label: 'ACS', tooltip: 'Avg Combat Score', sortable: true, width: 'min-w-[80px] w-[80px]' },
     { key: 'avg_econ_rating', label: 'ECO', tooltip: 'Econ Rating', sortable: true, width: 'min-w-[80px] w-[80px]' },
     { key: 'kills_per_game', label: 'K', tooltip: 'Kills/Game', sortable: true, width: 'min-w-[60px] w-[60px]' },
@@ -83,7 +84,7 @@ export function PlayerLeaderboard({
     onItemsPerPageChange,
 }: PlayerLeaderboardProps) {
     const columns = game === 'mlbb' ? mlbbColumns : valorantColumns;
-    const top3 = data.slice(0, 3);
+    const top3 = [...data].sort((a, b) => (b.mvp_count || 0) - (a.mvp_count || 0)).slice(0, 3);
     const gameColor = game === 'mlbb' ? 'blue' : 'red';
 
     // Calculate max values for heatmap scaling

@@ -73,7 +73,7 @@ export class StatisticsService extends BaseService {
 
       const { data, error } = await supabase
         .from('esports_categories')
-        .select('id, name, levels, division') // levels/div might be useful for label
+        .select('id, levels, division') // levels/div might be useful for label
         .order('id');
 
       if (error) throw error;
@@ -632,25 +632,22 @@ export class StatisticsService extends BaseService {
       // Actually, picking is usually 1 map per match in BO1, more in BO3.
       // Let's just use the sum of total_games across all maps as the denominator / X. 
       // As a simplification, we will use total_games directly for pick_rate = (picks / total_games)
-      let globalMatches = 0;
+      let totalMapsPlayed = 0;
       for (const row of mapStats.values()) {
-        if (row.total_games > globalMatches) {
-          globalMatches = row.total_games; // The map with the most appearances approximates total matches if 100% presence
-        }
+        totalMapsPlayed += row.total_games;
       }
 
       const results = Array.from(mapStats.values()).map(map => {
-        const PickBanTotal = map.total_picks + map.total_bans;
         return {
           map_id: map.map_id,
           map_name: map.map_name,
           splash_image_url: map.splash_image_url,
           total_games: map.total_games,
           total_picks: map.total_picks,
-          // If we don't have exact total matches, pick rate = picks / (picks + bans) or similar
-          pick_rate: PickBanTotal > 0 ? (map.total_picks / PickBanTotal) * 100 : 0,
+          // Calculate pick rate relative to all maps played
+          pick_rate: totalMapsPlayed > 0 ? (map.total_games / totalMapsPlayed) * 100 : 0,
           total_bans: map.total_bans,
-          ban_rate: PickBanTotal > 0 ? (map.total_bans / PickBanTotal) * 100 : 0,
+          ban_rate: totalMapsPlayed > 0 ? (map.total_bans / totalMapsPlayed) * 100 : 0,
           attack_wins: 0, // Placeholder
           defense_wins: 0,
           attack_win_rate: 50,

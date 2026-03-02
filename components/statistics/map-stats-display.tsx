@@ -8,6 +8,7 @@ import { Map, TrendingUp, Ban, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-re
 import { MapStats } from '@/lib/types/stats-enhanced';
 import Image from 'next/image';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { moderniz } from '@/lib/fonts';
 
 interface MapStatsDisplayProps {
     data: MapStats[];
@@ -19,9 +20,9 @@ type SortColumn = 'pick_rate' | 'ban_rate' | 'total_games' | 'attack_win_rate' |
 type SortDirection = 'asc' | 'desc';
 
 const podiumColors = [
-    "from-yellow-500/80 to-yellow-600/30", // 1st
-    "from-slate-400/80 to-slate-500/30",  // 2nd
-    "from-orange-700/80 to-orange-800/30" // 3rd
+    'bg-gradient-to-br from-yellow-400 to-yellow-600', // Gold
+    'bg-gradient-to-br from-gray-300 to-gray-500', // Silver
+    'bg-gradient-to-br from-amber-600 to-amber-800', // Bronze
 ];
 
 export function MapStatsDisplay({ data, isLoading = false, className }: MapStatsDisplayProps) {
@@ -67,9 +68,9 @@ export function MapStatsDisplay({ data, isLoading = false, className }: MapStats
     };
 
     return (
-        <div className={cn('space-y-12', className)}>
+        <div className={cn('space-y-8', className)}>
             {/* Top 3 Podium (Always visible based on Highest Pick Rate) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 pt-8 max-w-5xl mx-auto">
+            <div className="hidden lg:grid grid-cols-3 gap-6 mb-12 px-4">
                 {overallTop3.map((map, index) => (
                     <Card
                         key={`map-podium-${index}`}
@@ -80,18 +81,11 @@ export function MapStatsDisplay({ data, isLoading = false, className }: MapStats
                             index === 2 && 'lg:order-3 border-orange-700/30 shadow-orange-700/10 h-[340px] mt-auto'
                         )}
                     >
-                        <div className={cn("absolute inset-0 opacity-[0.10] bg-gradient-to-b pointer-events-none transition-opacity", podiumColors[index])} />
-
-                        {map.splash_image_url && (
-                            <div className="absolute inset-0 z-0">
-                                <Image src={map.splash_image_url} alt={map.map_name} fill className="object-cover opacity-[0.15] group-hover:opacity-[0.25] transition-opacity grayscale-[50%]" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
-                            </div>
-                        )}
+                        <div className={cn("absolute inset-0 opacity-[0.05] bg-gradient-to-b pointer-events-none group-hover:opacity-[0.08] transition-opacity", podiumColors[index])} />
 
                         {/* Rank Badge */}
                         <div className={cn(
-                            'absolute top-0 right-0 px-5 py-2 rounded-bl-2xl font-black text-white shadow-lg text-lg tracking-tighter z-20',
+                            'absolute top-0 right-0 px-5 py-2 rounded-bl-2xl font-black text-white shadow-lg text-lg tracking-tighter',
                             podiumColors[index]
                         )}>
                             #{index + 1}
@@ -100,7 +94,7 @@ export function MapStatsDisplay({ data, isLoading = false, className }: MapStats
                         <CardContent className="pt-10 pb-6 flex flex-col items-center text-center relative z-10 h-full">
                             <div className="relative mb-6">
                                 <div className={cn("absolute -inset-4 rounded-full blur-xl opacity-30 animate-pulse", podiumColors[index])} />
-                                <div className="w-40 h-24 rounded-lg overflow-hidden border-4 border-background shadow-2xl relative z-10 bg-muted flex items-center justify-center">
+                                <div className="w-32 h-20 rounded-xl overflow-hidden border-4 border-background shadow-2xl relative z-10 bg-muted flex items-center justify-center">
                                     {map.splash_image_url ? (
                                         <Image src={map.splash_image_url} alt={map.map_name} fill className="object-cover" />
                                     ) : (
@@ -110,25 +104,28 @@ export function MapStatsDisplay({ data, isLoading = false, className }: MapStats
                             </div>
 
                             <div className="mt-2 space-y-1">
-                                <h3 className="text-2xl font-black tracking-wide uppercase truncate max-w-[200px]">
+                                <h3 className={cn(moderniz.className, "text-2xl font-bold tracking-wide uppercase truncate max-w-[200px]")}>
                                     {map.map_name}
                                 </h3>
+                                <p className="text-sm text-muted-foreground font-medium truncate max-w-[200px] mx-auto">
+                                    {map.total_games} Matches
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 w-full mt-auto">
-                                <div className="bg-background/60 rounded-xl p-3 border border-border/30 backdrop-blur-sm shadow-inner">
+                                <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
                                     <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                                         <TrendingUp className="w-3.5 h-3.5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">PICKS</span>
                                     </div>
-                                    <p className="text-xl font-black text-green-500">{map.total_picks}</p>
+                                    <p className="text-xl font-black">{map.total_picks}</p>
                                 </div>
-                                <div className="bg-background/60 rounded-xl p-3 border border-border/30 backdrop-blur-sm shadow-inner">
+                                <div className="bg-background/40 rounded-xl p-3 border border-border/30 backdrop-blur-sm">
                                     <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                                         <Ban className="w-3.5 h-3.5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">BANS</span>
                                     </div>
-                                    <p className="text-xl font-black text-red-500">{map.total_bans}</p>
+                                    <p className="text-xl font-black">{map.total_bans}</p>
                                 </div>
                             </div>
                         </CardContent>

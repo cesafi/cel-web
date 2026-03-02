@@ -80,7 +80,7 @@ export default function ScheduleContent({
     fetchPreviousPage,
     error: _error
   } = useInfiniteSchedule({
-    limit: 20,
+    limit: 5,
     direction: 'future',
     filters: {
       sport_id: esportIdFilter,
@@ -174,7 +174,9 @@ export default function ScheduleContent({
           onLoadMore={handleLoadMore}
           hasMoreFuture={data ? hasNextPage : initialHasMoreFuture}
           hasMorePast={data ? hasPreviousPage : initialHasMorePast}
-          isLoading={isFetching || isFetchingNextPage || isFetchingPreviousPage}
+          isLoading={isFetching}
+          isFetchingNextPage={isFetchingNextPage}
+          isFetchingPreviousPage={isFetchingPreviousPage}
           selectedEsportId={selectedEsport}
           onEsportChange={handleEsportChange}
           selectedDivision={selectedDivision}

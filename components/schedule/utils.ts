@@ -83,8 +83,40 @@ export const groupMatchesByDate = (matches: ScheduleMatch[]): ScheduleDateGroup[
     {} as Record<string, ScheduleDateGroup>
   );
 
-  return Object.values(grouped).sort((a, b) => {
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  // Inject empty Today group if not present
+  if (!grouped[todayStr]) {
+      const todayDate = new Date();
+      const showYear = todayDate.getFullYear() !== currentYear;
+      const displayDate = todayDate.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          ...(showYear ? { year: 'numeric' } : {})
+      });
+      
+      grouped[todayStr] = {
+          date: todayStr,
+          displayDate,
+          isToday: true,
+          isYesterday: false,
+          isPast: false,
+          matches: []
+      };
+  }
+
+  const sortedGroups = Object.values(grouped).sort((a, b) => {
+    // Return descending order: latest dates at the top, earliest at the bottom
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
+  // Ensure inner matches are strictly chronologically sorted ascending
+  return sortedGroups.map(group => {
+      group.matches.sort((a, b) => {
+          const timeA = new Date(a.scheduled_at ?? new Date()).getTime();
+          const timeB = new Date(b.scheduled_at ?? new Date()).getTime();
+          return timeA - timeB;
+      });
+      return group;
   });
 };
 

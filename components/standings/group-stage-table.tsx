@@ -282,7 +282,7 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
                                     />
                                     <span className="font-bold text-sm truncate">{team.school_abbreviation}</span>
                                 </div>
-                                <div className="text-xs text-muted-foreground truncate font-medium">
+                                <div className="text-xs hidden md:flex text-muted-foreground truncate font-medium">
                                     {team.team_name}
                                 </div>
                             </div>
@@ -323,7 +323,7 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
 
                                  <div className="flex flex-col items-center min-w-[3rem]">
                                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Pts</span>
-                                     <span className={cn(moderniz.className, "text-xl text-primary")}>
+                                     <span className={cn(moderniz.className, "text-xl text-foreground")}>
                                          {team.points}
                                      </span>
                                  </div>

@@ -63,7 +63,7 @@ export function TeamRankings({
     className 
 }: TeamRankingsProps) {
     const columns = game === 'mlbb' ? mlbbColumns : valorantColumns;
-    const top3 = data.slice(0, 3);
+    const top3 = [...data].sort((a, b) => (b.win_rate || 0) - (a.win_rate || 0)).slice(0, 3);
 
     // Calculate max values for heatmap scaling
     const maxValues = useMemo(() => {

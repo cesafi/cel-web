@@ -11,9 +11,10 @@ import {
   getAvailableSeasons,
   getAvailableCategories,
   getStagesBySeason,
+  getEsports,
 } from '@/actions/statistics';
+import type { EsportGame } from '@/actions/statistics';
 import { getAllSchoolsTeams } from '@/actions/schools-teams';
-import { GameModeSelector } from './game-mode-selector';
 import { StatisticsNavbar } from './statistics-navbar';
 import { FilterPanel } from './filter-panel';
 import { PlayerLeaderboard } from './player-leaderboard';
@@ -62,6 +63,7 @@ export function StatisticsContent() {
   const [stages, setStages] = useState<FilterOption[]>([]);
   const [categories, setCategories] = useState<FilterOption[]>([]);
   const [teams, setTeams] = useState<FilterOption[]>([]);
+  const [esportsData, setEsportsData] = useState<EsportGame[]>([]);
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -71,10 +73,11 @@ export function StatisticsContent() {
   // Fetch filter options
   useEffect(() => {
     async function fetchFilters() {
-      const [seasonsResult, categoriesResult, teamsResult] = await Promise.all([
+      const [seasonsResult, categoriesResult, teamsResult, esportsResult] = await Promise.all([
         getAvailableSeasons(),
         getAvailableCategories(),
-        getAllSchoolsTeams()
+        getAllSchoolsTeams(),
+        getEsports()
       ]);
 
       if (seasonsResult.success && seasonsResult.data) {
@@ -85,6 +88,9 @@ export function StatisticsContent() {
           start_at: s.start_at
         }));
         setSeasons(mappedSeasons);
+        if (!selectedSeason && mappedSeasons.length > 0) {
+            setSelectedSeason(mappedSeasons[0].id);
+        }
       }
 
       if (categoriesResult.success && categoriesResult.data) {
@@ -97,7 +103,6 @@ export function StatisticsContent() {
       }
 
       if (teamsResult.success && teamsResult.data) {
-         // Teams filtered by season/game will be fetched separately
         // const mappedTeams = teamsResult.data.map((t: any) => ({
         //   id: t.id,
         //   label: t.team_name,
@@ -105,9 +110,13 @@ export function StatisticsContent() {
         // }));
         // setTeams(mappedTeams);
       }
+
+      if (esportsResult.success && esportsResult.data) {
+          setEsportsData(esportsResult.data);
+      }
     }
     fetchFilters();
-  }, []);
+  }, [selectedSeason]);
 
   // Fetch stages when season OR game changes
   useEffect(() => {
@@ -403,15 +412,8 @@ export function StatisticsContent() {
 
   return (
     <div className="space-y-6">
-      {/* Game Mode Selector */}
-      <GameModeSelector game={game} onGameChange={handleGameChange} />
-
       {/* Statistics Navigation */}
-      <StatisticsNavbar
-        game={game}
-        activeView={activeView}
-        onViewChange={setActiveView}
-      />
+      
 
       {/* Filters */}
       <FilterPanel
@@ -431,6 +433,15 @@ export function StatisticsContent() {
         onTeamChange={setSelectedTeam}
         onClearFilters={handleClearFilters}
         isLoading={loading}
+        game={game}
+        onGameChange={handleGameChange}
+        esportsData={esportsData}
+      />
+
+      <StatisticsNavbar
+        game={game}
+        activeView={activeView}
+        onViewChange={setActiveView}
       />
 
       {/* Content */}

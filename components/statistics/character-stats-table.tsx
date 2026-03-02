@@ -54,7 +54,13 @@ export function CharacterStatsTable({
     onSort
 }: CharacterStatsTableProps) {
     const columns = game === 'mlbb' ? mlbbColumns : valorantColumns;
-    const top3 = data.slice(0, 3);
+    const top3 = [...data].sort((a, b) => {
+        const gamesDiff = (b.games_played || 0) - (a.games_played || 0);
+        if (gamesDiff === 0) {
+            return (b.win_rate || 0) - (a.win_rate || 0);
+        }
+        return gamesDiff;
+    }).slice(0, 3);
 
     // Calculate max values for heatmap scaling
     const maxValues = useMemo(() => {

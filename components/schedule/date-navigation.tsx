@@ -2,25 +2,12 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from '@/components/ui/dropdown-menu';
-import { ChevronLeft, ChevronRight, Settings, Filter } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CompactGameSelector, GameOption } from '@/components/shared/filters/compact-game-selector';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { isToday, formatDateHeader } from './utils';
 import { Season } from '@/lib/types/seasons';
 import { EsportsSeasonStageWithDetails } from '@/lib/types/esports-seasons-stages';
-import { FilterTabs } from './filter-tabs';
 
 // Helper function to safely get ISO date string from a Date object
 function safeGetDateString(date: Date | null | undefined): string | null {
@@ -30,7 +17,6 @@ function safeGetDateString(date: Date | null | undefined): string | null {
   return date.toISOString().split('T')[0];
 }
 
-// Define RichSportCategory locally to match schedule-content or import if preferred
 interface RichSportCategory {
   id: number;
   division: string;
@@ -51,12 +37,10 @@ interface DateNavigationProps {
   readonly _hasMatches: boolean;
   readonly onPreviousDay?: () => void;
   readonly onNextDay?: () => void;
-  // New Filters
   readonly selectedEsportId?: string;
   readonly onEsportChange?: (id: string) => void;
   readonly selectedDivision?: string;
   readonly onDivisionChange?: (division: string) => void;
-  // Legacy/Fallback
   readonly availableSports?: string[];
   readonly availableRichSports?: RichSportCategory[];
   readonly availableDates?: Date[];
@@ -124,37 +108,36 @@ export default function DateNavigation({
 
   const handleGoToToday = () => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     onDateChange(today);
   };
 
-  // Filter stages based on all filters and deduplicate by name
+  const handleSpecificDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) {
+      const [year, month, day] = e.target.value.split('-').map(Number);
+      const newDate = new Date(year, month - 1, day);
+      onDateChange(newDate);
+    }
+  };
+
   const uniqueFilteredStages = useMemo(() => {
     const filtered = availableStages.filter(stage => {
-      // Season filter
       if (selectedSeason !== 'all' && stage.season_id !== parseInt(selectedSeason)) {
         return false;
       }
-      
-      // Esport filter
       if (selectedEsportId !== 'all') {
-        // Need to check if stage belongs to selected esport
-        // The type has esports_categories relation
         if (!stage.esports_categories || stage.esports_categories.esport_id.toString() !== selectedEsportId) {
           return false;
         }
       }
-      
-      // Division filter
       if (selectedDivision !== 'all') {
          if (!stage.esports_categories || stage.esports_categories.division !== selectedDivision) {
            return false;
          }
       }
-      
       return true;
     });
 
-    // Deduplicate by competition_stage name
     const uniqueMap = new Map();
     filtered.forEach(stage => {
       if (!uniqueMap.has(stage.competition_stage)) {
@@ -165,7 +148,6 @@ export default function DateNavigation({
     return Array.from(uniqueMap.values());
   }, [availableStages, selectedSeason, selectedEsportId, selectedDivision]);
 
-  // Extract Unique Esports
   const uniqueEsports = useMemo(() => {
     if (!availableRichSports || availableRichSports.length === 0) return [];
     
@@ -178,27 +160,33 @@ export default function DateNavigation({
     return Array.from(map.values());
   }, [availableRichSports]);
 
-  // Extract Unique Divisions (filtered by Esport if selected)
   const uniqueDivisions = useMemo(() => {
     if (!availableRichSports || availableRichSports.length === 0) return [];
 
     const divisions = new Set<string>();
     availableRichSports.forEach(cat => {
-       // If esport selected, only show divisions for that esport
        if (selectedEsportId !== 'all' && cat.esport?.id.toString() !== selectedEsportId) return;
        divisions.add(cat.division);
     });
     return Array.from(divisions).sort();
   }, [availableRichSports, selectedEsportId]);
   
-  const currentEsportName = useMemo(() => {
-     if (selectedEsportId === 'all') return null;
-     return uniqueEsports.find(e => e.id.toString() === selectedEsportId)?.name || 'Selected';
-  }, [selectedEsportId, uniqueEsports]);
+  const gameOptions: GameOption[] = useMemo(() => {
+    const options: GameOption[] = [{ id: 'all', name: 'All Esports', shortName: 'All Games' }];
+    uniqueEsports.forEach(esport => {
+      options.push({
+        id: esport.id.toString(),
+        name: esport.name,
+        shortName: esport.abbreviation || esport.name.substring(0, 3).toUpperCase(),
+        logoUrl: esport.logo_url
+      });
+    });
+    return options;
+  }, [uniqueEsports]);
 
   return (
     <div className="sticky top-20 z-20 mt-4 space-y-4 rounded-xl border border-border/60 bg-card/95 p-4 shadow-sm backdrop-blur-md md:p-5 transition-all">
-      {/* Header Row: Date Title + Date Nav + Settings */}
+      {/* Header Row: Date Title + Game Selector */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
          {/* Left: Current Date Title */}
          <div className="flex flex-col">
@@ -210,195 +198,149 @@ export default function DateNavigation({
             </div>
          </div>
 
-         {/* Right: Controls */}
-         <div className="flex items-center gap-3 self-start md:self-auto">
-             {/* Date Nav */}
-             <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg border border-border/50">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={goToPreviousDay}
-                disabled={
-                  !hasMorePast &&
-                  availableDates.length > 0 &&
-                  (() => {
-                    const currentDateStr = safeGetDateString(currentDate);
-                    if (!currentDateStr) return true;
-                    return availableDates.findIndex(
-                      (date) => safeGetDateString(date) === currentDateStr
-                    ) <= 0;
-                  })()
-                }
-                className="h-8 w-8 rounded-md hover:bg-background hover:shadow-sm"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleGoToToday}
-                className="h-8 px-3 font-bold uppercase tracking-wide text-xs rounded-md hover:bg-background hover:shadow-sm"
-              >
-                Today
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={goToNextDay}
-                disabled={
-                  !hasMoreFuture &&
-                  availableDates.length > 0 &&
-                  (() => {
-                    const currentDateStr = safeGetDateString(currentDate);
-                    if (!currentDateStr) return true;
-                    return availableDates.findIndex(
-                      (date) => safeGetDateString(date) === currentDateStr
-                    ) >= availableDates.length - 1;
-                  })()
-                }
-                className="h-8 w-8 rounded-md hover:bg-background hover:shadow-sm"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Combined Settings Gear */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="default" className="h-10 px-4 rounded-lg border-border/50 bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-300 gap-2 shadow-sm">
-                  <Settings className="h-4 w-4" />
-                  <span className="font-bold uppercase tracking-wide text-xs">All Filters</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-80" align="end">
-                <DropdownMenuLabel>Filter Matches</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                {/* Esport Filter Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="py-3">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <span>Esport</span>
-                    {selectedEsportId !== 'all' && (
-                       <span className="ml-auto text-xs text-primary font-bold max-w-[100px] truncate">
-                         {currentEsportName}
-                       </span>
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-72 max-h-[300px] overflow-y-auto">
-                    <DropdownMenuRadioGroup value={selectedEsportId} onValueChange={onEsportChange}>
-                      <DropdownMenuRadioItem value="all" className="py-2">All Esports</DropdownMenuRadioItem>
-                      {uniqueEsports.map((esport) => (
-                           <DropdownMenuRadioItem key={esport.id} value={esport.id.toString()} className="py-2 items-center">
-                              <div className="flex items-center gap-3 w-full">
-                                {esport.logo_url ? (
-                                   // eslint-disable-next-line @next/next/no-img-element
-                                   <img src={esport.logo_url} alt={esport.name} className="w-6 h-6 object-contain" />
-                                ) : (
-                                   <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center text-[10px] font-bold">
-                                     {esport.abbreviation?.substring(0,2) || 'SP'}
-                                   </div>
-                                )}
-                                <div className="flex flex-col">
-                                   <span className="font-bold text-sm leading-none">{esport.name}</span>
-                                </div>
-                              </div>
-                           </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                {/* Category (Division) Filter Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="py-3">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <span>Category</span>
-                    {selectedDivision !== 'all' && (
-                       <span className="ml-auto text-xs text-primary font-bold max-w-[100px] truncate">
-                         {selectedDivision}
-                       </span>
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 overflow-y-auto max-h-[300px]">
-                    <DropdownMenuRadioGroup value={selectedDivision} onValueChange={onDivisionChange}>
-                      <DropdownMenuRadioItem value="all" className="py-2">All Categories</DropdownMenuRadioItem>
-                      {uniqueDivisions.map((division) => (
-                        <DropdownMenuRadioItem key={division} value={division} className="py-2">
-                          {division}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                {/* Stage Filter Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="py-3">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <span>League Stage</span>
-                    {selectedStage !== 'all' && (
-                       <span className="ml-auto text-xs text-primary font-bold truncate max-w-[80px]">
-                         {selectedStage}
-                       </span>
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56">
-                    <DropdownMenuRadioGroup value={selectedStage} onValueChange={onStageChange}>
-                      <DropdownMenuRadioItem value="all" className="py-2">
-                        {selectedSeason !== 'all' 
-                          ? `All Stages (${availableSeasons.find(s => s.id.toString() === selectedSeason)?.name || `Season ${selectedSeason}`})` 
-                          : 'All Stages'}
-                      </DropdownMenuRadioItem>
-                      {uniqueFilteredStages.map((stage) => (
-                        <DropdownMenuRadioItem key={stage.id} value={stage.competition_stage} className="py-2">
-                          {stage.competition_stage}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
+         {/* Right: Game Selector */}
+         <div className="hidden sm:flex items-center self-start md:self-auto overflow-x-auto pb-1 max-w-full">
+            <CompactGameSelector 
+              options={gameOptions}
+              value={selectedEsportId}
+              onChange={(val) => onEsportChange?.(val)}
+              variant="buttons"
+            />
          </div>
       </div>
 
-       {/* Season Selector */}
-       <div>
-          {/* Mobile: Dropdown */}
-          <div className="sm:hidden mt-2">
-            <select
-              value={selectedSeason || 'all'}
-              onChange={(e) => onSeasonChange?.(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-muted/30 border border-border/50 text-sm font-medium text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-            >
-              <option value="all">All Seasons</option>
-              {availableSeasons.map(season => (
-                <option key={season.id} value={season.id.toString()}>
-                  {season.name || `Season ${season.id}`}
-                </option>
-              ))}
-            </select>
+      {/* Second Row: Date Nav + Filters */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/20 p-2 rounded-lg border border-border/50">
+        {/* Left: Date Nav */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToPreviousDay}
+            disabled={
+              !hasMorePast &&
+              availableDates.length > 0 &&
+              (() => {
+                const currentDateStr = safeGetDateString(currentDate);
+                if (!currentDateStr) return true;
+                return availableDates.findIndex(
+                  (date) => safeGetDateString(date) === currentDateStr
+                ) <= 0;
+              })()
+            }
+            className="h-9 w-9 bg-background shadow-sm shrink-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGoToToday}
+            className="flex-1 md:flex-0 h-9 px-3 font-bold uppercase tracking-wide text-xs bg-background shadow-sm md:flex-none"
+          >
+            Today
+          </Button>
+          
+          <div className="relative h-9 w-9 shrink-0">
+             <input 
+               type="date"
+               value={safeGetDateString(currentDate) || ''}
+               onChange={handleSpecificDateChange}
+               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+               id="date-picker-input"
+             />
+             <Button
+               variant="outline"
+               size="icon"
+               className="absolute inset-0 h-9 w-9 bg-background shadow-sm pointer-events-none"
+               tabIndex={-1}
+             >
+                <CalendarIcon className="h-4 w-4" />
+             </Button>
           </div>
-          {/* Desktop: Pill Tabs */}
-          <div className="hidden sm:block">
-            <FilterTabs 
-              options={[
-                { value: 'all', label: 'All' },
-                ...availableSeasons.map(season => ({
-                  value: season.id.toString(),
-                  label: season.name || `Season ${season.id}`
-                }))
-              ]}
-              value={selectedSeason || 'all'}
-              onChange={onSeasonChange || (() => {})}
-              className="mt-2"
-            />
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToNextDay}
+            disabled={
+              !hasMoreFuture &&
+              availableDates.length > 0 &&
+              (() => {
+                const currentDateStr = safeGetDateString(currentDate);
+                if (!currentDateStr) return true;
+                return availableDates.findIndex(
+                  (date) => safeGetDateString(date) === currentDateStr
+                ) >= availableDates.length - 1;
+              })()
+            }
+            className="h-9 w-9 bg-background shadow-sm shrink-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Right: Filters */}
+        <div className="flex w-full sm:w-auto overflow-x-auto pb-1 md:pb-0">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground mr-1 hidden sm:inline-block">Filters:</span>
+            
+            {/* Season Selector */}
+            {availableSeasons && availableSeasons.length > 0 && (
+              <div className="col-span-2 sm:col-span-auto w-full sm:w-auto order-first sm:order-none mb-1 sm:mb-0">
+                <Select value={selectedSeason} onValueChange={(val) => onSeasonChange?.(val)}>
+                  <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+                    <SelectValue placeholder="All Seasons" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Seasons</SelectItem>
+                    {availableSeasons.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name || `Season ${s.id}`}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="sm:hidden col-span-2">
+              <CompactGameSelector 
+                options={gameOptions}
+                value={selectedEsportId}
+                onChange={(val) => onEsportChange?.(val)}
+                variant="dropdown"
+                className="w-full"
+              />
+            </div>
+
+            <Select value={selectedDivision} onValueChange={(val) => onDivisionChange?.(val)}>
+              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {uniqueDivisions.map((division) => (
+                  <SelectItem key={division} value={division}>
+                    {division}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStage} onValueChange={(val) => onStageChange?.(val)}>
+              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+                <SelectValue placeholder="Stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stages</SelectItem>
+                {uniqueFilteredStages.map((stage) => (
+                  <SelectItem key={stage.id} value={stage.competition_stage}>
+                    {stage.competition_stage}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-       </div>
+        </div>
+      </div>
     </div>
   );
 }

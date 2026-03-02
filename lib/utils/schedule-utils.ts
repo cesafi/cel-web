@@ -94,7 +94,8 @@ export function groupMatchesByDate(matches: ScheduleMatch[]): Record<string, Sch
  */
 export function sortDateKeys(dateKeys: string[]): string[] {
   return dateKeys.sort((a, b) => {
-    return new Date(a).getTime() - new Date(b).getTime();
+    // Return descending order: latest dates at the top
+    return new Date(b).getTime() - new Date(a).getTime();
   });
 }
 

@@ -1,19 +1,8 @@
 'use client';
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Settings, Trophy, Target, ChevronRight } from 'lucide-react';
+import { useMemo } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CompactGameSelector, GameOption } from '@/components/shared/filters/compact-game-selector';
 //
 import {
   StandingsNavigation as StandingsNavigationType,
@@ -56,91 +45,61 @@ export default function StandingsNavbar({
     }
   };
 
+  const gameOptions: GameOption[] = useMemo(() => {
+    if (!availableSports) return [];
+    return availableSports.map(sport => ({
+      id: sport.id.toString(),
+      name: sport.name,
+      shortName: sport.abbreviation || sport.name.substring(0, 3).toUpperCase(),
+      logoUrl: sport.logo_url
+    }));
+  }, [availableSports]);
+
   return (
     <div className="bg-background border-b z-10 sticky top-0">
       <div className="flex flex-col">
         {/* Row 1: Filters & Context */}
-        <div className="container px-3 sm:px-4 py-2 sm:py-3 border-b border-border/40">
+         <div className="container px-3 sm:px-4 py-2 sm:py-3 border-b border-border/40">
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-             {/* Left: Filter Summary / Title */}
-             <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">Filters:</span>
-                    {availableSports?.find(s => s.id === currentFilters.sport_id)?.name || 'All Sports'}
-                    <span>•</span>
-                    {availableCategories?.find(c => c.id === currentFilters.esport_category_id)?.display_name || 'All Categories'}
-                 </div>
+             {/* Left: Game Selector Desktop */}
+             <div className="hidden sm:flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
+                <CompactGameSelector 
+                  options={gameOptions}
+                  value={currentFilters.sport_id?.toString() || ''}
+                  onChange={(val) => onSportChange(Number(val))}
+                  variant="buttons"
+                />
              </div>
 
-             {/* Right: All Filters Button */}
-             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="default" className="h-10 px-4 rounded-lg border-border/50 bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-300 gap-2 shadow-sm">
-                  <Settings className="h-4 w-4" />
-                  <span className="font-bold uppercase tracking-wide text-xs">All Filters</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-80" align="end">
-                <DropdownMenuLabel>Filter Standings</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                {/* Esport Filter Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="py-3">
-                    <Trophy className="mr-2 h-4 w-4" />
-                    <span>Esport</span>
-                    {currentFilters.sport_id && (
-                       <span className="ml-auto text-xs text-primary font-bold max-w-[100px] truncate">
-                         {availableSports?.find(s => s.id === currentFilters.sport_id)?.name}
-                       </span>
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-72 max-h-[300px] overflow-y-auto">
-                    <DropdownMenuRadioGroup value={currentFilters.sport_id?.toString()} onValueChange={(val) => onSportChange(Number(val))}>
-                      {availableSports?.map((sport) => (
-                           <DropdownMenuRadioItem key={sport.id} value={sport.id.toString()} className="py-2 items-center">
-                              <div className="flex items-center gap-3 w-full">
-                                {sport.logo_url ? (
-                                   // eslint-disable-next-line @next/next/no-img-element
-                                   <img src={sport.logo_url} alt={sport.name} className="w-6 h-6 object-contain" />
-                                ) : (
-                                   <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center text-[10px] font-bold">
-                                     {sport.abbreviation?.substring(0,2) || sport.name.substring(0,2)}
-                                   </div>
-                                )}
-                                <div className="flex flex-col">
-                                   <span className="font-bold text-sm leading-none">{sport.name}</span>
-                                </div>
-                              </div>
-                           </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+             {/* Right: Category Dropdown & Mobile Game Selector */}
+             <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
+               <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground mr-1 hidden sm:inline-block">Filter:</span>
+               
+               <div className="sm:hidden w-full">
+                 <CompactGameSelector 
+                   options={gameOptions}
+                   value={currentFilters.sport_id?.toString() || ''}
+                   onChange={(val) => onSportChange(Number(val))}
+                   variant="dropdown"
+                 />
+               </div>
 
-                {/* Category Filter Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="py-3">
-                    <Target className="mr-2 h-4 w-4" />
-                    <span>Category</span>
-                    {currentFilters.esport_category_id && (
-                       <span className="ml-auto text-xs text-primary font-bold max-w-[100px] truncate">
-                         {availableCategories?.find(c => c.id === currentFilters.esport_category_id)?.display_name}
-                       </span>
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 overflow-y-auto max-h-[300px]">
-                    <DropdownMenuRadioGroup value={currentFilters.esport_category_id?.toString()} onValueChange={(val) => onCategoryChange(Number(val))}>
-                      {availableCategories?.map((category) => (
-                        <DropdownMenuRadioItem key={category.id} value={category.id.toString()} className="py-2">
-                          {category.display_name}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
+               <Select 
+                 value={currentFilters.esport_category_id?.toString() || ''} 
+                 onValueChange={(val) => onCategoryChange(Number(val))}
+               >
+                 <SelectTrigger className="h-9 w-full sm:w-[200px] bg-background shadow-sm font-medium text-xs">
+                   <SelectValue placeholder="Select Category" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {availableCategories?.map((category) => (
+                     <SelectItem key={category.id} value={category.id.toString()}>
+                       {category.display_name}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
            </div>
         </div>
 

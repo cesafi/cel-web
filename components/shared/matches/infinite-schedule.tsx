@@ -47,8 +47,8 @@ export function InfiniteSchedule({
   useEffect(() => {
     const topObserver = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasPreviousPage && !isFetchingPreviousPage) {
-          fetchPreviousPage();
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
         }
       },
       { threshold: 0.1 }
@@ -56,8 +56,8 @@ export function InfiniteSchedule({
 
     const bottomObserver = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
+        if (entries[0].isIntersecting && hasPreviousPage && !isFetchingPreviousPage) {
+          fetchPreviousPage();
         }
       },
       { threshold: 0.1 }
@@ -118,21 +118,21 @@ export function InfiniteSchedule({
 
   return (
     <div className={cn('space-y-8', className)}>
-      {/* Load Previous Button */}
-      {hasPreviousPage && (
+      {/* Load Next Button (Future) */}
+      {hasNextPage && (
         <div className="flex justify-center">
           <Button
             variant="outline"
-            onClick={() => fetchPreviousPage()}
-            disabled={isFetchingPreviousPage}
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
             className="flex items-center gap-2"
           >
-            {isFetchingPreviousPage ? (
+            {isFetchingNextPage ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <ChevronUp className="h-4 w-4" />
             )}
-            Load More Past Matches
+            Load More Future Matches
           </Button>
         </div>
       )}
@@ -153,21 +153,21 @@ export function InfiniteSchedule({
       {/* Bottom Observer */}
       <div ref={bottomObserverRef} className="h-4" />
 
-      {/* Load Next Button */}
-      {hasNextPage && (
+      {/* Load Previous Button (Past) */}
+      {hasPreviousPage && (
         <div className="flex justify-center">
           <Button
             variant="outline"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
+            onClick={() => fetchPreviousPage()}
+            disabled={isFetchingPreviousPage}
             className="flex items-center gap-2"
           >
-            {isFetchingNextPage ? (
+            {isFetchingPreviousPage ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <ChevronDown className="h-4 w-4" />
             )}
-            Load More Future Matches
+            Load More Past Matches
           </Button>
         </div>
       )}
@@ -176,7 +176,7 @@ export function InfiniteSchedule({
       {isFetchingNextPage && (
         <div className="flex items-center justify-center py-4">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-muted-foreground ml-2 text-sm">Loading more matches...</span>
+          <span className="text-muted-foreground ml-2 text-sm">Loading future matches...</span>
         </div>
       )}
 

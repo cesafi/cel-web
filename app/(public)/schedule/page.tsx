@@ -1,8 +1,6 @@
-import { Calendar, TrendingUp, Clock } from 'lucide-react';
 import { SeasonProvider } from '@/components/contexts/season-provider';
 import { ScheduleContent } from '@/components/schedule';
 import { getScheduleMatchesAroundDate, getAvailableSportCategories, getAvailableSeasons, getAvailableStages } from '@/actions/matches';
-import { ScheduleMatch } from '@/lib/types/matches';
 import { moderniz, roboto } from '@/lib/fonts';
 
 export default async function SchedulePage() {
@@ -26,31 +24,6 @@ export default async function SchedulePage() {
   const seasons = seasonsResult.success && seasonsResult.data ? seasonsResult.data : [];
   const stages = stagesResult.success && stagesResult.data ? stagesResult.data : [];
 
-  // Calculate stats
-  const liveMatches = matches.filter((m) => m.status === 'live').length;
-  const todaysMatches = matches.filter((m) => m.isToday).length;
-  const upcomingMatches = matches.filter((m) => !m.isPast).length;
-
-  const stats = [
-    {
-      icon: TrendingUp,
-      value: liveMatches.toString(),
-      label: 'Live Matches',
-      colorClass: 'text-emerald-500'
-    },
-    {
-      icon: Calendar,
-      value: todaysMatches.toString(),
-      label: "Today's Matches",
-      colorClass: 'text-primary'
-    },
-    {
-      icon: Clock,
-      value: upcomingMatches.toString(),
-      label: 'Upcoming',
-      colorClass: 'text-amber-500'
-    }
-  ];
 
   return (
     <SeasonProvider>
@@ -78,27 +51,6 @@ export default async function SchedulePage() {
                 Follow all CESAFI matches with real-time updates and live scores across all sports
                 and categories.
               </p>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 max-w-4xl mx-auto sm:gap-8">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="flex flex-col items-center group">
-                    <div className="p-2 sm:p-4 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors duration-300 mb-2 sm:mb-4">
-                      <stat.icon className={`h-4 w-4 sm:h-8 sm:w-8 ${stat.colorClass}`} />
-                    </div>
-                    <div
-                      className={`${moderniz.className} text-xl sm:text-3xl md:text-4xl font-bold text-foreground mb-0.5 sm:mb-2`}
-                    >
-                      {stat.value}
-                    </div>
-                    <div
-                      className={`${roboto.className} text-muted-foreground text-[10px] sm:text-sm font-medium text-center`}
-                    >
-                      {stat.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </section>
