@@ -217,7 +217,24 @@ export async function GET(
             const rawBoard = (draftRes.data || []).map((action: any, idx: number) => {
                 const stats = action.hero_id ? characterStatsMap[action.hero_id] : null;
                 const teamInfo = action.team_id ? teamLookup[action.team_id] : null;
-                const playerIgn = action.player?.ign || '';
+
+                // For IGN mapping, first check if drafted action has a player relation.
+                // Otherwise, fallback to the roster lookup based on the team's sort order mapping.
+                // Draft actions in MLBB are typically: 10 bans (sort 1-5, 6-10), 10 picks (sort 11-15, 16-20)
+                let playerIgn = action.player?.ign || '';
+
+                // If it's a pick action and no explicitly joined player IGN exists, try fallback
+                if (!playerIgn && action.action_type === 'pick' && action.team_id) {
+                    // Try to guess the slot based on index or let the client/overlay handle it.
+                    // The easiest guess is `sort_order` or mapping the Nth pick to the Nth roster order.
+
+                    // We can map action.sort_order directly. MLBB often maps pick 1 to roster 1.
+                    // If not, we fall back to finding the first available roster spot.
+                    playerIgn = rosterLookup[action.team_id]?.[action.sort_order] || '';
+                    if (!playerIgn) {
+                        playerIgn = Object.values(rosterLookup[action.team_id] || {})[0] || '';
+                    }
+                }
 
                 return {
                     order: idx + 1,
