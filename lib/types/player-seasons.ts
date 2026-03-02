@@ -17,6 +17,7 @@ export interface PlayerSeasonWithDetails extends PlayerSeason {
     id: string;
     name: string;
     season_id: number;
+    esport_category_id: number;
     seasons: {
       id: number;
       name?: string | null;
@@ -28,6 +29,15 @@ export interface PlayerSeasonWithDetails extends PlayerSeason {
       name: string;
       abbreviation: string;
       logo_url: string | null;
+    } | null;
+    esports_categories: {
+      id: number;
+      division: string;
+      levels: string;
+      esports: {
+        id: number;
+        name: string;
+      } | null;
     } | null;
   } | null;
 }

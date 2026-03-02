@@ -1,13 +1,17 @@
 import { moderniz, roboto } from '@/lib/fonts';
 import { Users, Gamepad2, Trophy } from 'lucide-react';
 import PlayersGrid from '@/components/players/players-grid';
+import { getAvailableSportCategories } from '@/actions/matches';
 
 export const metadata = {
   title: 'Players | CESAFI Esports League',
   description: 'Browse all CESAFI esports competitors across MLBB and Valorant teams and seasons.'
 };
 
-export default function PlayersPage() {
+export default async function PlayersPage() {
+  const categoriesResult = await getAvailableSportCategories();
+  const availableRichSports = categoriesResult.success && categoriesResult.data ? categoriesResult.data : [];
+
   return (
     <>
       {/* Hero Section */}
@@ -30,7 +34,7 @@ export default function PlayersPage() {
       </section>
 
       {/* Players content with cascading filters (all client-side) */}
-      <PlayersGrid />
+      <PlayersGrid availableRichSports={availableRichSports as any} />
     </>
   );
 }

@@ -126,6 +126,21 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
     return { totalGames, totalKills, totalDeaths, totalAssists, totalWins, kda };
   }, [playerStats]);
 
+  // Heatmap helper
+  const getHeatmap = (value: number, allValues: number[], invertColors = false) => {
+    const max = Math.max(...allValues);
+    if (max === 0 || value === 0) return {};
+    const ratio = value / max;
+    if (invertColors) {
+      if (ratio > 0.8) return { backgroundColor: 'rgba(239, 68, 68, 0.15)' };
+      return {};
+    }
+    if (ratio >= 0.9) return { backgroundColor: 'rgba(16, 185, 129, 0.2)' };
+    if (ratio >= 0.7) return { backgroundColor: 'rgba(59, 130, 246, 0.15)' };
+    if (ratio >= 0.5) return { backgroundColor: 'rgba(59, 130, 246, 0.05)' };
+    return {};
+  };
+
   // Loading
   if (schoolLoading || teamLoading) {
     return (
@@ -165,6 +180,10 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
     };
     return configs[status] || configs.upcoming;
   };
+
+  const sortedPlayerStats = playerStats
+    ? [...(playerStats as any[])].sort((a: any, b: any) => (b.total_kills + b.total_assists) - (a.total_kills + a.total_assists))
+    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -212,7 +231,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
         </div>
       </motion.div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
         {/* Team Stats Summary */}
         {teamSummary && (
@@ -220,7 +239,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 py-8"
+            className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 py-8"
           >
             {[
               { label: 'Games', value: teamSummary.totalGames, icon: Gamepad2 },
@@ -228,12 +247,12 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
               { label: 'Team KDA', value: teamSummary.kda, icon: Target },
               { label: 'Total Kills', value: teamSummary.totalKills, icon: Crosshair },
             ].map((stat, i) => (
-              <div key={i} className="rounded-xl border border-border/40 bg-card/60 p-4 text-center">
+              <div key={i} className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl p-3 sm:p-4 text-center shadow-lg">
                 <stat.icon className="h-4 w-4 text-muted-foreground/40 mx-auto mb-2" />
-                <div className="font-mango-grotesque text-2xl md:text-3xl font-bold text-foreground leading-none">
+                <div className="font-mango-grotesque text-2xl sm:text-3xl md:text-4xl font-bold text-foreground leading-none">
                   {stat.value}
                 </div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mt-1">{stat.label}</div>
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground/50 mt-1">{stat.label}</div>
               </div>
             ))}
           </motion.div>
@@ -244,122 +263,171 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
-          className="py-8"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-              <Users className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold uppercase tracking-wider">Roster</span>
+          <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Users className="h-4 w-4" />
+              </div>
+              <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Roster</h3>
+            </div>
+
+            <div className="p-4 sm:p-6">
+              {playersLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-32 rounded-xl bg-muted/30" />)}
+                </div>
+              ) : players && players.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {players.map((player: Player, index: number) => {
+                    const pStat = (playerStats as any[])?.find((s: any) => s.player_id === player.id);
+                    return (
+                      <motion.div
+                        key={player.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                      >
+                        <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(player.ign)}`} className="group block">
+                          <div className="rounded-xl border border-border/30 bg-background/40 hover:border-border/60 hover:bg-muted/10 transition-all duration-300 p-4 text-center">
+                            <div className="relative h-14 w-14 mx-auto mb-3">
+                              {player.photo_url ? (
+                                <Image src={player.photo_url} alt={player.ign} fill className="rounded-full object-cover border border-border/40" />
+                              ) : (
+                                <div className="h-full w-full rounded-full bg-muted/50 flex items-center justify-center border border-border/40">
+                                  <span className="text-lg font-bold text-muted-foreground/40">{player.ign?.charAt(0) || '?'}</span>
+                                </div>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                              {player.ign}
+                            </h4>
+                            {player.role && (
+                              <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mt-0.5">{player.role}</p>
+                            )}
+                            {pStat && (
+                              <div className="mt-2 pt-2 border-t border-border/20">
+                                <span className="text-[10px] text-muted-foreground/40 tabular-nums">
+                                  {pStat.total_kills || 0}/{pStat.total_deaths || 0}/{pStat.total_assists || 0} KDA
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
+                  <p className="text-muted-foreground/60 text-sm">No roster data available for this team.</p>
+                </div>
+              )}
             </div>
           </div>
-
-          {playersLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-32 rounded-xl bg-muted/30" />)}
-            </div>
-          ) : players && players.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {players.map((player: Player, index: number) => {
-                // Find this player's stats
-                const pStat = (playerStats as any[])?.find((s: any) => s.player_id === player.id);
-                return (
-                  <motion.div
-                    key={player.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                  >
-                    <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(player.ign)}`} className="group block">
-                      <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 hover:bg-card/80 transition-all duration-300 p-4 text-center">
-                        <div className="relative h-14 w-14 mx-auto mb-3">
-                          {player.photo_url ? (
-                            <Image src={player.photo_url} alt={player.ign} fill className="rounded-full object-cover border border-border/40" />
-                          ) : (
-                            <div className="h-full w-full rounded-full bg-muted/50 flex items-center justify-center border border-border/40">
-                              <span className="text-lg font-bold text-muted-foreground/40">{player.ign?.charAt(0) || '?'}</span>
-                            </div>
-                          )}
-                        </div>
-                        <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                          {player.ign}
-                        </h4>
-                        {player.role && (
-                          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mt-0.5">{player.role}</p>
-                        )}
-                        {pStat && (
-                          <div className="mt-2 pt-2 border-t border-border/20">
-                            <span className="text-[10px] text-muted-foreground/40">
-                              {pStat.total_kills || 0}/{pStat.total_deaths || 0}/{pStat.total_assists || 0} KDA
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border/40 bg-card/60 p-12 text-center">
-              <Users className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
-              <p className="text-muted-foreground/60 text-sm">No roster data available for this team.</p>
-            </div>
-          )}
         </motion.section>
 
-        <div className="h-px bg-border/20" />
-
         {/* Player Stats Table */}
-        {playerStats && playerStats.length > 0 && (
+        {sortedPlayerStats.length > 0 && (
           <motion.section
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="py-8"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                <Target className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Player Statistics</span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Target className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Player Statistics</h3>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">{sortedPlayerStats.length} players</p>
+                </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/40 bg-card/60 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-border/20 text-[10px] uppercase tracking-widest text-muted-foreground/50">
-                      <th className="text-left px-4 py-3 font-medium">Player</th>
-                      <th className="text-center px-3 py-3 font-medium">GP</th>
-                      <th className="text-center px-3 py-3 font-medium">K</th>
-                      <th className="text-center px-3 py-3 font-medium">D</th>
-                      <th className="text-center px-3 py-3 font-medium">A</th>
-                      <th className="text-center px-3 py-3 font-medium">KDA</th>
-                      {isMlbb && <th className="text-center px-3 py-3 font-medium">Gold</th>}
-                      {isValorant && <th className="text-center px-3 py-3 font-medium">ACS</th>}
-                      {isValorant && <th className="text-center px-3 py-3 font-medium">FB</th>}
-                      <th className="text-center px-3 py-3 font-medium">MVP</th>
+                    <tr className="bg-muted/30 border-b border-border/50 text-left">
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[140px]">Player</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">GP</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">K</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">D</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">A</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">KDA</th>
+                      {isMlbb && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[70px]">Gold</th>}
+                      {isValorant && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">ACS</th>}
+                      {isValorant && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">FB</th>}
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">MVP</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(playerStats as any[]).sort((a: any, b: any) => (b.total_kills + b.total_assists) - (a.total_kills + a.total_assists)).map((stat: any, i: number) => {
+                    {sortedPlayerStats.map((stat: any, i: number) => {
                       const kda = stat.total_deaths > 0 ? ((stat.total_kills + stat.total_assists) / stat.total_deaths).toFixed(2) : 'Perfect';
+                      const kdaNum = stat.total_deaths > 0 ? (stat.total_kills + stat.total_assists) / stat.total_deaths : 99;
                       return (
-                        <tr key={stat.player_id} className={cn('border-b border-border/10 hover:bg-muted/20 transition-colors', i === 0 && 'bg-primary/5')}>
-                          <td className="px-4 py-3">
+                        <tr key={stat.player_id} className={cn('group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]', i === 0 && 'bg-primary/5')}>
+                          <td className="px-4 py-2">
                             <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(stat.player_ign || '')}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                              <span className="font-medium text-foreground">{stat.player_ign || 'Unknown'}</span>
+                              <span className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{stat.player_ign || 'Unknown'}</span>
                             </Link>
                           </td>
-                          <td className="text-center px-3 py-3 text-muted-foreground">{stat.games_played}</td>
-                          <td className="text-center px-3 py-3 text-green-400">{stat.total_kills}</td>
-                          <td className="text-center px-3 py-3 text-red-400">{stat.total_deaths}</td>
-                          <td className="text-center px-3 py-3 text-blue-400">{stat.total_assists}</td>
-                          <td className="text-center px-3 py-3 font-medium text-foreground">{kda}</td>
-                          {isMlbb && <td className="text-center px-3 py-3 text-yellow-400">{Math.round(stat.total_gold || 0).toLocaleString()}</td>}
-                          {isValorant && <td className="text-center px-3 py-3 text-foreground">{Math.round(stat.avg_acs || 0)}</td>}
-                          {isValorant && <td className="text-center px-3 py-3 text-orange-400">{stat.total_first_bloods || 0}</td>}
-                          <td className="text-center px-3 py-3">
+                          <td className="text-center px-3 py-2">
+                            <span className="text-xs font-medium text-muted-foreground tabular-nums">{stat.games_played}</span>
+                          </td>
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getHeatmap(stat.total_kills || 0, sortedPlayerStats.map((s: any) => s.total_kills || 0))}
+                            >
+                              <span className="text-xs font-medium text-green-400 tabular-nums">{stat.total_kills}</span>
+                            </div>
+                          </td>
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getHeatmap(stat.total_deaths || 0, sortedPlayerStats.map((s: any) => s.total_deaths || 0), true)}
+                            >
+                              <span className="text-xs font-medium text-red-400 tabular-nums">{stat.total_deaths}</span>
+                            </div>
+                          </td>
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getHeatmap(stat.total_assists || 0, sortedPlayerStats.map((s: any) => s.total_assists || 0))}
+                            >
+                              <span className="text-xs font-medium text-blue-400 tabular-nums">{stat.total_assists}</span>
+                            </div>
+                          </td>
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getHeatmap(kdaNum, sortedPlayerStats.map((s: any) => s.total_deaths > 0 ? (s.total_kills + s.total_assists) / s.total_deaths : 99))}
+                            >
+                              <span className="text-xs font-bold tabular-nums text-foreground">{kda}</span>
+                            </div>
+                          </td>
+                          {isMlbb && (
+                            <td className="p-0 h-full border-l border-border/10">
+                              <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                                style={getHeatmap(stat.total_gold || 0, sortedPlayerStats.map((s: any) => s.total_gold || 0))}
+                              >
+                                <span className="text-xs font-medium text-yellow-400 tabular-nums">{Math.round(stat.total_gold || 0).toLocaleString()}</span>
+                              </div>
+                            </td>
+                          )}
+                          {isValorant && (
+                            <td className="p-0 h-full border-l border-border/10">
+                              <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                                style={getHeatmap(stat.avg_acs || 0, sortedPlayerStats.map((s: any) => s.avg_acs || 0))}
+                              >
+                                <span className="text-xs font-medium text-foreground tabular-nums">{Math.round(stat.avg_acs || 0)}</span>
+                              </div>
+                            </td>
+                          )}
+                          {isValorant && (
+                            <td className="text-center px-3 py-2">
+                              <span className="text-xs font-medium text-orange-400 tabular-nums">{stat.total_first_bloods || 0}</span>
+                            </td>
+                          )}
+                          <td className="text-center px-3 py-2">
                             {stat.mvp_count > 0 && (
                               <Badge variant="outline" className="border-yellow-500/30 text-yellow-500 text-[10px]">
                                 <Trophy className="h-2.5 w-2.5 mr-1" />{stat.mvp_count}
@@ -382,43 +450,65 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.35 }}
-            className="py-8"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <Shield className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Hero Statistics</span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Hero Statistics</h3>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Top {Math.min(15, (heroStats as any[]).length)} heroes</p>
+                </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/40 bg-card/60 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-border/20 text-[10px] uppercase tracking-widest text-muted-foreground/50">
-                      <th className="text-left px-4 py-3 font-medium">Hero</th>
-                      <th className="text-center px-3 py-3 font-medium">Picks</th>
-                      <th className="text-center px-3 py-3 font-medium">Win%</th>
-                      <th className="text-center px-3 py-3 font-medium">Avg K</th>
-                      <th className="text-center px-3 py-3 font-medium">Avg D</th>
-                      <th className="text-center px-3 py-3 font-medium">Avg A</th>
-                      <th className="text-center px-3 py-3 font-medium">KDA</th>
+                    <tr className="bg-muted/30 border-b border-border/50 text-left">
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[140px]">Hero</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">Picks</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">Win%</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">K</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">D</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">A</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">KDA</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(heroStats as any[]).slice(0, 15).map((hero: any, i: number) => (
-                      <tr key={hero.hero_name || i} className="border-b border-border/10 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 font-medium text-foreground">{hero.hero_name}</td>
-                        <td className="text-center px-3 py-3 text-muted-foreground">{hero.total_picks}</td>
-                        <td className="text-center px-3 py-3">
-                          <span className={cn(hero.win_rate >= 50 ? 'text-green-400' : 'text-red-400')}>
-                            {hero.win_rate?.toFixed(1)}%
-                          </span>
+                      <tr key={hero.hero_name || i} className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]">
+                        <td className="px-4 py-2">
+                          <span className="font-bold text-sm text-foreground">{hero.hero_name}</span>
                         </td>
-                        <td className="text-center px-3 py-3 text-green-400">{hero.avg_kills?.toFixed(1)}</td>
-                        <td className="text-center px-3 py-3 text-red-400">{hero.avg_deaths?.toFixed(1)}</td>
-                        <td className="text-center px-3 py-3 text-blue-400">{hero.avg_assists?.toFixed(1)}</td>
-                        <td className="text-center px-3 py-3 font-medium text-foreground">{hero.avg_kda?.toFixed(2)}</td>
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-muted-foreground tabular-nums">{hero.total_picks}</span>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getHeatmap(hero.win_rate || 0, (heroStats as any[]).slice(0, 15).map((h: any) => h.win_rate || 0))}
+                          >
+                            <span className={cn('text-xs font-bold tabular-nums', hero.win_rate >= 50 ? 'text-green-400' : 'text-red-400')}>
+                              {hero.win_rate?.toFixed(1)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-green-400 tabular-nums">{hero.avg_kills?.toFixed(1)}</span>
+                        </td>
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-red-400 tabular-nums">{hero.avg_deaths?.toFixed(1)}</span>
+                        </td>
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-blue-400 tabular-nums">{hero.avg_assists?.toFixed(1)}</span>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getHeatmap(hero.avg_kda || 0, (heroStats as any[]).slice(0, 15).map((h: any) => h.avg_kda || 0))}
+                          >
+                            <span className="text-xs font-bold tabular-nums text-foreground">{hero.avg_kda?.toFixed(2)}</span>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -434,52 +524,76 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.35 }}
-            className="py-8"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                <Crosshair className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Agent Statistics</span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
+                  <Crosshair className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Agent Statistics</h3>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Top {Math.min(15, (agentStats as any[]).length)} agents</p>
+                </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/40 bg-card/60 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-border/20 text-[10px] uppercase tracking-widest text-muted-foreground/50">
-                      <th className="text-left px-4 py-3 font-medium">Agent</th>
-                      <th className="text-center px-3 py-3 font-medium">Picks</th>
-                      <th className="text-center px-3 py-3 font-medium">Win%</th>
-                      <th className="text-center px-3 py-3 font-medium">ACS</th>
-                      <th className="text-center px-3 py-3 font-medium">K/D/A</th>
-                      <th className="text-center px-3 py-3 font-medium">KDA</th>
-                      <th className="text-center px-3 py-3 font-medium">FB</th>
+                    <tr className="bg-muted/30 border-b border-border/50 text-left">
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[140px]">Agent</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">Picks</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">Win%</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">ACS</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[100px]">K/D/A</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">KDA</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">FB</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(agentStats as any[]).slice(0, 15).map((agent: any, i: number) => (
-                      <tr key={agent.agent_name || i} className="border-b border-border/10 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3">
+                      <tr key={agent.agent_name || i} className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]">
+                        <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">{agent.agent_name}</span>
+                            <span className="font-bold text-sm text-foreground">{agent.agent_name}</span>
                             {agent.agent_role && (
                               <span className="text-[10px] text-muted-foreground/40 uppercase">{agent.agent_role}</span>
                             )}
                           </div>
                         </td>
-                        <td className="text-center px-3 py-3 text-muted-foreground">{agent.total_picks}</td>
-                        <td className="text-center px-3 py-3">
-                          <span className={cn(agent.win_rate >= 50 ? 'text-green-400' : 'text-red-400')}>
-                            {agent.win_rate?.toFixed(1)}%
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-muted-foreground tabular-nums">{agent.total_picks}</span>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getHeatmap(agent.win_rate || 0, (agentStats as any[]).slice(0, 15).map((a: any) => a.win_rate || 0))}
+                          >
+                            <span className={cn('text-xs font-bold tabular-nums', agent.win_rate >= 50 ? 'text-green-400' : 'text-red-400')}>
+                              {agent.win_rate?.toFixed(1)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getHeatmap(agent.avg_acs || 0, (agentStats as any[]).slice(0, 15).map((a: any) => a.avg_acs || 0))}
+                          >
+                            <span className="text-xs font-medium text-foreground tabular-nums">{Math.round(agent.avg_acs || 0)}</span>
+                          </div>
+                        </td>
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                            {agent.avg_kills?.toFixed(1)}/{agent.avg_deaths?.toFixed(1)}/{agent.avg_assists?.toFixed(1)}
                           </span>
                         </td>
-                        <td className="text-center px-3 py-3 text-foreground">{Math.round(agent.avg_acs || 0)}</td>
-                        <td className="text-center px-3 py-3 text-muted-foreground">
-                          {agent.avg_kills?.toFixed(1)}/{agent.avg_deaths?.toFixed(1)}/{agent.avg_assists?.toFixed(1)}
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getHeatmap(agent.avg_kda || 0, (agentStats as any[]).slice(0, 15).map((a: any) => a.avg_kda || 0))}
+                          >
+                            <span className="text-xs font-bold tabular-nums text-foreground">{agent.avg_kda?.toFixed(2)}</span>
+                          </div>
                         </td>
-                        <td className="text-center px-3 py-3 font-medium text-foreground">{agent.avg_kda?.toFixed(2)}</td>
-                        <td className="text-center px-3 py-3 text-orange-400">{agent.avg_first_bloods?.toFixed(1)}</td>
+                        <td className="text-center px-3 py-2">
+                          <span className="text-xs font-medium text-orange-400 tabular-nums">{agent.avg_first_bloods?.toFixed(1)}</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -495,137 +609,140 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}
-            className="py-8"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                <Swords className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Map Statistics</span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
+                  <Swords className="h-4 w-4" />
+                </div>
+                <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Map Statistics</h3>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {(mapStats as any[]).map((map: any, i: number) => (
-                <motion.div
-                  key={map.map_name || i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.05 }}
-                  className="rounded-xl border border-border/40 bg-card/60 overflow-hidden"
-                >
-                  {map.splash_image_url && (
-                    <div className="relative h-24 w-full">
-                      <Image src={map.splash_image_url} alt={map.map_name} fill className="object-cover opacity-40" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-                      <div className="absolute bottom-2 left-3">
-                        <h4 className="font-mango-grotesque text-lg font-bold text-foreground">{map.map_name}</h4>
+              <div className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(mapStats as any[]).map((map: any, i: number) => (
+                    <motion.div
+                      key={map.map_name || i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      className="rounded-xl border border-border/30 bg-background/40 overflow-hidden"
+                    >
+                      {map.splash_image_url && (
+                        <div className="relative h-24 w-full">
+                          <Image src={map.splash_image_url} alt={map.map_name} fill className="object-cover opacity-40" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+                          <div className="absolute bottom-2 left-3">
+                            <h4 className="font-mango-grotesque text-lg font-bold text-foreground">{map.map_name}</h4>
+                          </div>
+                        </div>
+                      )}
+                      {!map.splash_image_url && (
+                        <div className="px-4 pt-4">
+                          <h4 className="font-mango-grotesque text-lg font-bold text-foreground">{map.map_name}</h4>
+                        </div>
+                      )}
+                      <div className="p-4 space-y-2">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground/60">Games</span>
+                          <span className="font-medium tabular-nums">{map.total_games}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground/60">Pick Rate</span>
+                          <span className="font-medium text-green-400 tabular-nums">{map.pick_rate?.toFixed(1)}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground/60">Ban Rate</span>
+                          <span className="font-medium text-red-400 tabular-nums">{map.ban_rate?.toFixed(1)}%</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {!map.splash_image_url && (
-                    <div className="px-4 pt-4">
-                      <h4 className="font-mango-grotesque text-lg font-bold text-foreground">{map.map_name}</h4>
-                    </div>
-                  )}
-                  <div className="p-4 space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground/60">Games</span>
-                      <span className="font-medium">{map.total_games}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground/60">Pick Rate</span>
-                      <span className="font-medium text-green-400">{map.pick_rate?.toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground/60">Ban Rate</span>
-                      <span className="font-medium text-red-400">{map.ban_rate?.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             </div>
           </motion.section>
         )}
-
-        <div className="h-px bg-border/20" />
 
         {/* Recent Matches */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.45 }}
-          className="py-8 pb-16"
+          className="pb-16"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-              <Swords className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold uppercase tracking-wider">Recent Matches</span>
+          <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Swords className="h-4 w-4" />
+              </div>
+              <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Recent Matches</h3>
+            </div>
+
+            <div className="divide-y divide-border/20">
+              {matchesLoading ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="h-20 bg-muted/10 animate-pulse" />
+                ))
+              ) : recentMatches && recentMatches.length > 0 ? (
+                recentMatches.slice(0, 5).map((match: MatchWithFullDetails) => {
+                  const p1 = match.match_participants?.[0];
+                  const p2 = match.match_participants?.[1];
+                  const team1 = p1?.schools_teams;
+                  const team2 = p2?.schools_teams;
+                  const t1Score = p1?.match_score ?? 0;
+                  const t2Score = p2?.match_score ?? 0;
+                  const isFinished = match.status === 'finished' || match.status === 'completed';
+                  const t1Win = isFinished && t1Score > t2Score;
+                  const t2Win = isFinished && t2Score > t1Score;
+                  const status = getMatchStatus(match.status);
+
+                  return (
+                    <Link key={match.id} href={`/matches/${match.id}`} className="group block">
+                      <div className="px-4 sm:px-5 py-3 sm:py-4 hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="hidden sm:flex flex-col items-center w-16 flex-shrink-0">
+                            <span className={cn('text-[10px] font-bold uppercase tracking-widest', status.color)}>{status.label}</span>
+                          </div>
+                          <div className="flex-1 flex items-center justify-center gap-4">
+                            <div className="flex items-center gap-2 flex-1 justify-end">
+                              <span className={cn('font-mango-grotesque text-sm font-bold', t1Win ? 'text-foreground' : 'text-muted-foreground/50')}>
+                                {team1?.school?.abbreviation || 'TBD'}
+                              </span>
+                              <Image src={team1?.school?.logo_url || '/img/cesafi-logo.webp'} alt="" width={32} height={32}
+                                className={cn('h-7 w-7 rounded-full object-cover border', t1Win ? 'border-primary/60' : 'border-border/40')} />
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={cn('font-mango-grotesque text-xl font-black tabular-nums', t1Win ? 'text-primary' : 'text-muted-foreground/30')}>
+                                {isFinished ? t1Score : '-'}
+                              </span>
+                              <span className="text-muted-foreground/15">—</span>
+                              <span className={cn('font-mango-grotesque text-xl font-black tabular-nums', t2Win ? 'text-primary' : 'text-muted-foreground/30')}>
+                                {isFinished ? t2Score : '-'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Image src={team2?.school?.logo_url || '/img/cesafi-logo.webp'} alt="" width={32} height={32}
+                                className={cn('h-7 w-7 rounded-full object-cover border', t2Win ? 'border-primary/60' : 'border-border/40')} />
+                              <span className={cn('font-mango-grotesque text-sm font-bold', t2Win ? 'text-foreground' : 'text-muted-foreground/50')}>
+                                {team2?.school?.abbreviation || 'TBD'}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary/60 transition-colors flex-shrink-0" />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 px-4">
+                  <Gamepad2 className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
+                  <p className="text-muted-foreground/60 text-sm">No recent matches found.</p>
+                </div>
+              )}
             </div>
           </div>
-
-          {matchesLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl bg-muted/30" />)}
-            </div>
-          ) : recentMatches && recentMatches.length > 0 ? (
-            <div className="space-y-3">
-              {recentMatches.slice(0, 5).map((match: MatchWithFullDetails) => {
-                const p1 = match.match_participants?.[0];
-                const p2 = match.match_participants?.[1];
-                const team1 = p1?.schools_teams;
-                const team2 = p2?.schools_teams;
-                const t1Score = p1?.match_score ?? 0;
-                const t2Score = p2?.match_score ?? 0;
-                const isFinished = match.status === 'finished' || match.status === 'completed';
-                const t1Win = isFinished && t1Score > t2Score;
-                const t2Win = isFinished && t2Score > t1Score;
-                const status = getMatchStatus(match.status);
-
-                return (
-                  <Link key={match.id} href={`/matches/${match.id}`} className="group block">
-                    <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 transition-all duration-300 px-5 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="hidden sm:flex flex-col items-center w-16 flex-shrink-0">
-                          <span className={cn('text-[10px] font-bold uppercase tracking-widest', status.color)}>{status.label}</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-center gap-4">
-                          <div className="flex items-center gap-2 flex-1 justify-end">
-                            <span className={cn('font-mango-grotesque text-sm font-bold', t1Win ? 'text-foreground' : 'text-muted-foreground/50')}>
-                              {team1?.school?.abbreviation || 'TBD'}
-                            </span>
-                            <Image src={team1?.school?.logo_url || '/img/cesafi-logo.webp'} alt="" width={32} height={32}
-                              className={cn('h-7 w-7 rounded-full object-cover border', t1Win ? 'border-primary/60' : 'border-border/40')} />
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={cn('font-mango-grotesque text-xl font-black', t1Win ? 'text-primary' : 'text-muted-foreground/30')}>
-                              {isFinished ? t1Score : '-'}
-                            </span>
-                            <span className="text-muted-foreground/15">—</span>
-                            <span className={cn('font-mango-grotesque text-xl font-black', t2Win ? 'text-primary' : 'text-muted-foreground/30')}>
-                              {isFinished ? t2Score : '-'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-1">
-                            <Image src={team2?.school?.logo_url || '/img/cesafi-logo.webp'} alt="" width={32} height={32}
-                              className={cn('h-7 w-7 rounded-full object-cover border', t2Win ? 'border-primary/60' : 'border-border/40')} />
-                            <span className={cn('font-mango-grotesque text-sm font-bold', t2Win ? 'text-foreground' : 'text-muted-foreground/50')}>
-                              {team2?.school?.abbreviation || 'TBD'}
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary/60 transition-colors flex-shrink-0" />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border/40 bg-card/60 p-12 text-center">
-              <Gamepad2 className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
-              <p className="text-muted-foreground/60 text-sm">No recent matches found.</p>
-            </div>
-          )}
         </motion.section>
       </div>
     </div>

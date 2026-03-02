@@ -1,26 +1,29 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { roboto } from '@/lib/fonts';
 import { Search, X, Loader2 } from 'lucide-react';
 import { getMlbbStats, getValorantStats, getAvailableSeasons, getTeamStats } from '@/actions/statistics';
-import { GameModeSelector } from '@/components/statistics/game-mode-selector';
+import { CompactGameSelector, GameOption } from '@/components/shared/filters/compact-game-selector';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toPlayerSlug } from '@/lib/utils/player-slug';
+import { RichSportCategory } from '../schedule/schedule-content';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-type GameType = 'mlbb' | 'valorant';
+type GameType = 'mlbb' | 'valorant' | 'all';
 type FilterOption = { id: number | string; label: string; value: string };
 
-export default function PlayersGrid() {
-  const [game, setGame] = useState<GameType>('mlbb');
+export default function PlayersGrid( { availableRichSports }: { availableRichSports: RichSportCategory[]; }) {
+  const [game, setGame] = useState<GameType | string>('all');
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,6 +35,39 @@ export default function PlayersGrid() {
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [filtersLoading, setFiltersLoading] = useState(true);
+
+  const uniqueEsports = useMemo(() => {
+    if (!availableRichSports || availableRichSports.length === 0) return [];
+    
+    const map = new Map();
+    availableRichSports.forEach(cat => {
+      if (cat.esport && !map.has(cat.esport.id)) {
+        map.set(cat.esport.id, cat.esport);
+      }
+    });
+    return Array.from(map.values());
+  }, [availableRichSports]);
+
+  const gameOptions: GameOption[] = useMemo(() => {
+      const options: GameOption[] = [{ id: 'all', name: 'All Esports', shortName: 'All Games' }];
+      
+      const sortedEsports = [...uniqueEsports].sort((a, b) => {
+        if (a.name.toLowerCase().includes('mobile legends')) return -1;
+        if (b.name.toLowerCase().includes('mobile legends')) return 1;
+        return 0;
+      });
+
+      sortedEsports.forEach(esport => {
+        const gameId = esport.name.toLowerCase().includes('valorant') ? 'valorant' : 'mlbb';
+        options.push({
+          id: gameId,
+          name: esport.name,
+          shortName: esport.abbreviation || gameId.toUpperCase(),
+          logoUrl: esport.logo_url
+        });
+      });
+      return options;
+    }, [uniqueEsports]);
 
   // Fetch seasons on mount
   useEffect(() => {
@@ -58,16 +94,38 @@ export default function PlayersGrid() {
         setTeams([]);
         return;
       }
-      const result = await getTeamStats(game, selectedSeason);
-      if (result.success && result.data) {
-        const mapped = (result.data as any[]).map((t: any) => ({
-          id: t.team_id,
-          label: t.team_name,
-          value: t.team_id
-        }));
-        const unique = Array.from(new Map(mapped.map((t: any) => [t.value, t])).values());
-        setTeams(unique as FilterOption[]);
+      
+      const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
+      const isVAL = game === 'all' || game === 'valorant' || game === '1';
+
+      let allTeams: FilterOption[] = [];
+
+      if (isMLBB) {
+        const result = await getTeamStats('mlbb', selectedSeason);
+        if (result.success && result.data) {
+          const mapped = (result.data as any[]).map((t: any) => ({
+            id: `mlbb-${t.team_id}`,
+            label: t.team_name,
+            value: t.team_id
+          }));
+          allTeams = [...allTeams, ...mapped];
+        }
       }
+
+      if (isVAL) {
+        const result = await getTeamStats('valorant', selectedSeason);
+        if (result.success && result.data) {
+          const mapped = (result.data as any[]).map((t: any) => ({
+            id: `val-${t.team_id}`,
+            label: t.team_name,
+            value: t.team_id
+          }));
+          allTeams = [...allTeams, ...mapped];
+        }
+      }
+
+      const unique = Array.from(new Map(allTeams.map((t: any) => [t.value, t])).values());
+      setTeams(unique as FilterOption[]);
     }
     fetchTeams();
   }, [selectedSeason, game]);
@@ -88,15 +146,30 @@ export default function PlayersGrid() {
         search_query: debouncedSearch || undefined,
       };
 
-      const result = game === 'mlbb'
-        ? await getMlbbStats(filters)
-        : await getValorantStats(filters);
+      const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
+      const isVAL = game === 'all' || game === 'valorant' || game === '1';
 
-      if (result.success && result.data) {
-        setPlayers(result.data as any[]);
-      } else {
-        setPlayers([]);
+      let combinedPlayers: any[] = [];
+
+      if (isMLBB) {
+        const result = await getMlbbStats(filters);
+        if (result.success && result.data) {
+          combinedPlayers = [...combinedPlayers, ...(result.data as any[]).map(p => ({ ...p, game: 'mlbb' }))];
+        }
       }
+
+      if (isVAL) {
+        const result = await getValorantStats(filters);
+        if (result.success && result.data) {
+          combinedPlayers = [...combinedPlayers, ...(result.data as any[]).map(p => ({ ...p, game: 'valorant' }))];
+        }
+      }
+
+      // De-duplicate if same player ID shows up in both? (unlikely but safe)
+      // and sort by IGN
+      combinedPlayers.sort((a, b) => (a.player_ign || '').localeCompare(b.player_ign || ''));
+      
+      setPlayers(combinedPlayers);
     } catch {
       setPlayers([]);
     } finally {
@@ -108,7 +181,7 @@ export default function PlayersGrid() {
     fetchPlayers();
   }, [fetchPlayers]);
 
-  const handleGameChange = (newGame: GameType) => {
+  const handleGameChange = (newGame: string) => {
     setGame(newGame);
     setSelectedTeam(null);
     setSearchQuery('');
@@ -131,70 +204,110 @@ export default function PlayersGrid() {
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
-      {/* Game Mode Selector — reused from statistics page */}
-      <GameModeSelector
-        game={game}
-        onGameChange={handleGameChange}
-        subtitle="Click to view players"
-        className="mb-6"
-      />
+      {/* Search and Filters Container */}
+      <div className="w-full bg-card/40 backdrop-blur-md border border-border/50 shadow-lg rounded-xl overflow-hidden mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 sm:p-4">
+          {/* Left: Game Selector Desktop */}
+          <div className="hidden sm:flex items-center gap-2">
+            <CompactGameSelector 
+              options={gameOptions}
+              value={game}
+              onChange={(val) => handleGameChange(val)}
+              variant="buttons"
+            />
+          </div>
 
-      {/* Cascading Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-6">
-        {/* Season */}
-        <select
-          value={selectedSeason?.toString() || ''}
-          onChange={(e) => handleSeasonChange(e.target.value ? Number(e.target.value) : null)}
-          disabled={filtersLoading}
-          className={cn(
-            `${roboto.className} px-4 py-2.5 rounded-xl border border-border/50 bg-card/60 text-sm text-foreground`,
-            'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all',
-            'appearance-none cursor-pointer w-full sm:w-auto sm:min-w-[160px]',
-            filtersLoading && 'opacity-50'
-          )}
-        >
-          <option value="">All Seasons</option>
-          {seasons.map((s) => (
-            <option key={s.id} value={s.value}>{s.label}</option>
-          ))}
-        </select>
+          {/* Right: Search */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search players..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 h-10 text-sm border transition-all duration-200"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSearchQuery(''); setDebouncedSearch(''); }}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
 
-        {/* Team */}
-        <select
-          value={selectedTeam || ''}
-          onChange={(e) => setSelectedTeam(e.target.value || null)}
-          disabled={!selectedSeason || teams.length === 0}
-          className={cn(
-            `${roboto.className} px-4 py-2.5 rounded-xl border border-border/50 bg-card/60 text-sm text-foreground`,
-            'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all',
-            'appearance-none cursor-pointer w-full sm:w-auto sm:min-w-[180px]',
-            (!selectedSeason || teams.length === 0) && 'opacity-50'
-          )}
-        >
-          <option value="">All Teams</option>
-          {teams.map((t) => (
-            <option key={t.id} value={t.value}>{t.label}</option>
-          ))}
-        </select>
+        {/* Second Row for individual filters */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 p-3 sm:p-4 bg-muted/20 border-t border-border/50">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground mr-1 hidden sm:inline-block">Filters:</span>
 
-        {/* Search */}
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by IGN, team..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10 h-12 text-base border-2 transition-all duration-200 hover:border-primary/50 focus:border-primary focus:shadow-lg focus:shadow-primary/20"
-          />
-          {searchQuery && (
+          {/* Mobile Game Selector */}
+          <div className="sm:hidden col-span-2">
+            <CompactGameSelector 
+              options={gameOptions}
+              value={game}
+              onChange={(val) => handleGameChange(val)}
+              variant="dropdown"
+              className="w-full"
+            />
+          </div>
+
+          {/* Season */}
+          <div className="col-span-2 sm:col-span-auto w-full sm:w-auto">
+            <Select
+              value={selectedSeason?.toString() || "all"}
+              onValueChange={(val) => handleSeasonChange(val === "all" ? null : Number(val))}
+              disabled={filtersLoading}
+            >
+              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+                <SelectValue placeholder="All Seasons" />
+              </SelectTrigger>
+              <SelectContent>
+                <ScrollArea className="h-[200px]">
+                  <SelectItem value="all">All Seasons</SelectItem>
+                  {seasons.map((s: FilterOption) => (
+                    <SelectItem key={s.id} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </ScrollArea>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Team */}
+          <div className="col-span-2 sm:col-span-auto w-full sm:w-auto">
+            <Select
+              value={selectedTeam || "all"}
+              onValueChange={(val) => setSelectedTeam(val === "all" ? null : val)}
+              disabled={!selectedSeason || teams.length === 0}
+            >
+              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
+                <SelectValue placeholder="All Teams" />
+              </SelectTrigger>
+              <SelectContent>
+                <ScrollArea className="h-[200px]">
+                  <SelectItem value="all">All Teams</SelectItem>
+                  {teams.map((t: FilterOption) => (
+                    <SelectItem key={t.id} value={t.value.toString()}>{t.label}</SelectItem>
+                  ))}
+                </ScrollArea>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasActiveFilters && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setSearchQuery(''); setDebouncedSearch(''); }}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
+              onClick={handleClearFilters}
+              className="text-muted-foreground col-span-2 sm:col-span-auto hover:text-destructive transition-colors h-9 ml-auto"
             >
-              <X className="h-4 w-4" />
+              <X className="w-4 h-4 mr-1" />
+              Clear
             </Button>
           )}
         </div>
@@ -202,7 +315,7 @@ export default function PlayersGrid() {
 
       {/* Results count */}
       <p className={`${roboto.className} text-xs text-muted-foreground/50 mb-4`}>
-        {loading ? 'Loading...' : `${players.length} player${players.length !== 1 ? 's' : ''} found`}
+        {loading ? 'Searching...' : `${players.length} player${players.length !== 1 ? 's' : ''} found`}
       </p>
 
       {/* Players Grid */}

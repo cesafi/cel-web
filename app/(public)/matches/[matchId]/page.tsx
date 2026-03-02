@@ -91,7 +91,7 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Scoreboard */}
+      {/* Hero Scoreboard — KEPT AS-IS */}
       <div className="relative overflow-hidden border-b border-border/30">
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
@@ -313,137 +313,69 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="container max-w-6xl mx-auto px-4 py-8 md:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Game Statistics Section */}
-            <div>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                  <Gamepad2 className="w-3.5 h-3.5" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Games</span>
-                </div>
-                {sortedGames.length > 0 && (
-                  <span className="text-xs text-muted-foreground/40">
-                    {sortedGames.length} game{sortedGames.length !== 1 ? 's' : ''} recorded
-                  </span>
-                )}
-              </div>
+      {/* Content Area — Full width, no sidebar */}
+      <div className="container max-w-6xl mx-auto px-4 py-8 md:py-10 space-y-8">
 
-              {match.games && match.games.length > 0 ? (
-                <PublicMatchStats games={match.games} sport={sport} />
-              ) : (
-                <div className="rounded-xl border border-border/40 bg-card/60 p-12 text-center">
-                  <Gamepad2 className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
-                  <p className="text-muted-foreground/60 text-sm">
-                    {isUpcoming
-                      ? 'Game statistics will appear here once the match begins.'
-                      : 'No match data available yet.'}
-                  </p>
-                </div>
+        {/* Map Veto (Valorant only) */}
+        {isValorant && (
+          <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+              <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
+                <Swords className="h-4 w-4" />
+              </div>
+              <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Map Veto</h3>
+            </div>
+            <div className="p-4 sm:p-6">
+              <MapVetoPanel
+                matchId={match.id}
+                bestOf={match.best_of || 3}
+                team1={{
+                  id: team1.id,
+                  name: team1.name,
+                  abbreviation: team1.school?.abbreviation || 'T1',
+                  logoUrl: team1.school?.logo_url,
+                }}
+                team2={{
+                  id: team2.id,
+                  name: team2.name,
+                  abbreviation: team2.school?.abbreviation || 'T2',
+                  logoUrl: team2.school?.logo_url,
+                }}
+                isPublicView={true}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Game Statistics Section */}
+        <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+          <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <Gamepad2 className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Post-Game Statistics</h3>
+              {sortedGames.length > 0 && (
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
+                  {sortedGames.length} game{sortedGames.length !== 1 ? 's' : ''} recorded
+                </p>
               )}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-8">
-            {/* Map Veto (Valorant only) */}
-            {isValorant && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                    <Swords className="w-3.5 h-3.5" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Map Veto</span>
-                  </div>
-                </div>
-                <MapVetoPanel
-                  matchId={match.id}
-                  bestOf={match.best_of || 3}
-                  team1={{
-                    id: team1.id,
-                    name: team1.name,
-                    abbreviation: team1.school?.abbreviation || 'T1',
-                    logoUrl: team1.school?.logo_url,
-                  }}
-                  team2={{
-                    id: team2.id,
-                    name: team2.name,
-                    abbreviation: team2.school?.abbreviation || 'T2',
-                    logoUrl: team2.school?.logo_url,
-                  }}
-                  isPublicView={true}
-                />
+          <div className="p-4 sm:p-6">
+            {match.games && match.games.length > 0 ? (
+              <PublicMatchStats games={match.games} sport={sport} />
+            ) : (
+              <div className="text-center py-8">
+                <Gamepad2 className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-muted-foreground/60 text-sm">
+                  {isUpcoming
+                    ? 'Game statistics will appear here once the match begins.'
+                    : 'No match data available yet.'}
+                </p>
               </div>
             )}
-
-            {/* Match Info Card */}
-            <div className="rounded-xl border border-border/40 bg-card/60 p-5">
-              <h3 className="font-mango-grotesque text-lg font-bold mb-4 text-foreground/80">Match Details</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground/60">Format</span>
-                  <span className="font-medium text-foreground/80">Best of {bestOf}</span>
-                </div>
-                <div className="h-px bg-border/20" />
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground/60">Esport</span>
-                  <div className="flex items-center gap-2">
-                    {esport?.logo_url && (
-                      <Image src={esport.logo_url} alt="" width={16} height={16} className="h-4 w-4 object-contain" />
-                    )}
-                    <span className="font-medium text-foreground/80">{sport || 'Unknown'}</span>
-                  </div>
-                </div>
-                <div className="h-px bg-border/20" />
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground/60">Category</span>
-                  <span className="font-medium text-foreground/80">{category?.division || 'Open'}</span>
-                </div>
-                <div className="h-px bg-border/20" />
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground/60">Stage</span>
-                  <span className="font-medium text-foreground/80">{stage}</span>
-                </div>
-                {match.group_name && (
-                  <>
-                    <div className="h-px bg-border/20" />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground/60">Group</span>
-                      <span className="font-medium text-foreground/80">Group {match.group_name}</span>
-                    </div>
-                  </>
-                )}
-                {match.scheduled_at && (
-                  <>
-                    <div className="h-px bg-border/20" />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground/60">Date</span>
-                      <span className="font-medium text-foreground/80">
-                        {new Date(match.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <div className="h-px bg-border/20" />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground/60">Time</span>
-                      <span className="font-medium text-foreground/80">
-                        {new Date(match.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </>
-                )}
-                {match.venue && (
-                  <>
-                    <div className="h-px bg-border/20" />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground/60">Venue</span>
-                      <span className="font-medium text-foreground/80">{match.venue}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>

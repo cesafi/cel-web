@@ -26,6 +26,12 @@ export class StatsValorantService extends BaseService {
             photo_url,
             role
           ),
+          game_characters (
+            id,
+            name,
+            icon_url,
+            role
+          ),
           schools_teams (
             id,
             name,

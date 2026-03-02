@@ -141,6 +141,23 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
       : 'Perfect')
     : '-';
 
+  // Heatmap helper for character stats
+  const getCharHeatmap = (value: number, allValues: number[], invertColors = false) => {
+    const max = Math.max(...allValues);
+    if (max === 0 || value === 0) return {};
+    const ratio = value / max;
+    if (invertColors) {
+      if (ratio > 0.8) return { backgroundColor: 'rgba(239, 68, 68, 0.15)' };
+      return {};
+    }
+    if (ratio >= 0.9) return { backgroundColor: 'rgba(16, 185, 129, 0.2)' };
+    if (ratio >= 0.7) return { backgroundColor: 'rgba(59, 130, 246, 0.15)' };
+    if (ratio >= 0.5) return { backgroundColor: 'rgba(59, 130, 246, 0.05)' };
+    return {};
+  };
+
+  const charStatsArray = (characterStats as any[]) || [];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Banner */}
@@ -208,7 +225,7 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-2 md:grid-cols-5 gap-3 py-8"
+            className="grid grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 py-8"
           >
             {[
               { label: 'Games', value: playerStat.games_played || 0, icon: Gamepad2 },
@@ -222,10 +239,10 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
                   : [{ label: 'Wins', value: playerStat.wins || 0, icon: Trophy }]
               ),
             ].map((stat, i) => (
-              <div key={i} className="rounded-xl border border-border/40 bg-card/60 p-4 text-center">
+              <div key={i} className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl p-3 sm:p-4 text-center shadow-lg">
                 <stat.icon className="h-4 w-4 text-muted-foreground/40 mx-auto mb-2" />
-                <div className="font-mango-grotesque text-2xl md:text-3xl font-bold text-foreground leading-none">{stat.value}</div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mt-1">{stat.label}</div>
+                <div className="font-mango-grotesque text-2xl sm:text-3xl md:text-4xl font-bold text-foreground leading-none">{stat.value}</div>
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground/50 mt-1">{stat.label}</div>
               </div>
             ))}
           </motion.div>
@@ -237,120 +254,187 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="py-8"
+            className="py-6"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                <Target className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Detailed Statistics</span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Target className="h-4 w-4" />
+                </div>
+                <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Detailed Statistics</h3>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/40 bg-card/60 p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-y-5 gap-x-8">
-                {[
-                  { label: 'Total Kills', value: playerStat.total_kills, color: 'text-green-400' },
-                  { label: 'Total Deaths', value: playerStat.total_deaths, color: 'text-red-400' },
-                  { label: 'Total Assists', value: playerStat.total_assists, color: 'text-blue-400' },
-                  { label: 'K/G', value: playerStat.kills_per_game?.toFixed(1), color: 'text-foreground' },
-                  { label: 'D/G', value: playerStat.deaths_per_game?.toFixed(1), color: 'text-foreground' },
-                  { label: 'A/G', value: playerStat.assists_per_game?.toFixed(1), color: 'text-foreground' },
-                  ...(isMlbb ? [
-                    { label: 'Rating', value: playerStat.avg_rating != null ? Number(playerStat.avg_rating).toFixed(2) : '-', color: 'text-yellow-400' },
-                    { label: 'Total Gold', value: Math.round(playerStat.total_gold || 0).toLocaleString(), color: 'text-yellow-400' },
-                    { label: 'GPM', value: Math.round(playerStat.avg_gpm || 0), color: 'text-yellow-400' },
-                    { label: 'Damage Dealt', value: Math.round(playerStat.total_damage_dealt || 0).toLocaleString(), color: 'text-orange-400' },
-                    { label: 'Damage Taken', value: Math.round(playerStat.total_damage_taken || 0).toLocaleString(), color: 'text-orange-400' },
-                    { label: 'Turret Damage', value: Math.round(playerStat.total_turret_damage || 0).toLocaleString(), color: 'text-purple-400' },
-                  ] : []),
-                  ...(isValorant ? [
-                    { label: 'Avg ACS', value: Math.round(playerStat.avg_acs || 0), color: 'text-foreground' },
-                    { label: 'First Bloods', value: playerStat.total_first_bloods || 0, color: 'text-orange-400' },
-                    { label: 'Plants', value: playerStat.total_plants || 0, color: 'text-green-400' },
-                    { label: 'Defuses', value: playerStat.total_defuses || 0, color: 'text-blue-400' },
-                  ] : []),
-                ].map((item, i) => (
-                  <div key={i} className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground/60">{item.label}</span>
-                    <span className={cn('text-sm font-medium', item.color)}>{item.value}</span>
-                  </div>
-                ))}
+              <div className="p-4 sm:p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                  {[
+                    { label: 'Total Kills', value: playerStat.total_kills, color: 'text-green-400' },
+                    { label: 'Total Deaths', value: playerStat.total_deaths, color: 'text-red-400' },
+                    { label: 'Total Assists', value: playerStat.total_assists, color: 'text-blue-400' },
+                    { label: 'K/G', value: playerStat.kills_per_game?.toFixed(1), color: 'text-foreground' },
+                    { label: 'D/G', value: playerStat.deaths_per_game?.toFixed(1), color: 'text-foreground' },
+                    { label: 'A/G', value: playerStat.assists_per_game?.toFixed(1), color: 'text-foreground' },
+                    ...(isMlbb ? [
+                      { label: 'Rating', value: playerStat.avg_rating != null ? Number(playerStat.avg_rating).toFixed(2) : '-', color: 'text-yellow-400' },
+                      { label: 'Total Gold', value: Math.round(playerStat.total_gold || 0).toLocaleString(), color: 'text-yellow-400' },
+                      { label: 'GPM', value: Math.round(playerStat.avg_gpm || 0), color: 'text-yellow-400' },
+                      { label: 'Damage Dealt', value: Math.round(playerStat.total_damage_dealt || 0).toLocaleString(), color: 'text-orange-400' },
+                      { label: 'Damage Taken', value: Math.round(playerStat.total_damage_taken || 0).toLocaleString(), color: 'text-orange-400' },
+                      { label: 'Turret Damage', value: Math.round(playerStat.total_turret_damage || 0).toLocaleString(), color: 'text-purple-400' },
+                    ] : []),
+                    ...(isValorant ? [
+                      { label: 'Avg ACS', value: Math.round(playerStat.avg_acs || 0), color: 'text-foreground' },
+                      { label: 'First Bloods', value: playerStat.total_first_bloods || 0, color: 'text-orange-400' },
+                      { label: 'Plants', value: playerStat.total_plants || 0, color: 'text-green-400' },
+                      { label: 'Defuses', value: playerStat.total_defuses || 0, color: 'text-blue-400' },
+                    ] : []),
+                  ].map((item, i) => (
+                    <div key={i} className="rounded-xl bg-background/40 border border-border/30 p-3 sm:p-4">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground/60 uppercase tracking-wider mb-1">{item.label}</div>
+                      <div className={cn('text-base sm:text-lg font-bold tabular-nums', item.color)}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </motion.section>
         )}
 
-        <div className="h-px bg-border/20" />
-
         {/* Per-Player Character Stats (Hero/Agent) */}
-        {characterStats && characterStats.length > 0 && (
+        {charStatsArray.length > 0 && (
           <motion.section
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="py-8"
+            className="py-6"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-full border',
-                isMlbb ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
-              )}>
-                {isMlbb ? <Shield className="w-3.5 h-3.5" /> : <Crosshair className="w-3.5 h-3.5" />}
-                <span className="text-xs font-semibold uppercase tracking-wider">
-                  {isMlbb ? 'Hero' : 'Agent'} Performance
-                </span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className={cn(
+                  'p-2 rounded-lg',
+                  isMlbb ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'
+                )}>
+                  {isMlbb ? <Shield className="h-4 w-4" /> : <Crosshair className="h-4 w-4" />}
+                </div>
+                <div>
+                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">
+                    {isMlbb ? 'Hero' : 'Agent'} Performance
+                  </h3>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Showing {charStatsArray.length} {isMlbb ? 'heroes' : 'agents'} played
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/40 bg-card/60 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-border/20 text-[10px] uppercase tracking-widest text-muted-foreground/50">
-                      <th className="text-left px-4 py-3 font-medium">{isMlbb ? 'Hero' : 'Agent'}</th>
-                      <th className="text-center px-3 py-3 font-medium">Games</th>
-                      <th className="text-center px-3 py-3 font-medium">Avg K</th>
-                      <th className="text-center px-3 py-3 font-medium">Avg D</th>
-                      <th className="text-center px-3 py-3 font-medium">Avg A</th>
-                      <th className="text-center px-3 py-3 font-medium">KDA</th>
-                      {isMlbb && <th className="text-center px-3 py-3 font-medium">Avg Gold</th>}
-                      {isMlbb && <th className="text-center px-3 py-3 font-medium">Rating</th>}
-                      {isValorant && <th className="text-center px-3 py-3 font-medium">ACS</th>}
-                      {isValorant && <th className="text-center px-3 py-3 font-medium">FB/G</th>}
+                    <tr className="bg-muted/30 border-b border-border/50 text-left">
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[160px]">
+                        {isMlbb ? 'Hero' : 'Agent'}
+                      </th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">G</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">K</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">D</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">A</th>
+                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[70px]">KDA</th>
+                      {isMlbb && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[80px]">Gold</th>}
+                      {isMlbb && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[70px]">RTG</th>}
+                      {isValorant && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[70px]">ACS</th>}
+                      {isValorant && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[70px]">FB/G</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {(characterStats as any[]).map((char: any, i: number) => (
-                      <tr key={char.character_id || i} className="border-b border-border/10 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3">
+                    {charStatsArray.map((char: any, i: number) => (
+                      <tr key={char.character_id || i} className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]">
+                        <td className="px-4 py-2">
                           <div className="flex items-center gap-2.5">
                             {char.icon_url ? (
                               <Image
                                 src={char.icon_url}
                                 alt={char.character_name}
-                                width={28}
-                                height={28}
-                                className="h-7 w-7 rounded-md object-cover border border-border/30"
+                                width={32}
+                                height={32}
+                                className="h-8 w-8 rounded-lg object-cover border border-border/30"
                               />
                             ) : (
-                              <div className="h-7 w-7 rounded-md bg-muted/50 border border-border/30 flex items-center justify-center">
+                              <div className="h-8 w-8 rounded-lg bg-muted/50 border border-border/30 flex items-center justify-center">
                                 <span className="text-[10px] font-bold text-muted-foreground/40">
                                   {char.character_name?.charAt(0)}
                                 </span>
                               </div>
                             )}
-                            <span className="font-medium text-foreground">{char.character_name}</span>
+                            <span className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{char.character_name}</span>
                           </div>
                         </td>
-                        <td className="text-center px-3 py-3 text-muted-foreground">{char.games_played}</td>
-                        <td className="text-center px-3 py-3 text-green-400">{char.avg_kills?.toFixed(1)}</td>
-                        <td className="text-center px-3 py-3 text-red-400">{char.avg_deaths?.toFixed(1)}</td>
-                        <td className="text-center px-3 py-3 text-blue-400">{char.avg_assists?.toFixed(1)}</td>
-                        <td className="text-center px-3 py-3 font-medium text-foreground">{char.avg_kda?.toFixed(2)}</td>
-                        {isMlbb && <td className="text-center px-3 py-3 text-yellow-400">{Math.round(char.avg_gold || 0)}</td>}
-                        {isMlbb && <td className="text-center px-3 py-3 text-yellow-400">{char.avg_rating?.toFixed(2)}</td>}
-                        {isValorant && <td className="text-center px-3 py-3 text-foreground">{Math.round(char.avg_acs || 0)}</td>}
-                        {isValorant && <td className="text-center px-3 py-3 text-orange-400">{char.avg_first_bloods?.toFixed(1)}</td>}
+                        <td className="text-center px-3 py-2">
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-xs font-medium text-muted-foreground tabular-nums">{char.games_played}</span>
+                          </div>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getCharHeatmap(char.avg_kills || 0, charStatsArray.map((c: any) => c.avg_kills || 0))}
+                          >
+                            <span className="text-xs font-medium text-green-400 tabular-nums">{char.avg_kills?.toFixed(1)}</span>
+                          </div>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getCharHeatmap(char.avg_deaths || 0, charStatsArray.map((c: any) => c.avg_deaths || 0), true)}
+                          >
+                            <span className="text-xs font-medium text-red-400 tabular-nums">{char.avg_deaths?.toFixed(1)}</span>
+                          </div>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getCharHeatmap(char.avg_assists || 0, charStatsArray.map((c: any) => c.avg_assists || 0))}
+                          >
+                            <span className="text-xs font-medium text-blue-400 tabular-nums">{char.avg_assists?.toFixed(1)}</span>
+                          </div>
+                        </td>
+                        <td className="p-0 h-full border-l border-border/10">
+                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                            style={getCharHeatmap(char.avg_kda || 0, charStatsArray.map((c: any) => c.avg_kda || 0))}
+                          >
+                            <span className="text-xs font-bold tabular-nums text-foreground">{char.avg_kda?.toFixed(2)}</span>
+                          </div>
+                        </td>
+                        {isMlbb && (
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getCharHeatmap(char.avg_gold || 0, charStatsArray.map((c: any) => c.avg_gold || 0))}
+                            >
+                              <span className="text-xs font-medium text-yellow-400 tabular-nums">{Math.round(char.avg_gold || 0).toLocaleString()}</span>
+                            </div>
+                          </td>
+                        )}
+                        {isMlbb && (
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getCharHeatmap(char.avg_rating || 0, charStatsArray.map((c: any) => c.avg_rating || 0))}
+                            >
+                              <span className="text-xs font-bold tabular-nums text-yellow-400">{char.avg_rating?.toFixed(2)}</span>
+                            </div>
+                          </td>
+                        )}
+                        {isValorant && (
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getCharHeatmap(char.avg_acs || 0, charStatsArray.map((c: any) => c.avg_acs || 0))}
+                            >
+                              <span className="text-xs font-medium text-foreground tabular-nums">{Math.round(char.avg_acs || 0)}</span>
+                            </div>
+                          </td>
+                        )}
+                        {isValorant && (
+                          <td className="p-0 h-full border-l border-border/10">
+                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                              style={getCharHeatmap(char.avg_first_bloods || 0, charStatsArray.map((c: any) => c.avg_first_bloods || 0))}
+                            >
+                              <span className="text-xs font-medium text-orange-400 tabular-nums">{char.avg_first_bloods?.toFixed(1)}</span>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -366,33 +450,44 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}
-            className="py-8 pb-16"
+            className="py-6 pb-16"
           >
-            <div className="h-px bg-border/20 mb-8" />
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                <Gamepad2 className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Season History</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {(playerSeasons as any[]).map((ps: any, i: number) => (
-                <div key={ps.id || i} className="rounded-xl border border-border/40 bg-card/60 px-5 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {ps.schools_teams?.schools?.logo_url && (
-                      <Image src={ps.schools_teams.schools.logo_url} alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
-                    )}
-                    <div>
-                      <span className="text-sm font-medium text-foreground">{ps.schools_teams?.name || 'Team'}</span>
-                      <span className="text-xs text-muted-foreground/50 ml-2">{ps.schools_teams?.schools?.abbreviation || ''}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground/40">
-                    {ps.schools_teams?.seasons?.start_at ? new Date(ps.schools_teams.seasons.start_at).getFullYear() : ''}
-                  </span>
+            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Gamepad2 className="h-4 w-4" />
                 </div>
-              ))}
+                <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Season History</h3>
+              </div>
+
+              <div className="divide-y divide-border/20">
+                {(playerSeasons as any[]).map((ps: any, i: number) => {
+                  const seasonName = ps.schools_teams?.seasons?.name || `Season ${ps.schools_teams?.seasons?.id || ''}`;
+                  const esportName = ps.schools_teams?.esports_categories?.esports?.name || '';
+
+                  return (
+                    <div key={ps.id || i} className="px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between gap-3 hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {ps.schools_teams?.schools?.logo_url && (
+                          <div className="relative w-8 h-8 flex-shrink-0">
+                            <Image src={ps.schools_teams.schools.logo_url} alt="" fill className="rounded-full object-cover border border-border/30" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-foreground truncate">{ps.schools_teams?.name || 'Team'}</div>
+                          <div className="text-xs text-muted-foreground/50 truncate">{ps.schools_teams?.schools?.abbreviation || ''}</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                        <span className="text-xs font-semibold text-foreground/80">{seasonName}</span>
+                        {esportName && (
+                          <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{esportName}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </motion.section>
         )}
