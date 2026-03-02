@@ -3,21 +3,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { extractValorantStatsFromImage } from '@/actions/valorant-ocr';
 import { createMultipleValorantStats, getValorantStatsByGameId, deleteValorantStatsByGameId } from '@/actions/stats-valorant';
-import { updateGameById } from '@/actions/games';
+import { updateGameById, getGameById } from '@/actions/games';
+import { upsertGameScoresForGame, getGameScoresByGameId } from '@/actions/game-scores';
+import { getGameRosterByGameId } from '@/actions/game-roster';
 import { ValorantScreenshotData } from '@/lib/types/stats-valorant';
 import { Player } from '@/lib/types/players';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Upload, Save, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
-import { cn } from '@/lib/utils';
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
 
 interface ValorantStatsUploadProps {
@@ -26,12 +26,16 @@ interface ValorantStatsUploadProps {
     id: string;
     name: string;
     abbreviation: string;
+    logoUrl?: string | null;
+    matchParticipantId: number;
     players: Player[];
   };
   team2: {
     id: string;
     name: string;
     abbreviation: string;
+    logoUrl?: string | null;
+    matchParticipantId: number;
     players: Player[];
   };
   onStatsSaved?: () => void;
@@ -94,10 +98,14 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [mvpIndex, setMvpIndex] = useState<number | null>(null);
+  const [hasExistingStats, setHasExistingStats] = useState(false);
 
-  const { data: gameDraftActions } = useGameDraftActions(gameId);
+  const { data: gameDraftActions, isFetched: isDraftActionsFetched } = useGameDraftActions(gameId);
   const { data: globalCharacters } = useAllGameCharactersWithEsport();
   const [gameCharacters, setGameCharacters] = useState<any[]>([]);
+  const [isCharactersFetched, setIsCharactersFetched] = useState(false);
+  const [gameRosters, setGameRosters] = useState<any[]>([]);
+  const [isRostersFetched, setIsRostersFetched] = useState(false);
 
   useEffect(() => {
     async function fetchAgents() {
@@ -105,9 +113,21 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
       if (res.success && res.data) {
         setGameCharacters(res.data);
       }
+      setIsCharactersFetched(true);
     }
     fetchAgents();
   }, []);
+
+  useEffect(() => {
+    async function fetchRosters() {
+      const res = await getGameRosterByGameId(gameId);
+      if (res.success && res.data) {
+        setGameRosters(res.data);
+      }
+      setIsRostersFetched(true);
+    }
+    fetchRosters();
+  }, [gameId]);
 
   const [isFetchingStats, setIsFetchingStats] = useState(true);
   const hasFetched = useRef(false);
@@ -121,11 +141,26 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
     return gameCharacters.find(c => c.name.toLowerCase() === idOrName.toLowerCase());
   };
 
+  // Helper: find the draft pick for a given player using roster-based correlation
+  const findPickForPlayer = (playerId: string, draftActions: any[]) => {
+    if (!draftActions?.length || !gameRosters?.length) return null;
+    // Find the player's roster entry to get their team and slot
+    const rosterEntry = gameRosters.find((r: any) => r.player_id === playerId);
+    if (!rosterEntry) return null;
+    // Get the ordered picks for this player's team
+    const teamPicks = draftActions
+      .filter((a: any) => a.action_type === 'pick' && a.team_id === rosterEntry.team_id)
+      .sort((a: any, b: any) => a.sort_order - b.sort_order);
+    // The roster sort_order (0-4) maps to the pick index
+    return teamPicks[rosterEntry.sort_order] || null;
+  };
+
+  // Effect 1: Fetch existing stats (only needs characters to be loaded for agent name resolution)
   useEffect(() => {
-    if (hasFetched.current || !gameDraftActions || !gameCharacters) return;
+    if (hasFetched.current || !isCharactersFetched) return;
 
     let mounted = true;
-    async function fetchInitialData() {
+    async function fetchExistingStats() {
       try {
         const result = await getValorantStatsByGameId(gameId);
         if (!mounted) return;
@@ -194,40 +229,93 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
           setPlayerMapping(newPlayerMapping);
           setMvpIndex(mvpIdx);
           setPreviewData(prev => ({ ...prev, players: newPreviewDataPlayers }));
-        } else {
-          // No existing stats: map agents from draft
-          setPreviewData(prev => {
-            const newPlayers = [...prev.players];
-            for (let i = 0; i < 10; i++) {
-              const pId = playerMapping[i.toString()];
-              if (pId) {
-                const pickAction = gameDraftActions?.find(a => a.action_type === 'pick' && a.player_id === pId);
-                // In game drafts for Valorant, hero_id is stored instead of hero_name usually, or we can look it up
-                if (pickAction && pickAction.hero_id) {
-                  newPlayers[i].agentName = pickAction.hero_id.toString();
-                } else if (pickAction && pickAction.hero_name) {
-                  const matchedAgent = getAgent(pickAction.hero_name);
-                  if (matchedAgent) {
-                    newPlayers[i].agentName = matchedAgent.id.toString();
-                  }
-                }
-              }
+          setHasExistingStats(true);
+        }
+
+        // Also fetch game duration and game_scores (rounds won)
+        const [gameResult, scoresResult] = await Promise.all([
+          getGameById(gameId),
+          getGameScoresByGameId(gameId),
+        ]);
+        if (!mounted) return;
+
+        let fetchedDuration = '';
+        let fetchedAllyScore = 0;
+        let fetchedEnemyScore = 0;
+
+        if (gameResult?.success && gameResult.data) {
+          const dur = (gameResult.data as any).duration;
+          if (dur && dur !== '00:00:00') {
+            // Convert HH:MM:SS or MM:SS:00 to MM:SS
+            const parts = dur.split(':');
+            if (parts.length === 3 && parts[0] === '00') {
+              fetchedDuration = `${parts[1]}:${parts[2]}`;
+            } else if (parts.length === 3) {
+              fetchedDuration = `${parts[0]}:${parts[1]}`;
+            } else {
+              fetchedDuration = dur;
             }
-            return { ...prev, players: newPlayers };
-          });
+          }
+        }
+
+        if (scoresResult?.success && scoresResult.data && scoresResult.data.length >= 2) {
+          const s1 = scoresResult.data.find((s: any) => s.match_participant_id === team1.matchParticipantId);
+          const s2 = scoresResult.data.find((s: any) => s.match_participant_id === team2.matchParticipantId);
+          fetchedAllyScore = s1?.score ?? 0;
+          fetchedEnemyScore = s2?.score ?? 0;
+        }
+
+        if (fetchedDuration || fetchedAllyScore > 0 || fetchedEnemyScore > 0) {
+          setPreviewData(prev => ({
+            ...prev,
+            matchDuration: fetchedDuration || prev.matchDuration,
+            score: {
+              ally: fetchedAllyScore || prev.score.ally,
+              enemy: fetchedEnemyScore || prev.score.enemy,
+            },
+          }));
         }
       } catch (e) {
         console.error("Failed to fetch existing stats", e);
       } finally {
+        hasFetched.current = true;
         setIsFetchingStats(false);
       }
     }
 
-    hasFetched.current = true;
-    fetchInitialData();
+    fetchExistingStats();
 
     return () => { mounted = false; };
-  }, [gameId, gameDraftActions, gameCharacters, playerMapping, team1.players, team2.players]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, isCharactersFetched]);
+
+  // Effect 2: Once draft, characters, and rosters are all loaded AND no existing stats were found,
+  // apply agents from draft data using roster-based correlation
+  useEffect(() => {
+    if (!hasFetched.current || hasExistingStats) return;
+    if (!isDraftActionsFetched || !isCharactersFetched || !isRostersFetched) return;
+    if (!gameDraftActions?.length || !gameRosters?.length) return;
+
+    setPreviewData(prev => {
+      const newPlayers = [...prev.players];
+      for (let i = 0; i < 10; i++) {
+        const pId = playerMapping[i.toString()];
+        if (pId) {
+          const pick = findPickForPlayer(pId, gameDraftActions);
+          if (pick?.hero_id) {
+            newPlayers[i] = { ...newPlayers[i], agentName: pick.hero_id.toString() };
+          } else if (pick?.hero_name) {
+            const matchedAgent = getAgent(pick.hero_name);
+            if (matchedAgent) {
+              newPlayers[i] = { ...newPlayers[i], agentName: matchedAgent.id.toString() };
+            }
+          }
+        }
+      }
+      return { ...prev, players: newPlayers };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraftActionsFetched, isCharactersFetched, isRostersFetched, hasExistingStats]);
 
   // Handle file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,8 +329,52 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
     try {
       const result = await extractValorantStatsFromImage(formData);
       if (result.success && result.data) {
-        setPreviewData(result.data);
-        autoMapPlayers(result.data);
+        // Convert OCR agent name strings to character IDs for dropdown compatibility
+        const convertedData = { ...result.data };
+        convertedData.players = convertedData.players.map(p => {
+          if (p.agentName) {
+            const char = getAgent(p.agentName);
+            if (char) {
+              return { ...p, agentName: char.id.toString() };
+            }
+          }
+          return p;
+        });
+
+        // Auto-map players by IGN
+        const newMapping: Record<string, string> = {};
+        const allPlayers = [...team1.players, ...team2.players];
+
+        convertedData.players.forEach((stat, index) => {
+          const matchedPlayer = allPlayers.find(p =>
+            stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) ||
+            p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
+          );
+          if (matchedPlayer) {
+            newMapping[index.toString()] = matchedPlayer.id;
+          }
+        });
+
+        // Auto-map draft agents using roster-based correlation
+        if (gameDraftActions && gameRosters?.length) {
+          convertedData.players.forEach((stat, index) => {
+            const pId = newMapping[index.toString()];
+            if (pId) {
+              const pick = findPickForPlayer(pId, gameDraftActions);
+              if (pick?.hero_id) {
+                stat.agentName = pick.hero_id.toString();
+              } else if (pick?.hero_name) {
+                const matchedAgent = getAgent(pick.hero_name);
+                if (matchedAgent) {
+                  stat.agentName = matchedAgent.id.toString();
+                }
+              }
+            }
+          });
+        }
+
+        setPlayerMapping(newMapping);
+        setPreviewData(convertedData);
         toast.success('Stats extracted successfully');
       } else {
         toast.error(result.error || 'Failed to extract stats');
@@ -255,67 +387,43 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
   };
 
   // Auto-map extracted players to system players based on IGN
-  const autoMapPlayers = (data: ValorantScreenshotData) => {
-    const newMapping: Record<string, string> = {};
-    const allPlayers = [...team1.players, ...team2.players];
+  // (autoMapPlayers removed since it's now integrated in handleFileUpload)
 
-    data.players.forEach((stat, index) => {
-      // Clean OCR name (remove team prefix if possible, though OCR mock has full name)
-      // Mock data has "USJR Astababy". Matches IGN "Astababy"?
-      // We'll simplistic fuzzy match: if system IGN is contained in OCR name or vice versa
-      const matchedPlayer = allPlayers.find(p =>
-        stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) ||
-        p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
-      );
+  const handleCopyFromDraft = async () => {
+    // Fetch fresh draft actions and rosters directly to avoid stale cached data
+    const { getGameDraftActionsByGameId } = await import('@/actions/game-draft');
+    const [freshDraftResult, rosterResult] = await Promise.all([
+      getGameDraftActionsByGameId(gameId),
+      getGameRosterByGameId(gameId),
+    ]);
 
-      if (matchedPlayer) {
-        newMapping[index.toString()] = matchedPlayer.id;
-      }
-    });
+    const freshDraftActions = freshDraftResult.success ? freshDraftResult.data : null;
+    const freshRosters = rosterResult.success ? rosterResult.data : null;
 
-    setPlayerMapping(newMapping);
-
-    // Auto-map draft
-    if (gameDraftActions) {
-      setPreviewData(prevData => {
-        const newPlayers = [...prevData.players];
-        for (let i = 0; i < 10; i++) {
-          const pId = newMapping[i.toString()];
-          if (pId) {
-            const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
-            if (pickAction && pickAction.hero_id) {
-              newPlayers[i].agentName = pickAction.hero_id.toString();
-            } else if (pickAction && pickAction.hero_name) {
-              const matchedAgent = getAgent(pickAction.hero_name);
-              if (matchedAgent) {
-                newPlayers[i].agentName = matchedAgent.id.toString();
-              }
-            }
-          }
-        }
-        return { ...prevData, players: newPlayers };
-      });
-    }
-  };
-
-  const handleCopyFromDraft = () => {
-    if (!gameDraftActions || gameDraftActions.length === 0) {
+    if (!freshDraftActions || freshDraftActions.length === 0) {
       toast.error('No draft data available for this game.');
       return;
     }
+    if (!freshRosters || freshRosters.length === 0) {
+      toast.error('No roster data available. Please set up rosters in the draft panel first.');
+      return;
+    }
+
+    // Update local state so future calls also have fresh data
+    setGameRosters(freshRosters);
 
     setPreviewData(prevData => {
       const newPlayers = [...prevData.players];
       for (let i = 0; i < 10; i++) {
         const pId = playerMapping[i.toString()];
         if (pId && pId !== 'skip') {
-          const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
-          if (pickAction && pickAction.hero_id) {
-            newPlayers[i].agentName = pickAction.hero_id.toString();
-          } else if (pickAction && pickAction.hero_name) {
-            const matchedAgent = getAgent(pickAction.hero_name);
+          const pick = findPickForPlayer(pId, freshDraftActions);
+          if (pick?.hero_id) {
+            newPlayers[i] = { ...newPlayers[i], agentName: pick.hero_id.toString() };
+          } else if (pick?.hero_name) {
+            const matchedAgent = getAgent(pick.hero_name);
             if (matchedAgent) {
-              newPlayers[i].agentName = matchedAgent.id.toString();
+              newPlayers[i] = { ...newPlayers[i], agentName: matchedAgent.id.toString() };
             }
           }
         }
@@ -411,29 +519,19 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
         await updateGameById({ id: gameId, duration: durationToSave });
       }
 
+      // Save rounds won as game_scores
+      if (previewData.score.ally > 0 || previewData.score.enemy > 0) {
+        await upsertGameScoresForGame(gameId, [
+          { game_id: gameId, match_participant_id: team1.matchParticipantId, score: previewData.score.ally },
+          { game_id: gameId, match_participant_id: team2.matchParticipantId, score: previewData.score.enemy },
+        ]);
+      }
+
       if (result.success) {
-        toast.success(`Saved stats for ${statsToSave.length} players`);
-        setPreviewData(() => {
-          const allPlayers = [...team1.players, ...team2.players];
-          return {
-            matchResult: 'VICTORY',
-            matchDuration: '',
-            mapName: '',
-            score: { ally: 0, enemy: 0 },
-            players: Array.from({ length: 10 }).map((_, i) => ({
-              playerName: '',
-              team: i < 5 ? 'Ally' : 'Enemy',
-              agentName: '',
-              acs: 0,
-              kda: { kills: 0, deaths: 0, assists: 0 },
-              econRating: 0,
-              firstBloods: 0,
-              plants: 0,
-              defuses: 0
-            }))
-          };
-        });
-        setPlayerMapping({});
+        toast.success(`${hasExistingStats ? 'Updated' : 'Saved'} stats for ${statsToSave.length} players`);
+        setHasExistingStats(true);
+        // Auto-transition game status to completed
+        await updateGameById({ id: gameId, status: 'completed' });
         onStatsSaved?.();
       } else {
         toast.error(result.error || 'Failed to save stats');
@@ -500,58 +598,92 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Extracted Statistics</h3>
-            <div className="flex items-center gap-4">
-              {previewData.matchDuration !== undefined && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground font-medium">Duration:</span>
-                  <Input
-                    type="text"
-                    value={previewData.matchDuration}
-                    onChange={(e) => setPreviewData({ ...previewData, matchDuration: e.target.value })}
-                    className="h-8 w-16 text-center font-mono"
-                    placeholder="MM:SS"
-                  />
-                </div>
-              )}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Extracted Statistics</h3>
               <div className="flex gap-2">
-                <Badge variant="outline" className="text-blue-500">
-                  Ally: {previewData.score.ally}
-                </Badge>
-                <Badge variant="outline" className="text-red-500">
-                  Enemy: {previewData.score.enemy}
-                </Badge>
+                <Button size="sm" variant="secondary" onClick={handleCopyFromDraft}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Copy Agents from Draft
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  setPreviewData(() => {
+                    return {
+                      matchResult: 'VICTORY',
+                      matchDuration: '',
+                      mapName: '',
+                      score: { ally: 0, enemy: 0 },
+                      players: Array.from({ length: 10 }).map((_, i) => ({
+                        playerName: '',
+                        team: i < 5 ? 'Ally' : 'Enemy',
+                        agentName: '',
+                        acs: 0,
+                        kda: { kills: 0, deaths: 0, assists: 0 },
+                        firstBloods: 0
+                      }))
+                    };
+                  });
+                  setMvpIndex(null);
+                }}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={handleCopyFromDraft}>
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Copy Agents from Draft
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => {
-                setPreviewData(() => {
-                  const allPlayers = [...team1.players, ...team2.players];
-                  return {
-                    matchResult: 'VICTORY',
-                    matchDuration: '',
-                    mapName: '',
-                    score: { ally: 0, enemy: 0 },
-                    players: Array.from({ length: 10 }).map((_, i) => ({
-                      playerName: '',
-                      team: i < 5 ? 'Ally' : 'Enemy',
-                      agentName: '',
-                      acs: 0,
-                      kda: { kills: 0, deaths: 0, assists: 0 },
-                      firstBloods: 0
-                    }))
-                  };
-                });
-                setMvpIndex(null);
-              }}>
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Reset
-              </Button>
+
+            {/* Rounds Won & Duration Header */}
+            <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
+              {/* Team 1 */}
+              <div className="flex items-center gap-3">
+                {team1.logoUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={team1.logoUrl} alt={team1.abbreviation} className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                    {team1.abbreviation.substring(0, 2)}
+                  </div>
+                )}
+                <span className="text-sm font-semibold">{team1.abbreviation}</span>
+                <Input
+                  type="number"
+                  value={previewData.score.ally}
+                  onChange={(e) => setPreviewData({ ...previewData, score: { ...previewData.score, ally: Number(e.target.value) || 0 } })}
+                  className="h-8 w-14 text-center font-mono font-bold text-lg"
+                  min={0}
+                />
+              </div>
+
+              {/* Duration (center) */}
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Duration</span>
+                <Input
+                  type="text"
+                  value={previewData.matchDuration || ''}
+                  onChange={(e) => setPreviewData({ ...previewData, matchDuration: e.target.value })}
+                  className="h-8 w-20 text-center font-mono"
+                  placeholder="MM:SS"
+                />
+              </div>
+
+              {/* Team 2 */}
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  value={previewData.score.enemy}
+                  onChange={(e) => setPreviewData({ ...previewData, score: { ...previewData.score, enemy: Number(e.target.value) || 0 } })}
+                  className="h-8 w-14 text-center font-mono font-bold text-lg"
+                  min={0}
+                />
+                <span className="text-sm font-semibold">{team2.abbreviation}</span>
+                {team2.logoUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={team2.logoUrl} alt={team2.abbreviation} className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                    {team2.abbreviation.substring(0, 2)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -579,13 +711,16 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                   return (
                     <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span className="flex items-center gap-2">
-                            {stat.playerName}
-                          </span>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <div className={cn("w-2 h-2 rounded-full", stat.team === 'Ally' ? "bg-blue-500" : "bg-red-500")} />
-                          </div>
+                        <div className="flex items-center gap-2">
+                          {team?.logoUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={team.logoUrl} alt={team.abbreviation} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold flex-shrink-0">
+                              {team ? team.abbreviation.substring(0, 2) : (stat.team === 'Ally' ? team1.abbreviation.substring(0, 2) : team2.abbreviation.substring(0, 2))}
+                            </div>
+                          )}
+                          <span>{stat.playerName}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -685,17 +820,17 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
                           onValueChange={(value) => {
                             setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
 
-                            if (value !== 'skip' && gameDraftActions) {
-                              const pickAction = gameDraftActions?.find(a => a.action_type === 'pick' && a.player_id === value);
-                              if (pickAction && pickAction.hero_id) {
+                            if (value !== 'skip' && gameDraftActions && gameRosters?.length) {
+                              const pick = findPickForPlayer(value, gameDraftActions);
+                              if (pick?.hero_id) {
                                 setPreviewData(prevData => {
                                   if (!prevData) return prevData;
                                   const newPlayers = [...prevData.players];
-                                  newPlayers[index] = { ...newPlayers[index], agentName: pickAction.hero_id!.toString() };
+                                  newPlayers[index] = { ...newPlayers[index], agentName: pick.hero_id!.toString() };
                                   return { ...prevData, players: newPlayers };
                                 });
-                              } else if (pickAction && pickAction.hero_name) {
-                                const matchedAgent = getAgent(pickAction.hero_name);
+                              } else if (pick?.hero_name) {
+                                const matchedAgent = getAgent(pick.hero_name);
                                 if (matchedAgent) {
                                   setPreviewData(prevData => {
                                     if (!prevData) return prevData;
@@ -751,7 +886,7 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Statistics
+                  {hasExistingStats ? 'Update Statistics' : 'Save Statistics'}
                 </>
               )}
             </Button>

@@ -36,3 +36,16 @@ export async function updateGameScore(data: GameScoreUpdate) {
   }
   return result;
 }
+
+export async function upsertGameScoresForGame(gameId: number, scores: GameScoreInsert[]) {
+  // Delete existing scores for this game, then bulk insert new ones
+  const deleteResult = await GameScoreService.deleteByGameId(gameId);
+  if (!deleteResult.success) return deleteResult;
+
+  const insertResult = await GameScoreService.insertMany(scores);
+  if (insertResult.success) {
+    await GameScoreService.syncMatchScoresFromGame(gameId);
+    RevalidationHelper.revalidateMatches();
+  }
+  return insertResult;
+}

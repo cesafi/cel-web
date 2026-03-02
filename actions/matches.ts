@@ -97,10 +97,13 @@ export async function performMatchCoinToss(matchId: number, team1Id: string, tea
     const winnerId = isTeam1 ? team1Id : team2Id;
     const result = isHeads ? 'heads' : 'tails';
     
+    // Default to winner taking Team A (First Ban)
+    const resultWithChoice = `${result}:team1`;
+    
     const update = await MatchesService.updateMatchById({
       id: matchId,
       coin_toss_winner_id: winnerId,
-      coin_toss_result: result,
+      coin_toss_result: resultWithChoice,
     });
     
     if (update.success) {
@@ -138,9 +141,22 @@ export async function resetMatchCoinToss(matchId: number): Promise<ServiceRespon
 export async function switchMatchCoinTossWinner(matchId: number, currentWinnerId: string, team1Id: string, team2Id: string): Promise<ServiceResponse<Match>> {
   try {
     const newWinnerId = currentWinnerId === team1Id ? team2Id : team1Id;
+    
+    // Fetch the current match to keep the result but maybe reset choice
+    const matchRes = await MatchesService.getMatchById(matchId);
+    let newResult = 'heads';
+    if (matchRes.success && matchRes.data) {
+      newResult = matchRes.data.coin_toss_result || 'heads';
+    }
+    
+    if (!newResult.includes(':')) {
+      newResult = `${newResult}:team1`;
+    }
+    
     const update = await MatchesService.updateMatchById({
       id: matchId,
       coin_toss_winner_id: newWinnerId,
+      coin_toss_result: newResult,
     });
     
     if (update.success) {
@@ -152,5 +168,27 @@ export async function switchMatchCoinTossWinner(matchId: number, currentWinnerId
   } catch (error) {
     console.error('Match coin toss switch failed:', error);
     return { success: false, error: 'Coin toss switch failed' };
+  }
+}
+
+export async function setMatchCoinTossChoice(matchId: number, currentResult: string, choice: 'team1' | 'team2'): Promise<ServiceResponse<Match>> {
+  try {
+    const baseResult = currentResult.split(':')[0] || 'heads';
+    const newResult = `${baseResult}:${choice}`;
+    
+    const update = await MatchesService.updateMatchById({
+      id: matchId,
+      coin_toss_result: newResult,
+    });
+    
+    if (update.success) {
+      revalidatePath(`/admin/matches/${matchId}`);
+      revalidatePath(`/veto/${matchId}`);
+    }
+    
+    return update;
+  } catch (error) {
+    console.error('Match coin toss choice failed:', error);
+    return { success: false, error: 'Coin toss choice failed' };
   }
 }

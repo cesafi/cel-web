@@ -94,6 +94,7 @@ export class GameScoreService extends BaseService {
 
   /**
    * Syncs the total match score for all participants based on the individual game scores of a match.
+   * For each game, the participant with the higher score is credited with 1 game win.
    * This is called after a game score is created or updated.
    */
   static async syncMatchScoresFromGame(gameId: number): Promise<ServiceResponse<undefined>> {
@@ -125,28 +126,44 @@ export class GameScoreService extends BaseService {
       // 3. Get all game scores for all games in this match
       const { data: allScores, error: scoresError } = await supabase
         .from(TABLE_NAME)
-        .select('match_participant_id, score')
+        .select('game_id, match_participant_id, score')
         .in('game_id', gameIds);
 
       if (scoresError) throw scoresError;
 
-      // 4. Calculate total score per participant
-      const participantScores: Record<number, number> = {};
-      
-      for (const scoreRecord of allScores || []) {
-        const participantId = scoreRecord.match_participant_id;
-        if (!participantScores[participantId]) {
-          participantScores[participantId] = 0;
+      // 4. Group scores by game, then count wins per participant
+      const scoresByGame: Record<number, { match_participant_id: number; score: number }[]> = {};
+      for (const sr of allScores || []) {
+        if (!sr.game_id) continue;
+        if (!scoresByGame[sr.game_id]) scoresByGame[sr.game_id] = [];
+        scoresByGame[sr.game_id].push({ match_participant_id: sr.match_participant_id, score: sr.score });
+      }
+
+      // For each game, the participant with the higher score gets +1 match win
+      const participantWins: Record<number, number> = {};
+      // Initialize all participants to 0
+      for (const sr of allScores || []) {
+        if (!participantWins[sr.match_participant_id]) {
+          participantWins[sr.match_participant_id] = 0;
         }
-        // Assuming score is numeric (e.g., 1 for win, 0 for loss)
-        participantScores[participantId] += (scoreRecord.score || 0);
+      }
+
+      for (const gScores of Object.values(scoresByGame)) {
+        if (gScores.length >= 2) {
+          // Find the participant with the highest score in this game
+          const sorted = [...gScores].sort((a, b) => b.score - a.score);
+          if (sorted[0].score > sorted[1].score) {
+            participantWins[sorted[0].match_participant_id] += 1;
+          }
+          // If tied, no one gets a win
+        }
       }
 
       // 5. Update the match_participants table
-      const updatePromises = Object.entries(participantScores).map(async ([participantId, totalScore]) => {
+      const updatePromises = Object.entries(participantWins).map(async ([participantId, wins]) => {
         const { error: updateError } = await supabase
           .from('match_participants')
-          .update({ match_score: totalScore })
+          .update({ match_score: wins })
           .eq('id', parseInt(participantId));
           
         if (updateError) throw updateError;
@@ -154,9 +171,61 @@ export class GameScoreService extends BaseService {
 
       await Promise.all(updatePromises);
 
+      // 6. Auto-finish match if a participant has reached required wins
+      const { data: matchData, error: matchFetchError } = await supabase
+        .from('matches')
+        .select('best_of, status')
+        .eq('id', matchId)
+        .single();
+
+      if (!matchFetchError && matchData && matchData.status !== 'finished') {
+        const requiredWins = Math.ceil((matchData.best_of || 1) / 2);
+        const hasWinner = Object.values(participantWins).some(wins => wins >= requiredWins);
+
+        if (hasWinner) {
+          await supabase
+            .from('matches')
+            .update({ status: 'finished' })
+            .eq('id', matchId);
+        }
+      }
+
       return { success: true, data: undefined };
     } catch (err) {
       return this.formatError(err, `Failed to sync match scores from game ${gameId}.`);
+    }
+  }
+
+  static async deleteByGameId(gameId: number): Promise<ServiceResponse<undefined>> {
+    try {
+      const supabase = await this.getClient();
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .delete()
+        .eq('game_id', gameId);
+
+      if (error) throw error;
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to delete scores for game ${gameId}`);
+    }
+  }
+
+  static async insertMany(data: GameScoreInsert[]): Promise<ServiceResponse<undefined>> {
+    try {
+      const supabase = await this.getClient();
+      const now = nowUtc();
+      const withTimestamps = data.map(d => ({
+        ...d,
+        created_at: now,
+        updated_at: now,
+      }));
+
+      const { error } = await supabase.from(TABLE_NAME).insert(withTimestamps);
+      if (error) throw error;
+      return { success: true, data: undefined };
+    } catch (err) {
+      return this.formatError(err, `Failed to insert multiple ${TABLE_NAME} entities.`);
     }
   }
 }

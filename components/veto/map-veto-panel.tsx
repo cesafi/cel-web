@@ -38,7 +38,7 @@ import {
   updateValorantMapVetoById
 } from '@/actions/valorant-map-vetoes';
 import { performPublicVeto, selectPublicVetoSide } from '@/actions/veto-public';
-import { performMatchCoinToss, resetMatchCoinToss, switchMatchCoinTossWinner } from '@/actions/matches';
+import { performMatchCoinToss, resetMatchCoinToss, switchMatchCoinTossWinner, setMatchCoinTossChoice } from '@/actions/matches';
 import { ConfirmationModal } from '@/components/shared/confirmation-modal';
 
 interface MapVetoPanelProps {
@@ -102,6 +102,8 @@ export function MapVetoPanel({
   const [isResetVetoModalOpen, setIsResetVetoModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+  const [selectedChoice, setSelectedChoice] = useState<'team1' | 'team2'>('team1');
 
   // Router for refreshing server component props (coin toss)
   const router = useRouter();
@@ -327,6 +329,22 @@ export function MapVetoPanel({
     }
   });
 
+  const setChoiceMutation = useMutation({
+    mutationFn: async (choice: 'team1' | 'team2') => {
+      const result = await setMatchCoinTossChoice(matchId, coinTossResult || 'heads', choice);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: () => {
+      toast.success('Sequence advantage updated!');
+      setIsChoiceModalOpen(false);
+      router.refresh();
+    },
+    onError: (err) => {
+      toast.error('Failed to set choice: ' + err.message);
+    }
+  });
+
   // Get vetoed map names
   const vetoedMapNames = useMemo(() =>
     vetoes.map((v: ValorantMapVetoWithTeam) => v.map_name),
@@ -342,6 +360,25 @@ export function MapVetoPanel({
   // Get current veto step
   const vetoSequence = getVetoSequence(bestOf);
 
+  // Determine which team goes first based on coin toss selection
+  const tossWinnerChoice = coinTossResult?.split(':')[1] || 'team1';
+
+  let sequenceTeam1Id = team1.id;
+  let sequenceTeam2Id = team2.id;
+  
+  if (coinTossWinnerId) {
+    if (tossWinnerChoice === 'team1') {
+      sequenceTeam1Id = coinTossWinnerId;
+      sequenceTeam2Id = coinTossWinnerId === team1.id ? team2.id : team1.id;
+    } else {
+      sequenceTeam2Id = coinTossWinnerId;
+      sequenceTeam1Id = coinTossWinnerId === team1.id ? team2.id : team1.id;
+    }
+  }
+
+  const sequenceT1 = sequenceTeam1Id === team1.id ? team1 : team2;
+  const sequenceT2 = sequenceTeam2Id === team1.id ? team1 : team2;
+
   // Helper to determine which team should pick a side for a given veto
   const getSideSelectionTeam = (vetoIndex: number) => {
     const step = vetoSequence[vetoIndex];
@@ -349,13 +386,13 @@ export function MapVetoPanel({
 
     // For picks, the other team chooses the side
     if (step.action === 'pick') {
-      return step.team === 'team1' ? team2.id : team1.id;
+      return step.team === 'team1' ? sequenceTeam2Id : sequenceTeam1Id;
     }
 
     // For the remaining map (decider), the team that didn't act last chooses
     if (step.action === 'remain' && vetoIndex > 0) {
       const lastStep = vetoSequence[vetoIndex - 1];
-      return lastStep.team === 'team1' ? team2.id : team1.id;
+      return lastStep.team === 'team1' ? sequenceTeam2Id : sequenceTeam1Id;
     }
 
     return null;
@@ -380,13 +417,15 @@ export function MapVetoPanel({
     // Auth check
     if (!isAdmin && !isPublicView) return;
     if (isPublicView) {
-      if (currentStep.team !== 'none' && currentStep.team !== userSide) {
+      const expectedTeamId = currentStep.team === 'team1' ? sequenceTeam1Id : sequenceTeam2Id;
+      const myTeamId = userSide === 'team1' ? team1.id : team2.id;
+      if (currentStep.team !== 'none' && expectedTeamId !== myTeamId) {
         toast.error('It is not your turn');
         return;
       }
     }
 
-    const teamId = currentStep.team === 'team1' ? team1.id : currentStep.team === 'team2' ? team2.id : team1.id;
+    const teamId = currentStep.team === 'team1' ? sequenceTeam1Id : currentStep.team === 'team2' ? sequenceTeam2Id : sequenceTeam1Id;
 
     try {
       if (isPublicView) {
@@ -448,7 +487,7 @@ export function MapVetoPanel({
             >
               {actionIcons[currentStep.action]}
               <span className="ml-2">
-                Step {currentStep.stepNumber}/{currentStep.totalSteps} - {currentStep.team === 'none' ? 'Remaining Map' : `${currentStep.team === 'team1' ? team1.abbreviation : team2.abbreviation} ${currentStep.action}s`}
+                Step {currentStep.stepNumber}/{currentStep.totalSteps} - {currentStep.team === 'none' ? 'Remaining Map' : `${currentStep.team === 'team1' ? sequenceT1.abbreviation : sequenceT2.abbreviation} ${currentStep.action}s`}
               </span>
             </Badge>
           ) : (
@@ -540,20 +579,37 @@ export function MapVetoPanel({
       ) : (
         <>
           {/* Coin Toss Result Header */}
-          <div className="rounded-lg border bg-card p-4 flex items-center justify-between shadow-sm">
+          <div className="rounded-lg border bg-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between shadow-sm gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Check className="w-5 h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Coin Toss Result</p>
-                <p className="font-bold">
-                  <span className="text-primary">{coinTossWinnerId === team1.id ? team1.name : team2.name}</span> won ({coinTossResult})
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">Coin Toss Result
+                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5 uppercase font-mono">{coinTossResult?.split(':')[0] || 'heads'}</Badge>
+                </p>
+                <p className="font-bold flex items-center gap-2">
+                  <span className="text-primary">{coinTossWinnerId === team1.id ? team1.name : team2.name}</span>
+                  <span className="text-muted-foreground text-sm font-normal">
+                    chose <strong className="text-foreground">{tossWinnerChoice === 'team1' ? 'First Ban / Pick' : 'Second Ban / Pick'}</strong>
+                  </span>
                 </p>
               </div>
             </div>
             {isAdmin && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedChoice(tossWinnerChoice as 'team1' | 'team2');
+                    setIsChoiceModalOpen(true);
+                  }}
+                  disabled={setChoiceMutation.isPending}
+                >
+                  <Map className="w-4 h-4 mr-2" />
+                  Change Choice
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -575,6 +631,41 @@ export function MapVetoPanel({
               </div>
             )}
           </div>
+
+          <ConfirmationModal
+            open={isChoiceModalOpen}
+            onOpenChange={setIsChoiceModalOpen}
+            title="Update Coin Toss Choice"
+            description={
+              <div className="py-4 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Change whether the coin toss winner gets first or second action in the veto sequence.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Current Winner: <strong className="text-foreground">{coinTossWinnerId === team1.id ? team1.abbreviation : team2.abbreviation}</strong>
+                </p>
+                <div className="flex gap-4">
+                  <Button
+                    variant={selectedChoice === 'team1' ? 'default' : 'outline'}
+                    className="w-full"
+                    onClick={(e) => { e.preventDefault(); setSelectedChoice('team1'); }}
+                  >
+                    First Ban (Team A)
+                  </Button>
+                  <Button
+                    variant={selectedChoice === 'team2' ? 'default' : 'outline'}
+                    className="w-full"
+                    onClick={(e) => { e.preventDefault(); setSelectedChoice('team2'); }}
+                  >
+                    Second Ban (Team B)
+                  </Button>
+                </div>
+              </div>
+            }
+            cancelText="Cancel"
+            confirmText="Update Choice"
+            onConfirm={() => setChoiceMutation.mutate(selectedChoice)}
+          />
 
           <ConfirmationModal
             open={isResetModalOpen}
@@ -626,7 +717,7 @@ export function MapVetoPanel({
                         {actionIcons[step.action]}
                         {step.team !== 'none' && (
                           <span className="text-sm font-medium">
-                            {step.team === 'team1' ? team1.abbreviation : team2.abbreviation}
+                            {step.team === 'team1' ? sequenceT1.abbreviation : sequenceT2.abbreviation}
                           </span>
                         )}
                       </div>

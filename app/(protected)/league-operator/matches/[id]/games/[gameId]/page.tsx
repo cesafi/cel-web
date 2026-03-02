@@ -15,7 +15,6 @@ import { DraftPanel } from '@/components/draft/draft-panel';
 import { ValorantStatsUpload } from '@/components/stats/valorant-stats-upload';
 import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
 import { PostGameStatsUploader } from '@/components/statistics/post-game-stats-uploader';
-import { GameWinnerSelector } from '@/components/games/game-winner-selector';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -249,23 +248,6 @@ export default function LeagueOperatorGameDetailPage() {
                 </div>
             </div>
 
-            {/* ── Game Winner Selector ── */}
-            {team1 && team2 && (
-                <GameWinnerSelector
-                    gameId={gameId}
-                    team1={{
-                        matchParticipantId: team1.id,
-                        name: team1.schools_teams?.name || 'T1',
-                        abbreviation: team1.schools_teams?.school?.abbreviation || 'T1'
-                    }}
-                    team2={{
-                        matchParticipantId: team2.id,
-                        name: team2.schools_teams?.name || 'T2',
-                        abbreviation: team2.schools_teams?.school?.abbreviation || 'T2'
-                    }}
-                />
-            )}
-
             {/* ── Game Attributes Editor ── */}
             {team1 && team2 && !isValorant && (
                 <div className="rounded-xl border bg-card p-5 space-y-4">
@@ -409,12 +391,16 @@ export default function LeagueOperatorGameDetailPage() {
                                 id: team1.schools_teams.id,
                                 name: team1.schools_teams.name,
                                 abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+                                logoUrl: team1.schools_teams.school?.logo_url,
+                                matchParticipantId: team1.id,
                                 players: team1Players,
                             }}
                             team2={{
                                 id: team2.schools_teams.id,
                                 name: team2.schools_teams.name,
                                 abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+                                logoUrl: team2.schools_teams.school?.logo_url,
+                                matchParticipantId: team2.id,
                                 players: team2Players,
                             }}
                         />

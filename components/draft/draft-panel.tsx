@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { LazyImage } from '@/components/draft/lazy-image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,9 +43,11 @@ import {
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
 import { autoFillRosterFromGame1 } from '@/actions/game-roster';
 import { updateGameDraftAction } from '@/actions/game-draft';
+import { updateGameById } from '@/actions/games';
 import { GameRosterService } from '@/services/game-roster';
 import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUndoLastGameDraftAction, useUpdateGameDraftAction } from '@/hooks/use-game-draft';
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
+import { matchKeys } from '@/hooks/use-matches';
 
 interface DraftPanelProps {
     gameId: number;
@@ -201,6 +203,12 @@ export function DraftPanel({
             return result;
         },
         onSuccess: () => {
+            // Set game status to 'drafting' on first player assignment
+            if (actions.length === 0 && rosters.length === 0) {
+                updateGameById({ id: gameId, status: 'drafting' }).then(() => {
+                    queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+                });
+            }
             refetchRosters();
             toast.success("Player assigned");
         },
@@ -235,6 +243,12 @@ export function DraftPanel({
 
     const submitActionMutation = useSubmitGameDraftAction({
         onSuccess: () => {
+            // Set game status to 'drafting' on first action
+            if (actions.length === 0) {
+                updateGameById({ id: gameId, status: 'drafting' }).then(() => {
+                    queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+                });
+            }
             refetchActions();
             toast.success('Action recorded');
         }
@@ -405,6 +419,17 @@ export function DraftPanel({
         const interval = setInterval(() => setTimer(t => t - 1), 1000);
         return () => clearInterval(interval);
     }, [timer, draftState.isComplete, isValorant, isTimerPaused]);
+
+    // Auto-transition game status to 'in_progress' when draft completes
+    const hasSyncedComplete = useRef(false);
+    useEffect(() => {
+        if (draftState.isComplete && !hasSyncedComplete.current && actions.length > 0) {
+            hasSyncedComplete.current = true;
+            updateGameById({ id: gameId, status: 'in_progress' }).then(() => {
+                queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+            });
+        }
+    }, [draftState.isComplete, actions.length, gameId, matchId, queryClient]);
 
     // Filtering
     const filteredCharacters = useMemo(() => {

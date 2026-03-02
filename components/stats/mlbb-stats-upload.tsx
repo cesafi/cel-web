@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { extractMlbbStatsFromImage } from '@/actions/mlbb-ocr';
 import { createMultipleMlbbStats, getMlbbStatsByGameId, deleteMlbbStatsByGameId } from '@/actions/stats-mlbb';
 import { updateGameById } from '@/actions/games';
+import { getGameRosterByGameId } from '@/actions/game-roster';
 import { MlbbScreenshotData } from '@/lib/types/stats-mlbb';
 import { Player } from '@/lib/types/players';
 import { Button } from '@/components/ui/button';
@@ -98,17 +99,44 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
   const [isSaving, setIsSaving] = useState(false);
   const [mvpIndex, setMvpIndex] = useState<number | null>(null);
 
-  const { data: gameDraftActions } = useGameDraftActions(gameId);
-  const { data: gameCharacters } = useAllGameCharactersWithEsport();
+  const { data: gameDraftActions, isFetched: isDraftActionsFetched } = useGameDraftActions(gameId);
+  const { data: gameCharacters, isFetched: isCharactersFetched } = useAllGameCharactersWithEsport();
   const [heroMapping, setHeroMapping] = useState<Record<string, string>>({});
 
   const [equipmentFile, setEquipmentFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [isFetchingStats, setIsFetchingStats] = useState(true);
   const hasFetched = useRef(false);
+  const [gameRosters, setGameRosters] = useState<any[]>([]);
+  const [isRostersFetched, setIsRostersFetched] = useState(false);
 
   useEffect(() => {
-    if (hasFetched.current || !gameCharacters || !gameDraftActions) return;
+    async function fetchRosters() {
+      const res = await getGameRosterByGameId(gameId);
+      if (res.success && res.data) {
+        setGameRosters(res.data);
+      }
+      setIsRostersFetched(true);
+    }
+    fetchRosters();
+  }, [gameId]);
+
+  // Helper: find the draft pick for a given player using roster-based correlation
+  const findPickForPlayer = (playerId: string, draftActions: any[]) => {
+    if (!draftActions?.length || !gameRosters?.length) return null;
+    // Find the player's roster entry to get their team and slot
+    const rosterEntry = gameRosters.find((r: any) => r.player_id === playerId);
+    if (!rosterEntry) return null;
+    // Get the ordered picks for this player's team
+    const teamPicks = draftActions
+      .filter((a: any) => a.action_type === 'pick' && a.team_id === rosterEntry.team_id)
+      .sort((a: any, b: any) => a.sort_order - b.sort_order);
+    // The roster sort_order (0-4) maps to the pick index
+    return teamPicks[rosterEntry.sort_order] || null;
+  };
+
+  useEffect(() => {
+    if (hasFetched.current || !isCharactersFetched || !isDraftActionsFetched || !isRostersFetched) return;
 
     let mounted = true;
     async function fetchInitialData() {
@@ -196,16 +224,16 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
           setMvpIndex(mvpIdx);
           setPreviewData(prev => ({ ...prev, players: newPreviewDataPlayers }));
         } else {
-          // No existing stats: auto-assign heroes based on draft actions if available
+          // No existing stats: auto-assign heroes based on draft actions using roster-based correlation
           const newHeroMapping: Record<string, string> = {};
           setPreviewData(prev => {
             const newPlayers = [...prev.players];
             for (let i = 0; i < 10; i++) {
               const pId = playerMapping[i.toString()]; // playerMapping has default initial picks
               if (pId) {
-                const pickAction = gameDraftActions?.find(a => a.action_type === 'pick' && a.player_id === pId);
-                if (pickAction && pickAction.hero_name) {
-                  const char = gameCharacters?.find(c => c.name.toLowerCase() === pickAction.hero_name?.toLowerCase());
+                const pick = findPickForPlayer(pId, gameDraftActions || []);
+                if (pick?.hero_name) {
+                  const char = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
                   if (char) {
                     newHeroMapping[i.toString()] = char.id.toString();
                     newPlayers[i].heroName = char.name;
@@ -228,7 +256,7 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
     fetchInitialData();
 
     return () => { mounted = false; };
-  }, [gameId, gameCharacters, gameDraftActions, playerMapping, team1.players, team2.players]);
+  }, [gameId, gameCharacters, gameDraftActions, gameRosters, playerMapping, team1.players, team2.players, isCharactersFetched, isDraftActionsFetched, isRostersFetched]);
 
   // Handle file analysis once both are provided
   const handleAnalyze = async () => {
@@ -245,10 +273,58 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
     try {
       const result = await extractMlbbStatsFromImage(formData);
       if (result.success && result.data) {
+        
+        // Prepare the extracted data
+        const convertedData = { ...result.data };
+        
+        // Auto-map players by IGN
+        const allPlayers = [...team1.players, ...team2.players];
+        const newMapping: Record<string, string> = {};
+        const newHeroMapping: Record<string, string> = {};
+
+        convertedData.players.forEach((stat, index) => {
+          const matchedPlayer = allPlayers.find(p =>
+            stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) ||
+            p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
+          );
+
+          if (matchedPlayer) {
+            newMapping[index.toString()] = matchedPlayer.id;
+          }
+
+          if (stat.heroName && gameCharacters) {
+            const matchedChar = gameCharacters.find((c: any) => c.name.toLowerCase() === stat.heroName.toLowerCase());
+            if (matchedChar) {
+              newHeroMapping[index.toString()] = matchedChar.id.toString();
+              stat.heroName = matchedChar.name; // ensure matched casing
+            }
+          }
+        });
+
+        // Auto-map draft mapping after setting initial mappings using roster-based correlation
+        if (gameDraftActions && gameRosters?.length) {
+          convertedData.players.forEach((stat, index) => {
+            const pId = newMapping[index.toString()];
+            if (pId) {
+              const pick = findPickForPlayer(pId, gameDraftActions);
+              if (pick?.hero_name) {
+                const matchedChar = gameCharacters?.find((c: any) => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
+                if (matchedChar) {
+                  newHeroMapping[index.toString()] = matchedChar.id.toString();
+                  stat.heroName = matchedChar.name;
+                }
+              }
+            }
+          });
+        }
+
+        setPlayerMapping(newMapping);
+        setHeroMapping(newHeroMapping);
+
         // When AI extracts stats, override the empty structure
-        setPreviewData(result.data);
-        autoMapPlayers(result.data, gameCharacters);
-        const extractedMvpIndex = result.data.players.findIndex(p => p.badge === 'MVP');
+        setPreviewData(convertedData);
+        
+        const extractedMvpIndex = convertedData.players.findIndex(p => p.badge === 'MVP');
         if (extractedMvpIndex !== -1) {
           setMvpIndex(extractedMvpIndex);
         }
@@ -263,61 +339,15 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
     }
   };
 
-  // Auto-map extracted players to system players based on IGN
-  const autoMapPlayers = (data: MlbbScreenshotData, chars: any[] | undefined) => {
-    const allPlayers = [...team1.players, ...team2.players];
-    const newMapping: Record<string, string> = {};
-    const newHeroMapping: Record<string, string> = {};
-
-    data.players.forEach((stat, index) => {
-      const matchedPlayer = allPlayers.find(p =>
-        stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) ||
-        p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
-      );
-
-      if (matchedPlayer) {
-        newMapping[index.toString()] = matchedPlayer.id;
-      }
-
-      if (stat.heroName && chars) {
-        const matchedChar = chars.find((c: any) => c.name.toLowerCase() === stat.heroName.toLowerCase());
-        if (matchedChar) {
-          newHeroMapping[index.toString()] = matchedChar.id.toString();
-        }
-      }
-    });
-
-    setPlayerMapping(newMapping);
-    setHeroMapping(newHeroMapping);
-
-    // Auto-map draft mapping after setting initial mappings
-    if (gameDraftActions) {
-      setPreviewData(prevData => {
-        const newPlayers = [...prevData.players];
-        const updatedHeroMapping = { ...newHeroMapping };
-
-        for (let i = 0; i < 10; i++) {
-          const pId = newMapping[i.toString()];
-          if (pId) {
-            const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
-            if (pickAction && pickAction.hero_name) {
-              const matchedChar = chars?.find((c: any) => c.name.toLowerCase() === pickAction.hero_name?.toLowerCase());
-              if (matchedChar) {
-                updatedHeroMapping[i.toString()] = matchedChar.id.toString();
-                newPlayers[i].heroName = matchedChar.name;
-              }
-            }
-          }
-        }
-        setHeroMapping(updatedHeroMapping);
-        return { ...prevData, players: newPlayers };
-      });
-    }
-  };
+  // (autoMapPlayers removed since it's now integrated in handleAnalyze)
 
   const handleCopyFromDraft = () => {
     if (!gameDraftActions || gameDraftActions.length === 0) {
       toast.error('No draft data available for this game.');
+      return;
+    }
+    if (!gameRosters || gameRosters.length === 0) {
+      toast.error('No roster data available. Please set up rosters in the draft panel first.');
       return;
     }
 
@@ -328,12 +358,12 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
       for (let i = 0; i < 10; i++) {
         const pId = playerMapping[i.toString()];
         if (pId && pId !== 'skip') {
-          const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === pId);
-          if (pickAction && pickAction.hero_name) {
-            const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pickAction.hero_name?.toLowerCase());
+          const pick = findPickForPlayer(pId, gameDraftActions);
+          if (pick?.hero_name) {
+            const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
             if (matchingChar) {
               newHeroMapping[i.toString()] = matchingChar.id.toString();
-              newPlayers[i].heroName = matchingChar.name;
+              newPlayers[i] = { ...newPlayers[i], heroName: matchingChar.name };
             }
           }
         }
@@ -440,36 +470,8 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
       if (result.success) {
         toast.success(`Saved stats for ${statsToSave.length} players`);
-        setPreviewData(() => {
-          const allPlayers = [...team1.players, ...team2.players];
-          return {
-            matchResult: 'VICTORY',
-            duration: '',
-            score: { blue: 0, red: 0 },
-            players: allPlayers.map(p => {
-              const isTeam1 = team1.players.some(t1p => t1p.id === p.id);
-              return {
-                playerName: p.ign,
-                team: isTeam1 ? 'Blue' : 'Red',
-                heroName: '',
-                kda: { kills: 0, deaths: 0, assists: 0 },
-                gold: 0,
-                rating: 0,
-                badge: null,
-                damageDealt: 0,
-                turretDamage: 0,
-                damageTaken: 0,
-                teamfight: 0,
-                turtlesSlain: 0,
-                lordsSlain: 0
-              };
-            })
-          };
-        });
-        setPlayerMapping({});
-        setHeroMapping({});
-        setEquipmentFile(null);
-        setDataFile(null);
+        // Auto-transition game status to completed
+        await updateGameById({ id: gameId, status: 'completed' });
         onStatsSaved?.();
       } else {
         toast.error(result.error || 'Failed to save stats');
@@ -812,17 +814,17 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
                           onValueChange={(value) => {
                             setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
 
-                            // Auto-fill hero if mapped from draft
-                            if (value !== 'skip' && gameDraftActions) {
-                              const pickAction = gameDraftActions.find(a => a.action_type === 'pick' && a.player_id === value);
-                              if (pickAction && pickAction.hero_name) {
-                                const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pickAction.hero_name?.toLowerCase());
+                            // Auto-fill hero if mapped from draft using roster-based correlation
+                            if (value !== 'skip' && gameDraftActions && gameRosters?.length) {
+                              const pick = findPickForPlayer(value, gameDraftActions);
+                              if (pick?.hero_name) {
+                                const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
                                 if (matchingChar) {
                                   setHeroMapping(prev => ({ ...prev, [index.toString()]: matchingChar.id.toString() }));
                                 }
                                 setPreviewData(prevData => {
                                   const newPlayers = [...prevData.players];
-                                  newPlayers[index] = { ...newPlayers[index], heroName: pickAction.hero_name! };
+                                  newPlayers[index] = { ...newPlayers[index], heroName: pick.hero_name! };
                                   return { ...prevData, players: newPlayers };
                                 });
                               }
