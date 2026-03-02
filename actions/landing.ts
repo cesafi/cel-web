@@ -7,7 +7,7 @@ import { Article } from '@/lib/types/articles';
 
 export async function getLatestArticles(limit: number = 4) {
   try {
-    const result = await ArticleService.getRecent(limit);
+    const result = await ArticleService.getRecentPublished(limit);
     
     if (!result.success || !result.data) {
       return { 
@@ -16,17 +16,9 @@ export async function getLatestArticles(limit: number = 4) {
       };
     }
 
-    // Get full article details for the recent articles
-    const fullArticles = await Promise.all(
-      result.data.map(async (article) => {
-        const fullArticle = await ArticleService.getById(article.id);
-        return fullArticle.success && fullArticle.data ? fullArticle.data : null;
-      })
-    );
-
     return {
       success: true,
-      data: fullArticles.filter(article => article !== null) as Article[]
+      data: result.data
     };
   } catch {
     return { 

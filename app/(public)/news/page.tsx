@@ -9,7 +9,8 @@ export default async function NewsPage() {
     page: 1,
     pageSize: 6,
     sortBy: 'created_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    filters: { status: 'published' }
   });
 
   const articlesData = articlesResult.success && articlesResult.data ? articlesResult.data : null;

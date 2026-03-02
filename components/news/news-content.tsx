@@ -41,10 +41,11 @@ export default function NewsContent({
     pageSize,
     searchQuery: debouncedSearchTerm,
     sortBy: 'created_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    filters: { status: 'published' }
   }, {
     enabled: currentPage > 1 || !!initialPagination, // Only enable if we have initial data or we're on page 2+
-    queryKey: ['articles', 'paginated', { page: currentPage, pageSize, searchQuery: debouncedSearchTerm, sortBy: 'created_at', sortOrder: 'desc' }]
+    queryKey: ['articles', 'paginated', { page: currentPage, pageSize, searchQuery: debouncedSearchTerm, sortBy: 'created_at', sortOrder: 'desc', filters: { status: 'published' } }]
   });
 
   // Handle Debounce for Search Term

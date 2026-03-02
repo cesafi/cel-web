@@ -1,7 +1,6 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface GameOption {
@@ -69,15 +68,11 @@ export function CompactGameSelector({
              {options.map((option) => (
                 <SelectItem key={option.id} value={option.id}>
                   <div className="flex items-center gap-2">
-                     {option.logoUrl ? (
+                     {option.logoUrl && (
                          // eslint-disable-next-line @next/next/no-img-element
                          <img src={option.logoUrl} alt={option.name} className="w-4 h-4 object-contain" />
-                     ) : (
-                         <div className="w-4 h-4 bg-muted text-muted-foreground rounded flex items-center justify-center text-[8px] font-bold">
-                           {option.shortName.substring(0,2)}
-                         </div>
                      )}
-                     <span className="font-bold text-xs uppercase text-foreground">{option.shortName}</span>
+                     <span className="font-bold text-xs text-foreground">{option.shortName}</span>
                   </div>
                 </SelectItem>
              ))}
@@ -106,7 +101,7 @@ export function CompactGameSelector({
               )}
             >
               <div className="flex items-center gap-2 px-3 py-1.5 h-9">
-                {option.logoUrl ? (
+                {option.logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img 
                     src={option.logoUrl} 
@@ -116,16 +111,9 @@ export function CompactGameSelector({
                       isActive ? "scale-105" : "grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100"
                     )} 
                   />
-                ) : (
-                  <div className={cn(
-                    "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors duration-200",
-                    isActive ? activeColors.circle : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
-                  )}>
-                    {option.shortName.substring(0, 2)}
-                  </div>
                 )}
                 <span className={cn(
-                  "font-bold text-xs tracking-wide uppercase transition-colors duration-200",
+                  "font-bold text-xs tracking-wide transition-colors duration-200",
                   isActive ? activeColors.text : "text-muted-foreground group-hover:text-foreground"
                 )}>
                   {option.shortName}
