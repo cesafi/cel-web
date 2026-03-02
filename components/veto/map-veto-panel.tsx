@@ -761,6 +761,18 @@ export function MapVetoPanel({
                     }
                   }
 
+                  // Determine who selected the side to display it clearly
+                  let sideSelectedByTeam: string | undefined = undefined;
+                  if (veto?.side_selected && (isPicked || isRemaining)) {
+                    const vetoIndex = vetoes.findIndex((v: ValorantMapVetoWithTeam) => v.id === veto.id);
+                    if (vetoIndex !== -1) {
+                      const sideSelectionTeamId = getSideSelectionTeam(vetoIndex);
+                      if (sideSelectionTeamId) {
+                        sideSelectedByTeam = sideSelectionTeamId === team1.id ? team1.abbreviation : team2.abbreviation;
+                      }
+                    }
+                  }
+
                   return (
                     <MapCard
                       key={map.id}
@@ -771,6 +783,7 @@ export function MapVetoPanel({
                       isRemaining={isRemaining}
                       isSelectable={canSelect}
                       canSelectSide={canSelectSide}
+                      sideSelectedByTeam={sideSelectedByTeam}
                       vetoedByTeam={veto?.schools_teams?.schools?.abbreviation}
                       onClick={() => handleMapSelect(map)}
                       onSelectSide={(side) => veto?.id ? handleSideSelect(veto.id, side) : null}
@@ -795,6 +808,7 @@ interface MapCardProps {
   isRemaining: boolean;
   isSelectable: boolean;
   canSelectSide?: boolean;
+  sideSelectedByTeam?: string;
   vetoedByTeam?: string;
   onClick: () => void;
   onSelectSide?: (side: GameSide) => void;
@@ -808,6 +822,7 @@ function MapCard({
   isRemaining,
   isSelectable,
   canSelectSide,
+  sideSelectedByTeam,
   vetoedByTeam,
   onClick,
   onSelectSide
@@ -886,13 +901,18 @@ function MapCard({
 
           {/* Side Selection for picked maps */}
           {(isPicked || isRemaining) && veto?.side_selected && (
-            <div className="mt-2 flex items-center gap-1 bg-black/50 px-2 py-1 rounded-md">
-              {veto.side_selected === 'attack' ? (
-                <Sword className="w-4 h-4 text-orange-400" />
-              ) : (
-                <Shield className="w-4 h-4 text-blue-400" />
+            <div className="mt-2 flex items-center justify-center gap-1.5 bg-black/50 px-3 py-1.5 rounded-md border border-white/5">
+              {sideSelectedByTeam && (
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {sideSelectedByTeam}:
+                </span>
               )}
-              <span className="text-xs capitalize">{veto.side_selected}</span>
+              {veto.side_selected === 'attack' ? (
+                <Sword className="w-3.5 h-3.5 text-orange-400" />
+              ) : (
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
+              )}
+              <span className="text-xs capitalize font-medium">{veto.side_selected}</span>
             </div>
           )}
 
