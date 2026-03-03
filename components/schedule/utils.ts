@@ -109,12 +109,12 @@ export const groupMatchesByDate = (matches: ScheduleMatch[]): ScheduleDateGroup[
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 
-  // Ensure inner matches are strictly chronologically sorted ascending
+  // Ensure inner matches are strictly chronologically sorted descending (latest at top, earliest at bottom)
   return sortedGroups.map(group => {
       group.matches.sort((a, b) => {
           const timeA = new Date(a.scheduled_at ?? new Date()).getTime();
           const timeB = new Date(b.scheduled_at ?? new Date()).getTime();
-          return timeA - timeB;
+          return timeB - timeA;
       });
       return group;
   });
