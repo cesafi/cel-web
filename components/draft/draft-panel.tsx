@@ -73,6 +73,7 @@ interface DraftPanelProps {
     coinTossWinnerId?: string;
     coinTossResult?: string;
     sideSelection?: string;
+    gameStatus?: string;
 }
 
 // Role colors for visual distinction
@@ -122,6 +123,7 @@ export function DraftPanel({
     coinTossWinnerId,
     coinTossResult,
     sideSelection,
+    gameStatus,
 }: DraftPanelProps) {
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
@@ -421,15 +423,17 @@ export function DraftPanel({
     }, [timer, draftState.isComplete, isValorant, isTimerPaused]);
 
     // Auto-transition game status to 'in_progress' when draft completes
+    // Only fire if the game is currently in 'drafting' status to avoid
+    // resetting completed/in_progress games when revisiting the page
     const hasSyncedComplete = useRef(false);
     useEffect(() => {
-        if (draftState.isComplete && !hasSyncedComplete.current && actions.length > 0) {
+        if (draftState.isComplete && !hasSyncedComplete.current && actions.length > 0 && gameStatus === 'drafting') {
             hasSyncedComplete.current = true;
             updateGameById({ id: gameId, status: 'in_progress' }).then(() => {
                 queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
             });
         }
-    }, [draftState.isComplete, actions.length, gameId, matchId, queryClient]);
+    }, [draftState.isComplete, actions.length, gameId, matchId, queryClient, gameStatus]);
 
     // Filtering
     const filteredCharacters = useMemo(() => {
@@ -924,7 +928,7 @@ function CharacterPickerPopover({
                         size="sm"
                         className="h-7 text-xs px-2 shadow-sm rounded-md border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
                     >
-                        Swap
+                        Change
                     </Button>
                 ) : (
                     <button className="w-full flex items-center justify-between p-2.5 rounded-lg border border-dashed hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm text-muted-foreground">
@@ -1158,6 +1162,8 @@ function MlbbTeamColumn({
                                                     />
                                                 )}
 
+                                                {/* Only show Trade/Cancel on the initiating pick or when no trade is active */}
+                                                {(!tradeTargetId || tradeTargetId === pick.id) && (
                                                 <Button
                                                     variant={tradeTargetId === pick.id ? "secondary" : "outline"}
                                                     size="sm"
@@ -1169,8 +1175,9 @@ function MlbbTeamColumn({
                                                     )}
                                                     onClick={() => setTradeTargetId(tradeTargetId === pick.id ? null : pick.id)}
                                                 >
-                                                    {tradeTargetId === pick.id ? "Cancel" : "Trade"}
+                                                    {tradeTargetId === pick.id ? "Cancel" : "Swap"}
                                                 </Button>
+                                                )}
                                             </div>
                                         )}
                                     </>

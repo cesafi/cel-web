@@ -601,30 +601,6 @@ export default function MatchDetailPage() {
                             </div>
                           </>
                         )}
-                        {/* Inline MLBB Map Selector */}
-                        {isMlbb && (
-                          <>
-                            <span>•</span>
-                            <div onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
-                              <Select
-                                value={game.mlbb_map_id ? String(game.mlbb_map_id) : 'unassigned'}
-                                onValueChange={(val) => handleMapAssign(game.id, val)}
-                              >
-                                <SelectTrigger className="h-6 text-xs bg-muted/50 border-transparent hover:border-border w-[130px] px-2 py-0">
-                                  <SelectValue placeholder="Assign map" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
-                                  {mlbbMaps.map((m: any) => (
-                                    <SelectItem key={m.id} value={String(m.id)}>
-                                      {m.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>

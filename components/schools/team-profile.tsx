@@ -288,7 +288,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.05 }}
                       >
-                        <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(player.ign)}`} className="group block">
+                        <Link href={`/players/${toPlayerSlug(player.ign)}`} className="group block">
                           <div className="rounded-xl border border-border/30 bg-background/40 hover:border-border/60 hover:bg-muted/10 transition-all duration-300 p-4 text-center">
                             <div className="relative h-14 w-14 mx-auto mb-3">
                               {player.photo_url ? (
@@ -369,7 +369,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
                       return (
                         <tr key={stat.player_id} className={cn('group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]', i === 0 && 'bg-primary/5')}>
                           <td className="px-4 py-2">
-                            <Link href={`/schools/${encodeURIComponent(schoolAbbreviation).toLowerCase()}/players/${toPlayerSlug(stat.player_ign || '')}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                            <Link href={`/players/${toPlayerSlug(stat.player_ign || '')}`} className="flex items-center gap-2 hover:text-primary transition-colors">
                               <span className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{stat.player_ign || 'Unknown'}</span>
                             </Link>
                           </td>

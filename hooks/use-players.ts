@@ -14,6 +14,7 @@ import {
   getActivePlayers,
   getPlayerById,
   getPlayerByIgnAndSchool,
+  getPlayerBySlug,
   createPlayer,
   updatePlayerById,
   deletePlayerById
@@ -31,6 +32,7 @@ export const playerKeys = {
   details: (id: string) => [...playerKeys.all, id] as const,
   byIgnAndSchool: (ign: string, school: string) => [...playerKeys.all, 'byIgnAndSchool', ign, school] as const,
   byTeam: (teamId: string) => [...playerKeys.all, 'byTeam', teamId] as const,
+  bySlug: (slug: string) => [...playerKeys.all, 'bySlug', slug] as const,
   active: ['players', 'active'] as const,
   withTeams: ['players', 'withTeams'] as const
 };
@@ -149,6 +151,24 @@ export function usePlayerByIgnAndSchool(
     queryKey: playerKeys.byIgnAndSchool(ign, schoolAbbreviation),
     queryFn: () => getPlayerByIgnAndSchool(ign, schoolAbbreviation),
     enabled: !!ign && !!schoolAbbreviation,
+    select: (data) => {
+      if (!data.success || !data.data) {
+        throw new Error(data.success === false ? data.error : `Player not found.`);
+      }
+      return data.data;
+    },
+    ...queryOptions
+  });
+}
+
+export function usePlayerBySlug(
+  slug: string,
+  queryOptions?: UseQueryOptions<ServiceResponse<PlayerWithTeam>, Error, PlayerWithTeam>
+) {
+  return useQuery({
+    queryKey: playerKeys.bySlug(slug),
+    queryFn: () => getPlayerBySlug(slug),
+    enabled: !!slug,
     select: (data) => {
       if (!data.success || !data.data) {
         throw new Error(data.success === false ? data.error : `Player not found.`);

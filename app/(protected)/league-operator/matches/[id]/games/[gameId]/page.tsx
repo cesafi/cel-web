@@ -17,6 +17,7 @@ import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
 import { PostGameStatsUploader } from '@/components/statistics/post-game-stats-uploader';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
+import { getActiveMlbbMaps } from '@/actions/mlbb-maps';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     ArrowLeft,
@@ -31,7 +32,8 @@ import {
     Link2,
     Copy,
     Users,
-    Trash2
+    Trash2,
+    Map
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -73,6 +75,20 @@ export default function LeagueOperatorGameDetailPage() {
             return result.success && result.data ? (result.data as Player[]) : [];
         },
         enabled: !!team2?.schools_teams?.id,
+    });
+
+    // Fetch MLBB maps for the map selector
+    const { data: mlbbMaps = [] } = useQuery({
+        queryKey: ['mlbb-maps-active'],
+        queryFn: async () => {
+            const result = await getActiveMlbbMaps();
+            if (!result.success) throw new Error(result.error);
+            return result.data;
+        },
+        enabled: !!(match && (() => {
+            const en = match.esports_seasons_stages?.esports_categories?.esports?.name?.toLowerCase() || '';
+            return en.includes('mobile legends') || en.includes('mlbb');
+        })()),
     });
 
     if (isLoading) {
@@ -152,12 +168,15 @@ export default function LeagueOperatorGameDetailPage() {
         }
     };
 
-    const handleUpdateGameAttr = async (field: 'coin_toss_winner' | 'side_selection', value: string) => {
+    const handleUpdateGameAttr = async (field: 'coin_toss_winner' | 'side_selection' | 'mlbb_map_id', value: string) => {
         setIsUpdatingAttr(true);
         try {
             const data: any = { id: gameId };
-            // If value is 'none', map it to null to clear it
-            data[field] = value === 'none' ? null : value;
+            if (field === 'mlbb_map_id') {
+                data[field] = value === 'unassigned' ? null : Number(value);
+            } else {
+                data[field] = value === 'none' ? null : value;
+            }
 
             const result = await updateGameById(data);
             if (result.success) {
@@ -295,6 +314,30 @@ export default function LeagueOperatorGameDetailPage() {
                             <p className="text-xs text-muted-foreground">Force assigns the starting side for the advantage team.</p>
                         </div>
                     </div>
+                    {isMlbb && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-1.5">
+                                <Map className="h-3.5 w-3.5" />
+                                Map Type
+                            </label>
+                            <Select
+                                disabled={isUpdatingAttr}
+                                value={game.mlbb_map_id ? String(game.mlbb_map_id) : 'unassigned'}
+                                onValueChange={(val) => handleUpdateGameAttr('mlbb_map_id', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select map" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned" className="text-muted-foreground italic">None</SelectItem>
+                                    {mlbbMaps.map((m: any) => (
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Select the map type for this game.</p>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -346,6 +389,7 @@ export default function LeagueOperatorGameDetailPage() {
                         coinTossWinnerId={game.coin_toss_winner || match.coin_toss_winner_id || undefined}
                         coinTossResult={match.coin_toss_result || undefined}
                         sideSelection={game.side_selection || undefined}
+                        gameStatus={game.status || 'pending'}
                     />
                 </div>
             )}
@@ -411,12 +455,16 @@ export default function LeagueOperatorGameDetailPage() {
                                 id: team1.schools_teams.id,
                                 name: team1.schools_teams.name,
                                 abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+                                logoUrl: team1.schools_teams.school?.logo_url,
+                                matchParticipantId: team1.id,
                                 players: team1Players,
                             }}
                             team2={{
                                 id: team2.schools_teams.id,
                                 name: team2.schools_teams.name,
                                 abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+                                logoUrl: team2.schools_teams.school?.logo_url,
+                                matchParticipantId: team2.id,
                                 players: team2Players,
                             }}
                         />

@@ -55,6 +55,7 @@ export const updateGameSchema = z
     start_at: z.string().optional().nullable(),
     end_at: z.string().optional().nullable(),
     valorant_map_id: z.number().nullable().optional(),
+    mlbb_map_id: z.number().nullable().optional(),
     coin_toss_winner: z.string().nullable().optional(),
     side_selection: z.string().nullable().optional(),
     status: z.enum(['pending', 'drafting', 'in_progress', 'completed', 'cancelled']).optional()

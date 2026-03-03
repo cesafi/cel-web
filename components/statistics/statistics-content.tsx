@@ -365,6 +365,7 @@ export function StatisticsContent() {
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onSort={handleSort}
+            isLoading={loading}
             currentPage={page}
             totalPages={totalPages}
             totalItems={totalItems}

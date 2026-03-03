@@ -337,10 +337,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
                 transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.5) }}
               >
                 {(() => {
-                  const schoolAbbr = player.school_abbreviation || player.team_name?.split(' ')[0] || '';
-                  const playerHref = schoolAbbr
-                    ? `/schools/${schoolAbbr.toLowerCase()}/players/${toPlayerSlug(player.player_ign || '')}`
-                    : null;
+                  const playerHref = `/players/${toPlayerSlug(player.player_ign || '')}`;
                   const cardContent = (
                     <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 hover:bg-card/80 transition-all duration-300 p-3 sm:p-4 text-center">
                       {/* Photo */}
@@ -407,10 +404,8 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
                       </div>
                     </div>
                   );
-                  return playerHref ? (
+                  return (
                     <Link href={playerHref} className="group block">{cardContent}</Link>
-                  ) : (
-                    <div className="group block">{cardContent}</div>
                   );
                 })()}
               </motion.div>

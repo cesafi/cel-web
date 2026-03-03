@@ -238,6 +238,41 @@ export class PlayerService extends BaseService {
     }
   }
 
+  /**
+   * Find a player by slugified IGN only (for top-level /players/[slug] route)
+   */
+  static async getBySlug(playerSlug: string): Promise<ServiceResponse<PlayerWithTeam>> {
+    try {
+      const supabase = await this.getClient();
+      const { ignMatchesSlug } = await import('@/lib/utils/player-slug');
+
+      const { data: allPlayers, error } = await supabase
+        .from(TABLE_NAME)
+        .select(`
+            *,
+            player_seasons(
+                team:schools_teams(id, name, school_id, schools(id, name, abbreviation, logo_url))
+            )
+        `);
+
+      if (error) throw error;
+      if (!allPlayers || allPlayers.length === 0) {
+        return { success: false, error: 'Player not found' };
+      }
+
+      const match = allPlayers.find((p: any) => p.ign && ignMatchesSlug(p.ign, playerSlug));
+
+      if (!match) {
+        return { success: false, error: 'Player not found' };
+      }
+
+      const team = (match as any).player_seasons?.[0]?.team || null;
+      return { success: true, data: { ...match, schools_teams: team } as unknown as PlayerWithTeam };
+    } catch (err) {
+      return this.formatError(err, `Failed to fetch player by slug.`);
+    }
+  }
+
   static async insert(player: PlayerInsert): Promise<ServiceResponse<Player>> {
     try {
       const supabase = await this.getClient();

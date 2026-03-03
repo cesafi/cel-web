@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { usePlayerByIgnAndSchool } from '@/hooks/use-players';
+import { usePlayerByIgnAndSchool, usePlayerBySlug } from '@/hooks/use-players';
 import { usePlayerSeasonsByPlayerId } from '@/hooks/use-player-seasons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,13 +29,19 @@ function cn(...classes: (string | undefined | null | false)[]) {
 }
 
 interface PlayerProfileProps {
-  schoolSlug: string;
+  schoolSlug?: string;
   playerIGN: string;
 }
 
 export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfileProps) {
   const router = useRouter();
-  const { data: player, isLoading: playerLoading, error: playerError } = usePlayerByIgnAndSchool(playerIGN, schoolSlug);
+  const byIgnAndSchool = usePlayerByIgnAndSchool(playerIGN, schoolSlug || '', {
+    enabled: !!schoolSlug,
+  } as any);
+  const bySlug = usePlayerBySlug(playerIGN, {
+    enabled: !schoolSlug,
+  } as any);
+  const { data: player, isLoading: playerLoading, error: playerError } = schoolSlug ? byIgnAndSchool : bySlug;
   const playerId = player?.id || '';
   const { data: playerSeasons } = usePlayerSeasonsByPlayerId(playerId);
 

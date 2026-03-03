@@ -33,6 +33,10 @@ export async function getPlayerByIgnAndSchool(ign: string, schoolAbbreviation: s
   return PlayerService.getByIgnAndSchool(ign, schoolAbbreviation);
 }
 
+export async function getPlayerBySlug(slug: string) {
+  return PlayerService.getBySlug(slug);
+}
+
 export async function createPlayer(data: PlayerInsert, teamId?: string | null, seasonId?: number) {
   const result = await PlayerService.insert(data);
   

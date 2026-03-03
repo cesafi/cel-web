@@ -1,5 +1,4 @@
-import { notFound } from 'next/navigation';
-import PlayerProfile from '@/components/players/player-profile';
+import { redirect } from 'next/navigation';
 
 interface PlayerProfilePageProps {
   params: Promise<{
@@ -8,12 +7,7 @@ interface PlayerProfilePageProps {
   }>;
 }
 
-export default async function PlayerProfilePage({ params }: PlayerProfilePageProps) {
-  const { slug, playerSlug } = await params;
-
-  if (!slug || !playerSlug) {
-    notFound();
-  }
-
-  return <PlayerProfile schoolSlug={slug} playerIGN={decodeURIComponent(playerSlug)} />;
+export default async function PlayerProfileRedirect({ params }: PlayerProfilePageProps) {
+  const { playerSlug } = await params;
+  redirect(`/players/${playerSlug}`);
 }
