@@ -601,7 +601,7 @@ export class StandingsService extends BaseService {
           });
 
           return {
-              name: groupName,
+              group_name: groupName,
               teams: finalTeams
           };
       });
@@ -609,13 +609,13 @@ export class StandingsService extends BaseService {
       // If we have no groups (no matches), return one empty group
       if (standingGroups.length === 0) {
         standingGroups.push({
-          name: 'Group Stage',
+          group_name: 'Group Stage',
           teams: []
         });
       }
       
       // Sort groups by name (e.g. Group A, Group B)
-      standingGroups.sort((a, b) => a.name.localeCompare(b.name));
+      standingGroups.sort((a, b) => (a.group_name || '').localeCompare(b.group_name || ''));
 
       const groupStandings: GroupStageStandings = {
         stage_id: stage.id,

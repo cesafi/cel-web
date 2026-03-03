@@ -116,7 +116,22 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
 
   return (
     <div className="space-y-8">
-      {standings.groups.map((group, groupIndex) => (
+      {standings.groups.map((group, groupIndex) => {
+          const rawGroupName = group.group_name ?? standings.stage_name;
+          let displayGroupName = rawGroupName;
+          
+          if (rawGroupName) {
+              const trimmed = rawGroupName.trim();
+              const isSingleLetter = trimmed.length === 1 && /[A-Za-z]/.test(trimmed);
+              if (isSingleLetter) {
+                  displayGroupName = `Group ${trimmed.toUpperCase()}`;
+              } else if (!trimmed.toLowerCase().startsWith('group') && !trimmed.toLowerCase().includes('stage')) {
+                  // Only auto-prefix if it doesn't already have 'Group' and isn't a fallback stage name like 'Play-ins' or 'Groupstage'
+                   displayGroupName = `Group ${trimmed}`;
+              }
+          }
+
+          return (
         <div key={groupIndex} className="space-y-4">
             
             {/* Group Header */}
@@ -124,7 +139,7 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
                 <div className="flex items-center gap-3">
                      <div className="h-8 w-1 bg-primary rounded-full" />
                      <h3 className={`${moderniz.className} text-xl md:text-2xl font-bold tracking-wide`}>
-                        {group.group_name ?? standings.stage_name}
+                        {displayGroupName}
                      </h3>
                 </div>
                 <Badge variant="outline" className="text-xs uppercase tracking-widest bg-background/50 backdrop-blur-md">
@@ -336,7 +351,8 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
             </CardContent>
             </Card>
         </div>
-      ))}
+      );
+    })}
     </div>
   );
 }
