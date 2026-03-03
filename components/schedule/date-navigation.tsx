@@ -222,7 +222,7 @@ export default function DateNavigation({
       </div>
 
       {/* Second Row: Date Nav + Filters */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/20 p-2 rounded-lg border border-border/50">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-2 rounded-lg">
         {/* Left: Date Nav */}
         <div className="flex items-center gap-2 w-full md:w-auto">
           <Button

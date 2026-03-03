@@ -278,7 +278,10 @@ export class GameService extends BaseService {
         }
       }
 
-      const { data: newGame, error } = await supabase.from(TABLE_NAME).insert(data).select().single();
+      // Strip status from insert data - let the database default handle it
+      // The DB check constraint may not include all our app-level statuses
+      const { status, ...insertData } = data as any;
+      const { data: newGame, error } = await supabase.from(TABLE_NAME).insert(insertData).select().single();
 
       if (error) {
         throw error;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, Play, Trophy } from 'lucide-react';
+import { Flame, MapPin, Play, Trophy } from 'lucide-react';
 import Image from 'next/image';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { determineWinner } from './utils';
@@ -248,15 +248,23 @@ export default function MatchCard({ match }: MatchCardProps) {
             </span>
           </div>
 
-          {/* Best-of Label */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-widest">
-              <span className="sm:hidden">BO</span>
-              <span className="hidden sm:inline">Best of</span>
-            </span>
-            <span className="text-[10px] sm:text-xs font-bold text-muted-foreground bg-muted/50 px-1 sm:px-1.5 py-0.5 rounded">
-              {match.best_of}
-            </span>
+          {/* Venue + Best-of */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {match.venue && (
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 truncate max-w-[80px] sm:max-w-[120px]">{match.venue}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 uppercase tracking-widest">
+                <span className="sm:hidden">BO</span>
+                <span className="hidden sm:inline">Best of</span>
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-muted-foreground bg-muted/50 px-1 sm:px-1.5 py-0.5 rounded">
+                {match.best_of}
+              </span>
+            </div>
           </div>
         </div>
       </div>

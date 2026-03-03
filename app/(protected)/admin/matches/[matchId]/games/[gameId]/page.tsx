@@ -17,6 +17,7 @@ import { MlbbStatsUpload } from '@/components/stats/mlbb-stats-upload';
 import { PostGameStatsUploader } from '@/components/statistics/post-game-stats-uploader';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
+import { ManualGameWinner } from '@/components/games/manual-game-winner';
 import { getActiveMlbbMaps } from '@/actions/mlbb-maps';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -341,6 +342,27 @@ export default function GameDetailPage() {
                 </div>
             )}
 
+            {/* ── Manual Game Winner ── */}
+            {team1?.schools_teams && team2?.schools_teams && (
+                <ManualGameWinner
+                    gameId={gameId}
+                    team1={{
+                        id: team1.schools_teams.id,
+                        abbreviation: team1.schools_teams.school?.abbreviation || 'T1',
+                        logoUrl: team1.schools_teams.school?.logo_url,
+                        matchParticipantId: team1.id,
+                    }}
+                    team2={{
+                        id: team2.schools_teams.id,
+                        abbreviation: team2.schools_teams.school?.abbreviation || 'T2',
+                        logoUrl: team2.schools_teams.school?.logo_url,
+                        matchParticipantId: team2.id,
+                    }}
+                    isCompleted={isCompleted}
+                    isValorant={isValorant}
+                    onSaved={() => queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) })}
+                />
+            )}
             {/* ── API Export Link ── */}
             <div className="rounded-xl border bg-card p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
