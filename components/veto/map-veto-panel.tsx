@@ -540,7 +540,7 @@ export function MapVetoPanel({
         variant="destructive"
       />
 
-      {!coinTossWinnerId ? (
+      {!coinTossWinnerId && isAdmin ? (
         <Card className="bg-gradient-to-b from-background to-muted/20 border-muted">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-2xl font-bold tracking-tight">Coin Toss</CardTitle>
@@ -579,58 +579,60 @@ export function MapVetoPanel({
       ) : (
         <>
           {/* Coin Toss Result Header */}
-          <div className="rounded-lg border bg-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between shadow-sm gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Check className="w-5 h-5 text-primary" />
+          {coinTossWinnerId && (
+            <div className="rounded-lg border bg-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between shadow-sm gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">Coin Toss Result
+                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 uppercase font-mono">{coinTossResult?.split(':')[0] || 'heads'}</Badge>
+                  </p>
+                  <p className="font-bold flex items-center gap-2">
+                    <span className="text-primary">{coinTossWinnerId === team1.id ? team1.name : team2.name}</span>
+                    <span className="text-muted-foreground text-sm font-normal">
+                      chose <strong className="text-foreground">{tossWinnerChoice === 'team1' ? 'First Ban / Pick' : 'Second Ban / Pick'}</strong>
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">Coin Toss Result
-                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5 uppercase font-mono">{coinTossResult?.split(':')[0] || 'heads'}</Badge>
-                </p>
-                <p className="font-bold flex items-center gap-2">
-                  <span className="text-primary">{coinTossWinnerId === team1.id ? team1.name : team2.name}</span>
-                  <span className="text-muted-foreground text-sm font-normal">
-                    chose <strong className="text-foreground">{tossWinnerChoice === 'team1' ? 'First Ban / Pick' : 'Second Ban / Pick'}</strong>
-                  </span>
-                </p>
-              </div>
+              {isAdmin && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedChoice(tossWinnerChoice as 'team1' | 'team2');
+                      setIsChoiceModalOpen(true);
+                    }}
+                    disabled={setChoiceMutation.isPending}
+                  >
+                    <Map className="w-4 h-4 mr-2" />
+                    Change Choice
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSwitchModalOpen(true)}
+                    disabled={switchCoinTossMutation.isPending}
+                  >
+                    <ArrowLeftRight className="w-4 h-4 mr-2" />
+                    Switch Winner
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setIsResetModalOpen(true)}
+                    disabled={resetCoinTossMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Reset Toss
+                  </Button>
+                </div>
+              )}
             </div>
-            {isAdmin && (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedChoice(tossWinnerChoice as 'team1' | 'team2');
-                    setIsChoiceModalOpen(true);
-                  }}
-                  disabled={setChoiceMutation.isPending}
-                >
-                  <Map className="w-4 h-4 mr-2" />
-                  Change Choice
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsSwitchModalOpen(true)}
-                  disabled={switchCoinTossMutation.isPending}
-                >
-                  <ArrowLeftRight className="w-4 h-4 mr-2" />
-                  Switch Winner
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setIsResetModalOpen(true)}
-                  disabled={resetCoinTossMutation.isPending}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Reset Toss
-                </Button>
-              </div>
-            )}
-          </div>
+          )}
 
           <ConfirmationModal
             open={isChoiceModalOpen}

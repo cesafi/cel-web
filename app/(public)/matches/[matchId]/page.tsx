@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PublicMatchStats } from '@/components/matches/public-match-stats';
 import { MapVetoPanel } from '@/components/veto/map-veto-panel';
+import { LocalTime } from '@/components/shared/local-time';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -19,7 +20,9 @@ interface PublicMatchPageProps {
 
 export async function generateMetadata({ params }: PublicMatchPageProps): Promise<Metadata> {
   const { matchId } = await params;
-  const result = await getMatchById(Number(matchId));
+  const numericId = Number(matchId);
+  if (isNaN(numericId)) notFound();
+  const result = await getMatchById(numericId);
 
   if (!result.success || !result.data) {
     return { title: 'Match Not Found' };
@@ -38,7 +41,9 @@ export async function generateMetadata({ params }: PublicMatchPageProps): Promis
 
 export default async function PublicMatchPage({ params }: PublicMatchPageProps) {
   const { matchId } = await params;
-  const result = await getMatchById(Number(matchId));
+  const numericId = Number(matchId);
+  if (isNaN(numericId)) notFound();
+  const result = await getMatchById(numericId);
 
   if (!result.success || !result.data) {
     notFound();
@@ -47,7 +52,8 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
   const match = result.data;
   const esport = match.esports_seasons_stages?.esports_categories?.esports;
   const sport = esport?.name || '';
-  const isValorant = sport === 'Valorant';
+  const isValorant = sport.toLowerCase().includes('valorant');
+  const isMlbb = sport.toLowerCase().includes('mobile legends') || sport.toLowerCase().includes('mlbb');
   const category = match.esports_seasons_stages?.esports_categories;
   const stage = match.esports_seasons_stages?.competition_stage || 'Unknown Stage';
 
@@ -193,10 +199,10 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
                   {match.scheduled_at && (
                     <div className="text-center mt-2">
                       <div className="text-xs text-muted-foreground/60">
-                        {new Date(match.scheduled_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        <LocalTime dateString={match.scheduled_at} format="date" dateOptions={{ weekday: 'short', month: 'short', day: 'numeric' }} />
                       </div>
                       <div className="text-sm font-medium text-muted-foreground">
-                        {new Date(match.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        <LocalTime dateString={match.scheduled_at} format="time" />
                       </div>
                     </div>
                   )}
@@ -288,13 +294,13 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
             {match.scheduled_at && !isUpcoming && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 bg-muted/30 px-3 py-1.5 rounded-full border border-border/30">
                 <Calendar className="w-3 h-3" />
-                <span>{new Date(match.scheduled_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <LocalTime dateString={match.scheduled_at} format="date" dateOptions={{ weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }} />
               </div>
             )}
             {match.scheduled_at && !isUpcoming && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 bg-muted/30 px-3 py-1.5 rounded-full border border-border/30">
                 <Clock className="w-3 h-3" />
-                <span>{new Date(match.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                <LocalTime dateString={match.scheduled_at} format="time" />
               </div>
             )}
             {match.venue && (
@@ -365,7 +371,7 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
 
           <div className="p-4 sm:p-6">
             {match.games && match.games.length > 0 ? (
-              <PublicMatchStats games={match.games} sport={sport} />
+              <PublicMatchStats games={match.games} sport={sport} matchParticipants={match.match_participants} />
             ) : (
               <div className="text-center py-8">
                 <Gamepad2 className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />

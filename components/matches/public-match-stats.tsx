@@ -5,9 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Game } from '@/lib/types/matches';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trophy, BarChart3, Star } from 'lucide-react';
+import { Loader2, Trophy, Star, Map, Clock, Swords } from 'lucide-react';
 import { getValorantStatsByGameId } from '@/actions/stats-valorant';
 import { getMlbbStatsByGameId } from '@/actions/stats-mlbb';
+import { getValorantMapById, getMlbbMapById, getGameScoresByGameId } from '@/actions/maps';
 import Image from 'next/image';
 
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -17,9 +18,10 @@ function cn(...classes: (string | undefined | null | false)[]) {
 interface PublicMatchStatsProps {
   games: Game[];
   sport: 'Valorant' | 'Mobile Legends: Bang Bang' | string;
+  matchParticipants?: any[];
 }
 
-export function PublicMatchStats({ games, sport }: PublicMatchStatsProps) {
+export function PublicMatchStats({ games, sport, matchParticipants }: PublicMatchStatsProps) {
   const [activeGameId, setActiveGameId] = useState<string>(games[0]?.id.toString());
 
   // Sort games by sequence
@@ -46,7 +48,11 @@ export function PublicMatchStats({ games, sport }: PublicMatchStatsProps) {
 
         {sortedGames.map((game) => (
           <TabsContent key={game.id} value={game.id.toString()}>
-            <GameStatsViewer gameId={game.id} sport={sport} />
+            <GameStatsViewer
+              game={game}
+              sport={sport}
+              matchParticipants={matchParticipants}
+            />
           </TabsContent>
         ))}
       </Tabs>
@@ -54,9 +60,10 @@ export function PublicMatchStats({ games, sport }: PublicMatchStatsProps) {
   );
 }
 
-function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
-  const isValorant = sport === 'Valorant';
-  const isMlbb = sport === 'Mobile Legends: Bang Bang';
+function GameStatsViewer({ game, sport, matchParticipants }: { game: Game; sport: string; matchParticipants?: any[] }) {
+  const gameId = game.id;
+  const isValorant = sport?.toLowerCase().includes('valorant');
+  const isMlbb = sport?.toLowerCase().includes('mobile legends') || sport?.toLowerCase().includes('mlbb');
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['game-stats', gameId, sport],
@@ -75,6 +82,37 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
     enabled: !!gameId && (isValorant || isMlbb),
   });
 
+  // Fetch map name
+  const valorantMapId = game.valorant_map_id;
+  const mlbbMapId = game.mlbb_map_id;
+
+  const { data: mapData } = useQuery({
+    queryKey: ['game-map', isValorant ? 'val' : 'mlbb', isValorant ? valorantMapId : mlbbMapId],
+    queryFn: async () => {
+      if (isValorant && valorantMapId) {
+        const res = await getValorantMapById(valorantMapId);
+        if (res.success) return res.data;
+      }
+      if (isMlbb && mlbbMapId) {
+        const res = await getMlbbMapById(mlbbMapId);
+        if (res.success) return res.data;
+      }
+      return null;
+    },
+    enabled: !!(isValorant ? valorantMapId : mlbbMapId),
+  });
+
+  // Fetch game scores
+  const { data: gameScores } = useQuery({
+    queryKey: ['game-scores', gameId],
+    queryFn: async () => {
+      const res = await getGameScoresByGameId(gameId);
+      if (res.success) return res.data;
+      return [];
+    },
+    enabled: !!gameId,
+  });
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -85,8 +123,11 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
 
   if (!stats || stats.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground/60 text-sm">
-        No statistics available for this game.
+      <div className="space-y-4 mt-4">
+        <GameInfoBar game={game} mapData={mapData} gameScores={gameScores || []} matchParticipants={matchParticipants} />
+        <div className="text-center py-12 text-muted-foreground/60 text-sm">
+          No statistics available for this game.
+        </div>
       </div>
     );
   }
@@ -125,6 +166,9 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      {/* Game Info Bar */}
+      <GameInfoBar game={game} mapData={mapData} gameScores={gameScores || []} matchParticipants={matchParticipants} />
+
       {/* MVP highlight */}
       {mvpPlayer && (mvpPlayer.is_mvp || isMlbb) && (
         <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
@@ -208,6 +252,11 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
                         <>
                           <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">Gold</th>
                           <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">DMG</th>
+                          <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]" title="Damage Taken">DMG T.</th>
+                          <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]" title="Turret Damage">Turret</th>
+                          <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[45px]" title="Lord Slain">Lord</th>
+                          <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[45px]" title="Turtle Slain">Turtle</th>
+                          <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[45px]" title="Teamfight Participation">TF%</th>
                           <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">Rating</th>
                         </>
                       )}
@@ -216,6 +265,7 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
                           <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[45px]">FB</th>
                           <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[45px]">P</th>
                           <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[45px]">D</th>
+                          <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]" title="Econ Rating">Econ</th>
                         </>
                       )}
                     </tr>
@@ -339,9 +389,47 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
                                 </div>
                               </td>
                               {/* Damage Dealt */}
-                              <td className="text-center px-3 py-2">
+                              <td className="p-0 h-full border-l border-border/10">
+                                <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                                  style={getHeatmap(stat.damage_dealt || 0, sorted.map((s: any) => s.damage_dealt || 0))}
+                                >
+                                  <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                                    {stat.damage_dealt ? (stat.damage_dealt / 1000).toFixed(1) + 'k' : '—'}
+                                  </span>
+                                </div>
+                              </td>
+                              {/* Damage Taken */}
+                              <td className="p-0 h-full border-l border-border/10">
+                                <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                                  style={getHeatmap(stat.damage_taken || 0, sorted.map((s: any) => s.damage_taken || 0), true)}
+                                >
+                                  <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                                    {stat.damage_taken ? (stat.damage_taken / 1000).toFixed(1) + 'k' : '—'}
+                                  </span>
+                                </div>
+                              </td>
+                              {/* Turret Damage */}
+                              <td className="p-0 h-full border-l border-border/10">
+                                <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                                  style={getHeatmap(stat.turret_damage || 0, sorted.map((s: any) => s.turret_damage || 0))}
+                                >
+                                  <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                                    {stat.turret_damage != null ? stat.turret_damage.toLocaleString() : '—'}
+                                  </span>
+                                </div>
+                              </td>
+                              {/* Lord Slain */}
+                              <td className="text-center px-3 py-2 border-l border-border/10">
+                                <span className="text-xs font-medium text-purple-400 tabular-nums">{stat.lord_slain ?? '—'}</span>
+                              </td>
+                              {/* Turtle Slain */}
+                              <td className="text-center px-3 py-2 border-l border-border/10">
+                                <span className="text-xs font-medium text-teal-400 tabular-nums">{stat.turtle_slain ?? '—'}</span>
+                              </td>
+                              {/* Teamfight */}
+                              <td className="text-center px-3 py-2 border-l border-border/10">
                                 <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                                  {stat.damage_dealt ? (stat.damage_dealt / 1000).toFixed(1) + 'k' : '—'}
+                                  {stat.teamfight != null ? `${stat.teamfight}%` : '—'}
                                 </span>
                               </td>
                               {/* Rating */}
@@ -375,6 +463,14 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
                               <td className="text-center px-3 py-2">
                                 <span className="text-xs font-medium text-muted-foreground tabular-nums">{stat.defuses || 0}</span>
                               </td>
+                              {/* Econ Rating */}
+                              <td className="p-0 h-full border-l border-border/10">
+                                <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
+                                  style={getHeatmap(stat.econ_rating || 0, sorted.map((s: any) => s.econ_rating || 0))}
+                                >
+                                  <span className="text-xs font-medium text-muted-foreground tabular-nums">{stat.econ_rating || 0}</span>
+                                </div>
+                              </td>
                             </>
                           )}
                         </tr>
@@ -387,6 +483,69 @@ function GameStatsViewer({ gameId, sport }: { gameId: number; sport: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Game info bar: map, duration, round scores */
+function GameInfoBar({ game, mapData, gameScores, matchParticipants }: {
+  game: Game;
+  mapData: any;
+  gameScores: any[];
+  matchParticipants?: any[];
+}) {
+  const hasInfo = mapData || game.duration || gameScores.length > 0;
+  if (!hasInfo) return null;
+
+  // Build score display from gameScores
+  const scoreItems = gameScores.map((gs: any) => {
+    const participant = gs.match_participants;
+    const team = participant?.schools_teams;
+    const abbr = team?.schools?.abbreviation || team?.name || '?';
+    const logoUrl = team?.schools?.logo_url;
+    return { abbr, logoUrl, score: gs.score };
+  });
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-muted/10 border border-border/20">
+      {/* Map */}
+      {mapData && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Map className="w-3.5 h-3.5 text-primary/70" />
+          <span className="font-semibold text-foreground/80">{mapData.name}</span>
+        </div>
+      )}
+
+      {/* Duration */}
+      {game.duration && game.duration !== '00:00:00' && (
+        <>
+          {mapData && <span className="text-border/50">•</span>}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground/60" />
+            <span>{game.duration.replace(/:00$/, '')}</span>
+          </div>
+        </>
+      )}
+
+      {/* Scores */}
+      {scoreItems.length > 0 && (
+        <>
+          {(mapData || game.duration) && <span className="text-border/50">•</span>}
+          <div className="flex items-center gap-2 text-xs">
+            <Swords className="w-3.5 h-3.5 text-muted-foreground/60" />
+            {scoreItems.map((item: any, idx: number) => (
+              <span key={idx} className="flex items-center gap-1">
+                {item.logoUrl && (
+                  <Image src={item.logoUrl} alt={item.abbr} width={16} height={16} className="h-4 w-4 rounded-full object-cover" />
+                )}
+                <span className="font-bold text-foreground/80">{item.abbr}</span>
+                <span className="font-black text-foreground tabular-nums">{item.score}</span>
+                {idx < scoreItems.length - 1 && <span className="text-muted-foreground/40 mx-1">-</span>}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
