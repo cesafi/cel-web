@@ -5,7 +5,7 @@ import { Calendar, Clock, MapPin, Trophy, Swords, ArrowLeft, Gamepad2, Shield } 
 import Image from 'next/image';
 import Link from 'next/link';
 import { PublicMatchStats } from '@/components/matches/public-match-stats';
-import { MapVetoPanel } from '@/components/veto/map-veto-panel';
+import { PublicMapVetoTable } from '@/components/veto/public-map-veto';
 import { LocalTime } from '@/components/shared/local-time';
 
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -332,7 +332,7 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
               <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Map Veto</h3>
             </div>
             <div className="p-4 sm:p-6">
-              <MapVetoPanel
+              <PublicMapVetoTable
                 matchId={match.id}
                 bestOf={match.best_of || 3}
                 team1={{
@@ -347,7 +347,8 @@ export default async function PublicMatchPage({ params }: PublicMatchPageProps) 
                   abbreviation: team2.school?.abbreviation || 'T2',
                   logoUrl: team2.school?.logo_url,
                 }}
-                isPublicView={true}
+                coinTossWinnerId={match.coin_toss_winner_id}
+                coinTossResult={match.coin_toss_result}
               />
             </div>
           </div>
