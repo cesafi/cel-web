@@ -67,7 +67,7 @@ export class PostGameStatsService extends BaseService {
     if (!gameResult.success || !gameResult.data?.match_id) return;
     const matchId = gameResult.data.match_id;
 
-    await this.updateMatchScoreAndStatus(matchId, winningTeamId);
+    await this.recalculateMatchScores(matchId);
   }
 
   /**
@@ -145,71 +145,113 @@ export class PostGameStatsService extends BaseService {
     if (!gameResult.success || !gameResult.data?.match_id) return;
     const matchId = gameResult.data.match_id;
 
-    await this.updateMatchScoreAndStatus(matchId, winningTeamId);
+    await this.recalculateMatchScores(matchId);
   }
 
   /**
-   * Reusable logic to increment score, check bestOf, and update match description/status
+   * Recalculate match scores from all completed games (idempotent).
+   * Counts game wins per team by looking at the MVP player in each game's stats.
+   * Updates match_participants.match_score, match description, and match status.
    */
-  private static async updateMatchScoreAndStatus(matchId: number, winningTeamId: string) {
-    // 1. Fetch match and participants
-    const [matchResult, participantsResult] = await Promise.all([
-      MatchesService.getMatchById(matchId),
-      MatchParticipantService.getByMatchId(matchId)
-    ]);
+  static async recalculateMatchScores(matchId: number) {
+    try {
+      const supabase = await this.getClient();
 
-    if (!matchResult.success || !matchResult.data) return;
-    if (!participantsResult.success || !participantsResult.data) return;
+      // 1. Fetch match, participants, and all games
+      const [matchResult, participantsResult] = await Promise.all([
+        MatchesService.getMatchById(matchId),
+        MatchParticipantService.getByMatchId(matchId)
+      ]);
 
-    const match = matchResult.data;
-    const participants = participantsResult.data;
+      if (!matchResult.success || !matchResult.data) return;
+      if (!participantsResult.success || !participantsResult.data) return;
 
-    // 2. Increment score for winning team
-    const winningParticipant = participants.find(p => p.team_id === winningTeamId);
-    if (!winningParticipant) return;
+      const match = matchResult.data;
+      const participants = participantsResult.data;
+      if (participants.length < 2) return;
 
-    const newScore = (winningParticipant.match_score || 0) + 1;
-    await MatchParticipantService.updateMatchScores([
-      { match_id: matchId, team_id: winningTeamId, match_score: newScore }
-    ]);
+      // Get all games for this match
+      const { data: games, error: gamesError } = await supabase
+        .from('games')
+        .select('id, game_number, status')
+        .eq('match_id', matchId)
+        .order('game_number', { ascending: true });
 
-    // Re-fetch participants to get updated scores for both teams to form the new description
-    const updatedPartsRes = await MatchParticipantService.getByMatchId(matchId);
-    if (!updatedPartsRes.success || !updatedPartsRes.data) return;
-    const uParts = updatedPartsRes.data;
+      if (gamesError || !games) return;
 
-    if (uParts.length < 2) return;
+      // 2. For each completed game, find the MVP to determine the winner
+      const teamWins: Record<string, number> = {};
+      participants.forEach(p => { teamWins[p.team_id] = 0; });
 
-    // Usually participants are sorted T1, T2. Let's rely on their existing order or assume T1 is first.
-    const t1 = uParts[0];
-    const t2 = uParts[1];
+      for (const game of games) {
+        if (game.status !== 'completed') continue;
 
-    // Example current description: "USC (0) vs (0) CIT-U - VALO Week 1"
-    // We want to regenerate it: "USC (T1_SCORE) vs (T2_SCORE) CIT-U - [Rest of description]"
-    // To do this cleanly, we can regex split the existing description or just reconstruct it.
-    // Basic reconstruction from their names if teams are populated
-    // A safer way is regex replacing the `(N) vs (M)` part.
-    const desc = match.description || '';
-    const newDesc = desc.replace(
-      /\(\d+\)\s*vs\s*\(\d+\)/,
-      `(${t1.match_score || 0}) vs (${t2.match_score || 0})`
-    );
+        // Try MLBB stats first
+        const { data: mlbbMvp } = await supabase
+          .from('stats_mlbb_game_player')
+          .select('team_id')
+          .eq('game_id', game.id)
+          .eq('is_mvp', true)
+          .maybeSingle();
 
-    // 3. Check win condition
-    const requiredWins = Math.ceil((match.best_of || 1) / 2);
-    let newStatus = match.status;
-    let endAt = match.end_at;
+        if (mlbbMvp?.team_id) {
+          teamWins[mlbbMvp.team_id] = (teamWins[mlbbMvp.team_id] || 0) + 1;
+          continue;
+        }
 
-    if (newScore >= requiredWins) {
-      newStatus = 'Finished' as any; // Cast to enum type if needed
-      endAt = new Date().toISOString();
+        // Try Valorant stats
+        const { data: valoMvp } = await supabase
+          .from('stats_valorant_game_player')
+          .select('team_id')
+          .eq('game_id', game.id)
+          .eq('is_mvp', true)
+          .maybeSingle();
+
+        if (valoMvp?.team_id) {
+          teamWins[valoMvp.team_id] = (teamWins[valoMvp.team_id] || 0) + 1;
+        }
+      }
+
+      // 3. Update match_participants with recalculated scores
+      const scoreUpdates = participants.map(p => ({
+        match_id: matchId,
+        team_id: p.team_id,
+        match_score: teamWins[p.team_id] || 0
+      }));
+
+      await MatchParticipantService.updateMatchScores(scoreUpdates);
+
+      // 4. Update description with new scores
+      const t1 = participants[0];
+      const t2 = participants[1];
+      const t1Score = teamWins[t1.team_id] || 0;
+      const t2Score = teamWins[t2.team_id] || 0;
+
+      const desc = match.description || '';
+      const newDesc = desc.replace(
+        /\(\d+\)\s*vs\s*\(\d+\)/,
+        `(${t1Score}) vs (${t2Score})`
+      );
+
+      // 5. Check win condition
+      const requiredWins = Math.ceil((match.best_of || 1) / 2);
+      const maxScore = Math.max(t1Score, t2Score);
+      let newStatus = match.status;
+      let endAt = match.end_at;
+
+      if (maxScore >= requiredWins) {
+        newStatus = 'Finished' as any;
+        endAt = endAt || new Date().toISOString();
+      }
+
+      // 6. Update Match
+      await MatchesService.updateMatchById({
+        id: matchId,
+        description: newDesc,
+        ...(newStatus !== match.status ? { status: newStatus as any, end_at: endAt } : {})
+      });
+    } catch (err) {
+      console.error('Failed to recalculate match scores:', err);
     }
-
-    // 4. Update Match
-    await MatchesService.updateMatchById({
-      id: matchId,
-      description: newDesc,
-      ...(newStatus !== match.status ? { status: newStatus as any, end_at: endAt } : {})
-    });
   }
 }

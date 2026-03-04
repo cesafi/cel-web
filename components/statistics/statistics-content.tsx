@@ -14,7 +14,7 @@ import {
   getEsports,
 } from '@/actions/statistics';
 import type { EsportGame } from '@/actions/statistics';
-import { getAllSchoolsTeams } from '@/actions/schools-teams';
+
 import { StatisticsNavbar } from './statistics-navbar';
 import { FilterPanel } from './filter-panel';
 import { PlayerLeaderboard } from './player-leaderboard';
@@ -44,7 +44,7 @@ export function StatisticsContent() {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
-  
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(100); // Show more items by default
   const [totalPages, setTotalPages] = useState(1);
@@ -70,16 +70,21 @@ export function StatisticsContent() {
   const [sortColumn, setSortColumn] = useState<string>('kills_per_game');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Fetch filter options
+  // Fetch esports data first (needed to map game -> esport_id)
   useEffect(() => {
-    async function fetchFilters() {
-      const [seasonsResult, categoriesResult, teamsResult, esportsResult] = await Promise.all([
-        getAvailableSeasons(),
-        getAvailableCategories(),
-        getAllSchoolsTeams(),
-        getEsports()
-      ]);
+    async function fetchEsports() {
+      const esportsResult = await getEsports();
+      if (esportsResult.success && esportsResult.data) {
+        setEsportsData(esportsResult.data);
+      }
+    }
+    fetchEsports();
+  }, []);
 
+  // Fetch seasons (independent of game)
+  useEffect(() => {
+    async function fetchSeasons() {
+      const seasonsResult = await getAvailableSeasons();
       if (seasonsResult.success && seasonsResult.data) {
         const mappedSeasons = seasonsResult.data.map((s: any) => ({
           id: s.id,
@@ -89,54 +94,53 @@ export function StatisticsContent() {
         }));
         setSeasons(mappedSeasons);
         if (!selectedSeason && mappedSeasons.length > 0) {
-            setSelectedSeason(mappedSeasons[0].id);
+          setSelectedSeason(mappedSeasons[0].id);
         }
       }
+    }
+    fetchSeasons();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch categories when game or esportsData changes
+  useEffect(() => {
+    async function fetchCategories() {
+      // Find the esport_id for the current game
+      const esport = esportsData.find(e => {
+        const name = e.name.toLowerCase();
+        if (game === 'mlbb') return name.includes('mobile legends') || name.includes('mlbb');
+        if (game === 'valorant') return name.includes('valorant');
+        return false;
+      });
+
+      const categoriesResult = await getAvailableCategories(esport?.id);
       if (categoriesResult.success && categoriesResult.data) {
-         const mappedCategories = categoriesResult.data.map((c: any) => ({
-             id: c.id,
-             label: c.name || `${c.division} - ${c.levels}`,
-             value: c.id.toString()
-         }));
-         setCategories(mappedCategories);
-      }
-
-      if (teamsResult.success && teamsResult.data) {
-        // const mappedTeams = teamsResult.data.map((t: any) => ({
-        //   id: t.id,
-        //   label: t.team_name,
-        //   value: t.id.toString()
-        // }));
-        // setTeams(mappedTeams);
-      }
-
-      if (esportsResult.success && esportsResult.data) {
-          setEsportsData(esportsResult.data);
+        const mappedCategories = categoriesResult.data.map((c: any) => ({
+          id: c.id,
+          label: c.name || `${c.division} - ${c.levels}`,
+          value: c.id.toString()
+        }));
+        setCategories(mappedCategories);
+      } else {
+        setCategories([]);
       }
     }
-    fetchFilters();
-  }, [selectedSeason]);
 
-  // Fetch stages when season OR game changes
+    if (esportsData.length > 0) {
+      fetchCategories();
+    }
+  }, [game, esportsData]);
+
+  // Fetch stages when season or category changes
   useEffect(() => {
     async function fetchStages() {
-      if (selectedSeason) {
-        const stagesResult = await getStagesBySeason(selectedSeason);
+      if (selectedSeason && selectedCategory) {
+        const stagesResult = await getStagesBySeason(selectedSeason, selectedCategory);
         if (stagesResult.success && stagesResult.data) {
-          // Filter stages by current game
-          const filteredStages = stagesResult.data.filter((s: any) => {
-              const stageGame = s.category?.esports?.name?.toLowerCase();
-              if (game === 'mlbb') return stageGame?.includes('mobile legends') || stageGame?.includes('mlbb');
-              if (game === 'valorant') return stageGame?.includes('valorant');
-              return true;
-          });
-
-          const mappedStages = filteredStages.map((s: any) => ({
+          const mappedStages = stagesResult.data.map((s: any) => ({
             id: s.id,
-            label: s.competition_stage 
-                ? s.competition_stage.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
-                : s.label,
+            label: s.competition_stage
+              ? s.competition_stage.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+              : s.label,
             value: s.id.toString()
           }));
           setStages(mappedStages);
@@ -147,41 +151,50 @@ export function StatisticsContent() {
       }
     }
     fetchStages();
-  }, [selectedSeason, game]);
+  }, [selectedSeason, selectedCategory]);
 
-  // Fetch teams when season OR game changes
+  // Fetch teams when season, game, or category changes
   useEffect(() => {
     async function fetchTeams() {
-        if (!selectedSeason) {
-            setTeams([]);
-            return;
-        }
-        
-        // Use getTeamStats to get active teams for this season/game
-        const result = await getTeamStats(game, selectedSeason);
-        if (result.success && result.data) {
-            const mappedTeams = result.data.map((t: any) => ({
-                id: t.team_id,
-                label: t.team_name,
-                value: t.team_id
-            }));
-            // Deduplicate by ID just in case
-            const uniqueTeams = Array.from(new Map(mappedTeams.map((t:any) => [t.value, t])).values());
-            setTeams(uniqueTeams as FilterOption[]);
-        }
+      if (!selectedSeason) {
+        setTeams([]);
+        return;
+      }
+
+      const result = await getTeamStats(game, selectedSeason, undefined, selectedCategory || undefined);
+      if (result.success && result.data) {
+        // Find category label for prefix
+        const categoryLabel = selectedCategory
+          ? categories.find(c => c.id === selectedCategory)?.label
+          : null;
+
+        const mappedTeams = result.data.map((t: any) => ({
+          id: t.team_id,
+          label: categoryLabel ? `${categoryLabel} - ${t.team_name}` : t.team_name,
+          value: t.team_id
+        }));
+
+        // Deduplicate and sort alphabetically
+        const uniqueTeams = Array.from(new Map(mappedTeams.map((t: any) => [t.value, t])).values());
+        const sortedTeams = (uniqueTeams as FilterOption[]).sort((a, b) =>
+          a.label.localeCompare(b.label)
+        );
+        setTeams(sortedTeams);
+      }
     }
     fetchTeams();
-  }, [selectedSeason, game]);
+  }, [selectedSeason, game, selectedCategory, categories]);
 
   // Handle Debounce for Search Query
   useEffect(() => {
     const timer = setTimeout(() => {
-        setDebouncedSearchQuery(searchQuery);
-        setPage(1); // Reset page when search term actually changes
+      setDebouncedSearchQuery(searchQuery);
+      setPage(1); // Reset page when search term actually changes
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
 
   // Fetch data based on current game and view
   const fetchData = useCallback(async () => {
@@ -254,9 +267,12 @@ export function StatisticsContent() {
     fetchData();
   }, [fetchData]);
 
-  // Handle game change - reset view if needed
+  // Handle game change - reset filters and view
   const handleGameChange = (newGame: GameType) => {
     setGame(newGame);
+    setSelectedCategory(null);
+    setSelectedStage(null);
+    setSelectedTeam(null);
     // Reset to players view if current view isn't available for new game
     if (activeView === 'heroes' && newGame === 'valorant') {
       setActiveView('agents');
@@ -286,38 +302,38 @@ export function StatisticsContent() {
       if (sortColumn === 'avg_kda') {
         // If avg_kda or kda_ratio is already present, use it
         if (typeof a.avg_kda === 'number') {
-            aVal = a.avg_kda;
+          aVal = a.avg_kda;
         } else if (typeof a.kda_ratio === 'number') {
-            aVal = a.kda_ratio;
+          aVal = a.kda_ratio;
         } else {
-            // Derived fallback
-            const aK = Number(a.kills_per_game) || 0;
-            const aA = Number(a.assists_per_game) || 0;
-            const aD = Number(a.deaths_per_game) || 0;
-            aVal = (aK + aA) / (aD || 1);
+          // Derived fallback
+          const aK = Number(a.kills_per_game) || 0;
+          const aA = Number(a.assists_per_game) || 0;
+          const aD = Number(a.deaths_per_game) || 0;
+          aVal = (aK + aA) / (aD || 1);
         }
 
         if (typeof b.avg_kda === 'number') {
-            bVal = b.avg_kda;
+          bVal = b.avg_kda;
         } else if (typeof b.kda_ratio === 'number') {
-            bVal = b.kda_ratio;
+          bVal = b.kda_ratio;
         } else {
-            const bK = Number(b.kills_per_game) || 0;
-            const bA = Number(b.assists_per_game) || 0;
-            const bD = Number(b.deaths_per_game) || 0;
-            bVal = (bK + bA) / (bD || 1);
+          const bK = Number(b.kills_per_game) || 0;
+          const bA = Number(b.assists_per_game) || 0;
+          const bD = Number(b.deaths_per_game) || 0;
+          bVal = (bK + bA) / (bD || 1);
         }
       } else if (sortColumn === 'win_rate') {
         if (typeof a.win_rate === 'number') {
-            aVal = a.win_rate;
+          aVal = a.win_rate;
         } else {
-            aVal = (Number(a.wins) || 0) / (Number(a.games_played) || 1);
+          aVal = (Number(a.wins) || 0) / (Number(a.games_played) || 1);
         }
 
         if (typeof b.win_rate === 'number') {
-            bVal = b.win_rate;
+          bVal = b.win_rate;
         } else {
-            bVal = (Number(b.wins) || 0) / (Number(b.games_played) || 1);
+          bVal = (Number(b.wins) || 0) / (Number(b.games_played) || 1);
         }
       }
 
@@ -347,13 +363,13 @@ export function StatisticsContent() {
 
     // Local filtering for non-paginated stats
     const filterLocal = <T extends Record<string, any>>(data: T[]): T[] => {
-        if (!debouncedSearchQuery) return data;
-        const lower = debouncedSearchQuery.toLowerCase();
-        return data.filter(item => {
-            return Object.values(item).some(val => 
-                typeof val === 'string' && val.toLowerCase().includes(lower)
-            );
-        });
+      if (!debouncedSearchQuery) return data;
+      const lower = debouncedSearchQuery.toLowerCase();
+      return data.filter(item => {
+        return Object.values(item).some(val =>
+          typeof val === 'string' && val.toLowerCase().includes(lower)
+        );
+      });
     };
 
     switch (activeView) {
@@ -376,23 +392,23 @@ export function StatisticsContent() {
         );
       case 'heroes':
         return (
-            <CharacterStatsTable 
-                game="mlbb" 
-                data={sortData(filterLocal(heroStats))} 
-                sortColumn={sortColumn} 
-                sortOrder={sortOrder} 
-                onSort={handleSort} 
-            />
+          <CharacterStatsTable
+            game="mlbb"
+            data={sortData(filterLocal(heroStats))}
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
         );
       case 'agents':
         return (
-            <CharacterStatsTable 
-                game="valorant" 
-                data={sortData(filterLocal(agentStats))} 
-                sortColumn={sortColumn} 
-                sortOrder={sortOrder} 
-                onSort={handleSort} 
-            />
+          <CharacterStatsTable
+            game="valorant"
+            data={sortData(filterLocal(agentStats))}
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
         );
       case 'maps':
         return <MapStatsDisplay data={filterLocal(mapStats)} />;
@@ -414,7 +430,7 @@ export function StatisticsContent() {
   return (
     <div className="space-y-6">
       {/* Statistics Navigation */}
-      
+
 
       {/* Filters */}
       <FilterPanel

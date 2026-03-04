@@ -49,12 +49,12 @@ export async function getAvailableSeasons() {
   return StatisticsService.getAvailableSeasons();
 }
 
-export async function getAvailableCategories() {
-  return StatisticsService.getAvailableCategories();
+export async function getAvailableCategories(esportId?: number) {
+  return StatisticsService.getAvailableCategories(esportId);
 }
 
-export async function getStagesBySeason(seasonId: number) {
-  return StatisticsService.getStagesBySeason(seasonId);
+export async function getStagesBySeason(seasonId: number, categoryId?: number) {
+  return StatisticsService.getStagesBySeason(seasonId, categoryId);
 }
 
 export async function getPlayerCharacterStats(playerId: string, game: 'mlbb' | 'valorant') {

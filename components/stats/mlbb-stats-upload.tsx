@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { extractMlbbStatsFromImage } from '@/actions/mlbb-ocr';
-import { createMultipleMlbbStats, getMlbbStatsByGameId, deleteMlbbStatsByGameId } from '@/actions/stats-mlbb';
+import { createMultipleMlbbStats, getMlbbStatsByGameId, deleteMlbbStatsByGameId, recalculateMatchScoresAction } from '@/actions/stats-mlbb';
 import { upsertGameScoresForGame, getGameScoresByGameId } from '@/actions/game-scores';
 import { updateGameById, getGameById } from '@/actions/games';
 import { getGameRosterByGameId } from '@/actions/game-roster';
@@ -21,6 +21,7 @@ import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
 
 interface MlbbStatsUploadProps {
   gameId: number;
+  matchId: number;
   team1: {
     id: string;
     name: string;
@@ -40,7 +41,7 @@ interface MlbbStatsUploadProps {
   onStatsSaved?: () => void;
 }
 
-export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStatsUploadProps) {
+export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }: MlbbStatsUploadProps) {
   const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(() => {
     const initialMapping: Record<string, string> = {};
     const team1Picks = team1.players.slice(0, 5);
@@ -279,7 +280,7 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
     fetchExistingStats();
 
     return () => { mounted = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, isCharactersFetched]);
 
   // Effect 2: Once draft, characters, and rosters are all loaded AND no existing stats were found,
@@ -314,7 +315,7 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
       setHeroMapping(newHeroMapping);
       return { ...prev, players: newPlayers };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDraftActionsFetched, isCharactersFetched, isRostersFetched, hasExistingStats]);
 
   // Handle file analysis once both are provided
@@ -332,10 +333,10 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
     try {
       const result = await extractMlbbStatsFromImage(formData);
       if (result.success && result.data) {
-        
+
         // Prepare the extracted data
         const convertedData = { ...result.data };
-        
+
         // Auto-map players by IGN
         const allPlayers = [...team1.players, ...team2.players];
         const newMapping: Record<string, string> = {};
@@ -382,7 +383,7 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
         // When AI extracts stats, override the empty structure
         setPreviewData(convertedData);
-        
+
         const extractedMvpIndex = convertedData.players.findIndex(p => p.badge === 'MVP');
         if (extractedMvpIndex !== -1) {
           setMvpIndex(extractedMvpIndex);
@@ -560,6 +561,12 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
         setHasExistingStats(true);
         // Auto-transition game status to completed (combined with duration save)
         await updateGameById(gameUpdate);
+        // Recalculate match scores and update description
+        try {
+          await recalculateMatchScoresAction(matchId);
+        } catch (e) {
+          console.error('Failed to recalculate match scores:', e);
+        }
         onStatsSaved?.();
       } else {
         toast.error(result.error || 'Failed to save stats');
@@ -701,9 +708,8 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
               {/* Team 1 (Blue) */}
               <div
-                className={`flex items-center gap-3 cursor-pointer rounded-md px-3 py-2 transition-colors ${
-                  previewData.score.blue > previewData.score.red ? 'bg-green-500/10 ring-1 ring-green-500/40' : 'hover:bg-muted/50'
-                }`}
+                className={`flex items-center gap-3 cursor-pointer rounded-md px-3 py-2 transition-colors ${previewData.score.blue > previewData.score.red ? 'bg-green-500/10 ring-1 ring-green-500/40' : 'hover:bg-muted/50'
+                  }`}
                 onClick={() => setPreviewData(prev => ({ ...prev, score: { blue: 1, red: 0 } }))}
               >
                 <Checkbox
@@ -742,9 +748,8 @@ export function MlbbStatsUpload({ gameId, team1, team2, onStatsSaved }: MlbbStat
 
               {/* Team 2 (Red) */}
               <div
-                className={`flex items-center gap-3 cursor-pointer rounded-md px-3 py-2 transition-colors ${
-                  previewData.score.red > previewData.score.blue ? 'bg-green-500/10 ring-1 ring-green-500/40' : 'hover:bg-muted/50'
-                }`}
+                className={`flex items-center gap-3 cursor-pointer rounded-md px-3 py-2 transition-colors ${previewData.score.red > previewData.score.blue ? 'bg-green-500/10 ring-1 ring-green-500/40' : 'hover:bg-muted/50'
+                  }`}
                 onClick={() => setPreviewData(prev => ({ ...prev, score: { blue: 0, red: 1 } }))}
               >
                 {previewData.score.red > previewData.score.blue && (

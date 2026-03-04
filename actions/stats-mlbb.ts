@@ -3,9 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { StatsMlbbService } from '@/services/stats-mlbb';
 import { StatsMlbbGamePlayerInsert, StatsMlbbGamePlayerUpdate } from '@/lib/types/stats-mlbb';
+import { PostGameStatsService } from '@/services/game-stats';
 
 export async function getMlbbStatsByGameId(gameId: number) {
   return StatsMlbbService.getByGameId(gameId);
+}
+
+export async function recalculateMatchScoresAction(matchId: number) {
+  await PostGameStatsService.recalculateMatchScores(matchId);
+  revalidatePath('/admin/matches');
 }
 
 export async function createMlbbStats(data: StatsMlbbGamePlayerInsert) {

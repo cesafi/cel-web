@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { extractValorantStatsFromImage } from '@/actions/valorant-ocr';
 import { createMultipleValorantStats, getValorantStatsByGameId, deleteValorantStatsByGameId } from '@/actions/stats-valorant';
+import { recalculateMatchScoresAction } from '@/actions/stats-mlbb';
 import { updateGameById, getGameById } from '@/actions/games';
 import { upsertGameScoresForGame, getGameScoresByGameId } from '@/actions/game-scores';
 import { getGameRosterByGameId } from '@/actions/game-roster';
@@ -22,6 +23,7 @@ import { getGameCharactersByEsportId } from '@/actions/game-characters';
 
 interface ValorantStatsUploadProps {
   gameId: number;
+  matchId: number;
   team1: {
     id: string;
     name: string;
@@ -41,7 +43,7 @@ interface ValorantStatsUploadProps {
   onStatsSaved?: () => void;
 }
 
-export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: ValorantStatsUploadProps) {
+export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }: ValorantStatsUploadProps) {
   const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(() => {
     const initialMapping: Record<string, string> = {};
     // Map first 5 players from each team to the initial 10 rows
@@ -286,7 +288,7 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
     fetchExistingStats();
 
     return () => { mounted = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, isCharactersFetched]);
 
   // Effect 2: Once draft, characters, and rosters are all loaded AND no existing stats were found,
@@ -314,7 +316,7 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
       }
       return { ...prev, players: newPlayers };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDraftActionsFetched, isCharactersFetched, isRostersFetched, hasExistingStats]);
 
   // Handle file upload
@@ -532,6 +534,12 @@ export function ValorantStatsUpload({ gameId, team1, team2, onStatsSaved }: Valo
         setHasExistingStats(true);
         // Auto-transition game status to completed
         await updateGameById({ id: gameId, status: 'completed' });
+        // Recalculate match scores and update description
+        try {
+          await recalculateMatchScoresAction(matchId);
+        } catch (e) {
+          console.error('Failed to recalculate match scores:', e);
+        }
         onStatsSaved?.();
       } else {
         toast.error(result.error || 'Failed to save stats');

@@ -454,6 +454,7 @@ export default function LeagueOperatorGameDetailPage() {
                     ) : isValorant ? (
                         <ValorantStatsUpload
                             gameId={gameId}
+                            matchId={matchId}
                             team1={{
                                 id: team1.schools_teams.id,
                                 name: team1.schools_teams.name,
@@ -474,6 +475,7 @@ export default function LeagueOperatorGameDetailPage() {
                     ) : (
                         <MlbbStatsUpload
                             gameId={gameId}
+                            matchId={matchId}
                             team1={{
                                 id: team1.schools_teams.id,
                                 name: team1.schools_teams.name,

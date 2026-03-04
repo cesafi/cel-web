@@ -65,20 +65,36 @@ export interface LeaderboardEntry {
 
 export class StatisticsService extends BaseService {
   /**
-   * Get available categories
+   * Get available categories, optionally filtered by esport (game)
    */
-  static async getAvailableCategories() {
+  static async getAvailableCategories(esportId?: number) {
     try {
       const supabase = await this.getClient();
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('esports_categories')
-        .select('id, levels, division') // levels/div might be useful for label
+        .select('id, levels, division, esport_id, esports(id, name)')
         .order('id');
+
+      if (esportId) {
+        query = query.eq('esport_id', esportId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      return { success: true as const, data: data as any[] };
+      // Build a readable label from division + levels
+      const categories = (data as any[] || []).map((c: any) => ({
+        id: c.id,
+        levels: c.levels,
+        division: c.division,
+        esport_id: c.esport_id,
+        esport_name: c.esports?.name || '',
+        name: `${c.division}${c.levels ? " " + c.levels : ""}`,
+      }));
+
+      return { success: true as const, data: categories };
     } catch (error) {
       return this.formatError<any[]>(error, 'Failed to fetch categories');
     }
@@ -180,12 +196,12 @@ export class StatisticsService extends BaseService {
       });
 
       let resultData = aggregatedData;
-      
+
       // Perform search filtering before pagination
       if (filters?.search_query) {
         const lowerSearch = filters.search_query.toLowerCase();
-        resultData = resultData.filter(p => 
-          p.player_ign?.toLowerCase().includes(lowerSearch) || 
+        resultData = resultData.filter(p =>
+          p.player_ign?.toLowerCase().includes(lowerSearch) ||
           p.team_name?.toLowerCase().includes(lowerSearch) ||
           p.school_abbreviation?.toLowerCase().includes(lowerSearch) ||
           p.hero_name?.toLowerCase().includes(lowerSearch)
@@ -289,8 +305,8 @@ export class StatisticsService extends BaseService {
       // Perform search filtering before pagination
       if (filters?.search_query) {
         const lowerSearch = filters.search_query.toLowerCase();
-        resultData = resultData.filter(p => 
-          p.player_ign?.toLowerCase().includes(lowerSearch) || 
+        resultData = resultData.filter(p =>
+          p.player_ign?.toLowerCase().includes(lowerSearch) ||
           p.team_name?.toLowerCase().includes(lowerSearch) ||
           p.school_abbreviation?.toLowerCase().includes(lowerSearch) ||
           p.agent_name?.toLowerCase().includes(lowerSearch)
@@ -917,15 +933,19 @@ export class StatisticsService extends BaseService {
   /**
    * Get available stages for a season
    */
-  static async getStagesBySeason(seasonId: number) {
+  /**
+   * Get available stages for a season, optionally filtered by category
+   */
+  static async getStagesBySeason(seasonId: number, categoryId?: number) {
     try {
       const supabase = await this.getClient();
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('esports_seasons_stages')
         .select(`
           id,
           competition_stage,
+          esport_category_id,
           esports_categories(
             id,
             division,
@@ -935,6 +955,12 @@ export class StatisticsService extends BaseService {
         `)
         .eq('season_id', seasonId);
 
+      if (categoryId) {
+        query = query.eq('esport_category_id', categoryId);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
 
       const options = (data || []).map((stage: any) => ({
@@ -943,6 +969,7 @@ export class StatisticsService extends BaseService {
         value: stage.id,
         category: stage.esports_categories,
         competition_stage: stage.competition_stage,
+        esport_category_id: stage.esport_category_id,
       }));
 
       return { success: true as const, data: options };
