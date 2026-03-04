@@ -97,22 +97,81 @@ export class GameRosterService extends BaseService {
       if (rosterError) throw rosterError;
       if (!game1Roster || game1Roster.length === 0) return { success: false, error: 'Game 1 roster is empty' };
 
-      // Duplicate roster for current game
+      // Delete existing roster for current game first
+      const { error: deleteError } = await supabase
+        .from(TABLE_NAME)
+        .delete()
+        .eq('game_id', currentGameId);
+
+      if (deleteError) throw deleteError;
+
+      // Duplicate roster for current game (only copy the necessary fields)
       const newRoster = game1Roster.map(r => ({
-        ...r,
         game_id: currentGameId,
-        id: undefined // Let database generate new UUID
+        team_id: r.team_id,
+        player_id: r.player_id,
+        player_role: r.player_role,
+        sort_order: r.sort_order,
       }));
 
       const { error: insertError } = await supabase
         .from(TABLE_NAME)
-        .upsert(newRoster, { onConflict: 'game_id, team_id, sort_order' });
+        .insert(newRoster);
 
       if (insertError) throw insertError;
 
       return { success: true, data: undefined as any };
     } catch (err) {
       return this.formatError(err, `Failed to auto-fill roster from Game 1.`);
+    }
+  }
+
+  /**
+   * Swap players between two roster slots (exchange player_id values).
+   */
+  static async swapSlots(
+    gameId: number,
+    teamId: string,
+    sortOrderA: number,
+    sortOrderB: number
+  ): Promise<ServiceResponse<void>> {
+    try {
+      const supabase = await this.getClient();
+
+      // Fetch both roster entries
+      const { data: entries, error: fetchError } = await supabase
+        .from(TABLE_NAME)
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('team_id', teamId)
+        .in('sort_order', [sortOrderA, sortOrderB]);
+
+      if (fetchError) throw fetchError;
+      if (!entries || entries.length !== 2) {
+        return { success: false, error: 'Both slots must have players assigned to swap.' };
+      }
+
+      const entryA = entries.find(e => e.sort_order === sortOrderA)!;
+      const entryB = entries.find(e => e.sort_order === sortOrderB)!;
+
+      // Swap player_id between the two slots
+      const { error: updateA } = await supabase
+        .from(TABLE_NAME)
+        .update({ player_id: entryB.player_id })
+        .match({ game_id: gameId, team_id: teamId, sort_order: sortOrderA });
+
+      if (updateA) throw updateA;
+
+      const { error: updateB } = await supabase
+        .from(TABLE_NAME)
+        .update({ player_id: entryA.player_id })
+        .match({ game_id: gameId, team_id: teamId, sort_order: sortOrderB });
+
+      if (updateB) throw updateB;
+
+      return { success: true, data: undefined as any };
+    } catch (err) {
+      return this.formatError(err, `Failed to swap player slots.`);
     }
   }
 }

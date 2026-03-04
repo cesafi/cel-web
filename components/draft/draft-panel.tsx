@@ -22,7 +22,8 @@ import {
     X,
     CheckCheck,
     Play,
-    Pause
+    Pause,
+    ArrowLeftRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -240,7 +241,20 @@ export function DraftPanel({
             refetchRosters();
             toast.success("Roster copied from Game 1");
         },
-        onError: () => toast.error("Failed to copy Game 1 roster")
+        onError: (error: Error) => toast.error(error.message || "Failed to copy Game 1 roster")
+    });
+
+    const swapPlayersMutation = useMutation({
+        mutationFn: async (data: { teamId: string, sortOrderA: number, sortOrderB: number }) => {
+            const result = await GameRosterService.swapSlots(gameId, data.teamId, data.sortOrderA, data.sortOrderB);
+            if (!result.success) throw new Error(result.error);
+            return result;
+        },
+        onSuccess: () => {
+            refetchRosters();
+            toast.success("Players swapped");
+        },
+        onError: (error: Error) => toast.error(error.message || "Failed to swap players")
     });
 
     const submitActionMutation = useSubmitGameDraftAction({
@@ -652,6 +666,7 @@ export function DraftPanel({
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: leftTeam.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(leftTeam.id, leftTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
+                        onSwapPlayers={(a, b) => swapPlayersMutation.mutate({ teamId: leftTeam.id, sortOrderA: a, sortOrderB: b })}
                     />
                 </div>
 
@@ -730,6 +745,7 @@ export function DraftPanel({
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: rightTeam.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(rightTeam.id, rightTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
+                        onSwapPlayers={(a, b) => swapPlayersMutation.mutate({ teamId: rightTeam.id, sortOrderA: a, sortOrderB: b })}
                     />
                 </div>
             </div>
@@ -1024,7 +1040,7 @@ function PlayerPickerPopover({
 
 function MlbbTeamColumn({
     team, bans, picks, roster, players, characters, takenCharacters, isActive, activeAction, themeColor, isRightSide = false, isAdmin,
-    onSwapCharacter, onTradeCharacter, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
+    onSwapCharacter, onTradeCharacter, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1, onSwapPlayers
 }: {
     team: DraftPanelProps['team1'];
     bans: GameDraftAction[];
@@ -1044,8 +1060,10 @@ function MlbbTeamColumn({
     onUnassignPlayer: (sortOrder: number) => void;
     onAutoFill: () => void;
     onAutoFillGame1?: () => void;
+    onSwapPlayers?: (sortOrderA: number, sortOrderB: number) => void;
 }) {
     const [tradeTargetId, setTradeTargetId] = useState<string | null>(null);
+    const [playerSwapSlot, setPlayerSwapSlot] = useState<number | null>(null);
     const pickSlots = Array.from({ length: 5 });
     const banSlots = Array.from({ length: 5 });
 
@@ -1164,19 +1182,19 @@ function MlbbTeamColumn({
 
                                                 {/* Only show Trade/Cancel on the initiating pick or when no trade is active */}
                                                 {(!tradeTargetId || tradeTargetId === pick.id) && (
-                                                <Button
-                                                    variant={tradeTargetId === pick.id ? "secondary" : "outline"}
-                                                    size="sm"
-                                                    className={cn(
-                                                        "h-7 text-xs px-2 shadow-sm rounded-md",
-                                                        tradeTargetId === pick.id
-                                                            ? ""
-                                                            : "border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                                                    )}
-                                                    onClick={() => setTradeTargetId(tradeTargetId === pick.id ? null : pick.id)}
-                                                >
-                                                    {tradeTargetId === pick.id ? "Cancel" : "Swap"}
-                                                </Button>
+                                                    <Button
+                                                        variant={tradeTargetId === pick.id ? "secondary" : "outline"}
+                                                        size="sm"
+                                                        className={cn(
+                                                            "h-7 text-xs px-2 shadow-sm rounded-md",
+                                                            tradeTargetId === pick.id
+                                                                ? ""
+                                                                : "border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                                        )}
+                                                        onClick={() => setTradeTargetId(tradeTargetId === pick.id ? null : pick.id)}
+                                                    >
+                                                        {tradeTargetId === pick.id ? "Cancel" : "Swap"}
+                                                    </Button>
                                                 )}
                                             </div>
                                         )}
@@ -1189,29 +1207,68 @@ function MlbbTeamColumn({
                             </div>
 
                             {/* Player row */}
-                            <div className={cn("flex items-center justify-between text-[10px] px-1 relative group", isRightSide && "flex-row-reverse")}>
+                            <div className={cn("flex items-center justify-between text-[10px] px-1 relative group/player", isRightSide && "flex-row-reverse")}>
                                 {playerDetails ? (
-                                    <div className={cn("flex items-center gap-1.5 flex-1 relative", isRightSide && "flex-row-reverse")}>
-                                        <Badge variant="outline" className={cn("text-[9px] h-4 px-1 shrink-0", roleColors[rosterEntry.player_role])}>
-                                            {rosterEntry.player_role}
+                                    <div
+                                        className={cn(
+                                            "flex items-center gap-1.5 flex-1 relative rounded px-0.5 -mx-0.5 transition-colors",
+                                            isRightSide && "flex-row-reverse",
+                                            playerSwapSlot === i && "bg-primary/15 ring-1 ring-primary/40"
+                                        )}
+                                    >
+                                        <Badge variant="outline" className={cn("text-[9px] h-4 px-1 shrink-0", roleColors[MLBB_SLOT_ROLES[i]] || roleColors[rosterEntry.player_role])}>
+                                            {MLBB_SLOT_LABELS[i] || rosterEntry.player_role}
                                         </Badge>
                                         <span className="text-muted-foreground font-medium truncate flex-1 overflow-hidden" style={{ maxWidth: "80px" }}>
                                             {playerDetails.ign}
                                         </span>
-                                        {isAdmin && (
-                                            <button
-                                                onClick={() => onUnassignPlayer(i)}
-                                                className={cn(
-                                                    "absolute top-0 w-4 h-4 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity shadow-sm hover:scale-110",
-                                                    isRightSide ? "left-0" : "right-0"
+                                        {isAdmin && playerSwapSlot === null && (
+                                            <div className={cn(
+                                                "flex items-center gap-0.5 opacity-0 group-hover/player:opacity-100 transition-opacity shrink-0",
+                                                isRightSide ? "flex-row-reverse" : ""
+                                            )}>
+                                                {onSwapPlayers && (
+                                                    <button
+                                                        onClick={() => setPlayerSwapSlot(i)}
+                                                        className="w-4 h-4 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
+                                                        title="Swap player position"
+                                                    >
+                                                        <ArrowLeftRight className="w-2.5 h-2.5" />
+                                                    </button>
                                                 )}
+                                                <button
+                                                    onClick={() => onUnassignPlayer(i)}
+                                                    className="w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
+                                                    title="Remove player"
+                                                >
+                                                    <X className="w-2.5 h-2.5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {playerSwapSlot === i && (
+                                            <button
+                                                onClick={() => setPlayerSwapSlot(null)}
+                                                className="text-[8px] text-primary font-semibold shrink-0 hover:text-primary/70 transition-colors"
                                             >
-                                                <X className="w-2.5 h-2.5" />
+                                                Cancel
+                                            </button>
+                                        )}
+                                        {playerSwapSlot !== null && playerSwapSlot !== i && (
+                                            <button
+                                                onClick={() => {
+                                                    onSwapPlayers?.(playerSwapSlot, i);
+                                                    setPlayerSwapSlot(null);
+                                                }}
+                                                className="text-[8px] text-primary font-semibold shrink-0 bg-primary/10 px-1.5 py-0.5 rounded hover:bg-primary/20 transition-colors"
+                                            >
+                                                Swap Here
                                             </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <span className="italic text-muted-foreground">No Player</span>
+                                    <Badge variant="outline" className={cn("text-[9px] h-4 px-1 shrink-0", roleColors[MLBB_SLOT_ROLES[i]])}>
+                                        {MLBB_SLOT_LABELS[i] || `Slot ${i + 1}`}
+                                    </Badge>
                                 )}
                                 {!playerDetails && isAdmin && (
                                     <PlayerPickerPopover
