@@ -411,9 +411,6 @@ export class StatisticsService extends BaseService {
   /**
    * Get aggregated hero statistics for MLBB
    */
-  /**
-   * Get aggregated hero statistics for MLBB
-   */
   static async getHeroStats(
     seasonId?: number,
     stageId?: number,
@@ -433,6 +430,50 @@ export class StatisticsService extends BaseService {
       const { data, error } = await query;
 
       if (error) throw error;
+
+      // ── Fetch ban counts from game_draft_actions ──
+      // Build stage filter for ban query
+      let stageIds: number[] = [];
+      if (stageId) {
+        stageIds = [stageId];
+      } else if (seasonId || categoryId) {
+        let stagesQuery = supabase.from('esports_seasons_stages').select('id');
+        if (seasonId) stagesQuery = stagesQuery.eq('season_id', seasonId);
+        if (categoryId) stagesQuery = stagesQuery.eq('esport_category_id', categoryId);
+        const { data: stagesData } = await stagesQuery;
+        stageIds = (stagesData || []).map((s: any) => s.id);
+      }
+
+      // Count total MLBB games for rate denominators
+      let totalGamesQuery = supabase
+        .from('games')
+        .select('id, matches!inner(stage_id)')
+        .not('winner_team_id', 'is', null);
+      
+      if (stageIds.length > 0) {
+        totalGamesQuery = totalGamesQuery.in('matches.stage_id', stageIds);
+      }
+      const { data: gamesData } = await totalGamesQuery;
+      const totalGames = (gamesData || []).length;
+
+      // Query bans: game_draft_actions WHERE action_type='ban', joined to games->matches for stage filtering
+      let banQuery = supabase
+        .from('game_draft_actions')
+        .select('hero_name, game_id, games!inner(match_id, matches!inner(stage_id))')
+        .eq('action_type', 'ban');
+
+      if (stageIds.length > 0) {
+        banQuery = banQuery.in('games.matches.stage_id', stageIds);
+      }
+
+      const { data: banData } = await banQuery;
+      
+      // Count bans per hero_name
+      const banCountMap = new Map<string, number>();
+      for (const b of (banData || []) as any[]) {
+        const name = b.hero_name;
+        banCountMap.set(name, (banCountMap.get(name) || 0) + 1);
+      }
 
       // Aggregation Map
       const heroMap = new Map<string, any>();
@@ -466,19 +507,23 @@ export class StatisticsService extends BaseService {
         const avg_assists = picks > 0 ? row.total_assists / picks : 0;
         const avg_kda = row.total_deaths > 0 ? (row.total_kills + row.total_assists) / row.total_deaths : (row.total_kills + row.total_assists);
 
+        const total_bans = banCountMap.get(row.hero_name) || 0;
+
         return {
           hero_id: row.hero_id,
           hero_name: row.hero_name,
           icon_url: row.icon_url,
-          season_id: seasonId || row.season_id, // Best effort
+          season_id: seasonId || row.season_id,
           total_picks: picks,
+          total_bans,
           total_wins: row.total_wins,
           total_kills: row.total_kills,
           total_deaths: row.total_deaths,
           total_assists: row.total_assists,
 
           games_played: picks,
-          pick_rate: 0, // Placeholder
+          pick_rate: totalGames > 0 ? (picks / totalGames) * 100 : 0,
+          ban_rate: totalGames > 0 ? (total_bans / totalGames) * 100 : 0,
           win_rate: picks > 0 ? (row.total_wins / picks) * 100 : 0,
           avg_gold: picks > 0 ? row.avg_gold / picks : 0,
           avg_damage_dealt: picks > 0 ? row.avg_damage / picks : 0,
@@ -490,6 +535,35 @@ export class StatisticsService extends BaseService {
           avg_kda
         };
       });
+
+      // Also add heroes that were only banned but never picked
+      for (const [heroName, banCount] of banCountMap.entries()) {
+        const alreadyExists = results.some(r => r.hero_name === heroName);
+        if (!alreadyExists) {
+          results.push({
+            hero_id: null as any,
+            hero_name: heroName,
+            icon_url: null,
+            season_id: seasonId || null,
+            total_picks: 0,
+            total_bans: banCount,
+            total_wins: 0,
+            total_kills: 0,
+            total_deaths: 0,
+            total_assists: 0,
+            games_played: 0,
+            pick_rate: 0,
+            ban_rate: totalGames > 0 ? (banCount / totalGames) * 100 : 0,
+            win_rate: 0,
+            avg_gold: 0,
+            avg_damage_dealt: 0,
+            avg_kills: 0,
+            avg_deaths: 0,
+            avg_assists: 0,
+            avg_kda: 0,
+          });
+        }
+      }
 
       // Sort by picks (desc)
       results.sort((a, b) => b.total_picks - a.total_picks);

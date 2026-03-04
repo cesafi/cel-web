@@ -19,7 +19,10 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { deleteGameByIdWithCascade, updateGameById } from '@/actions/games';
 import { ManualGameWinner } from '@/components/games/manual-game-winner';
 import { getActiveMlbbMaps } from '@/actions/mlbb-maps';
+import { getActiveApiExports, setActiveApiExport } from '@/actions/active-api-exports';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// ... rest of imports stay the same ...
+// [We can't use '... rest of imports stay the same ...' exactly in replace_file_content so I'll do a focused replace on the specific blocks instead]
 import {
     ArrowLeft,
     Loader2,
@@ -37,6 +40,7 @@ import {
     Map
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -51,6 +55,19 @@ export default function GameDetailPage() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUpdatingAttr, setIsUpdatingAttr] = useState(false);
+    const [isSettingActive, setIsSettingActive] = useState(false);
+
+    // Fetch active exports
+    const { data: activeExports = [] } = useQuery({
+        queryKey: ['active-api-exports'],
+        queryFn: async () => {
+            const result = await getActiveApiExports();
+            return result.success ? result.data : [];
+        }
+    });
+
+    const activeDraftGameId = activeExports.find((e: any) => e.title === 'draft')?.game_id;
+    const activeStatsGameId = activeExports.find((e: any) => e.title === 'game-results')?.game_id;
 
     const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
@@ -143,11 +160,21 @@ export default function GameDetailPage() {
             ? <Clock className="h-4 w-4 text-blue-500" />
             : <XCircle className="h-4 w-4 text-muted-foreground" />;
 
-    const apiEndpoint = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/games/draft/${gameId}`;
-
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(apiEndpoint);
-        toast.success('API link copied to clipboard');
+    const handleSetActiveExport = async (title: 'draft' | 'game-results') => {
+        setIsSettingActive(true);
+        try {
+            const result = await setActiveApiExport(title, gameId);
+            if (result.success) {
+                toast.success(`Active ${title} export updated`);
+                queryClient.invalidateQueries({ queryKey: ['active-api-exports'] });
+            } else {
+                toast.error(result.error || 'Failed to update active export');
+            }
+        } catch {
+            toast.error('An unexpected error occurred');
+        } finally {
+            setIsSettingActive(false);
+        }
     };
 
     const handleDeleteGame = async () => {
@@ -365,15 +392,31 @@ export default function GameDetailPage() {
             )}
             {/* ── API Export Link ── */}
             <div className="rounded-xl border bg-card p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Link2 className="h-4 w-4" />
-                    API Export
-                </h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Link2 className="h-4 w-4" />
+                        API Export (Draft)
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground mr-1">
+                            {activeDraftGameId === gameId ? 'Active' : 'Inactive'}
+                        </span>
+                        <Switch
+                            checked={activeDraftGameId === gameId}
+                            onCheckedChange={() => handleSetActiveExport('draft')}
+                            disabled={isSettingActive}
+                            title="Set this game as the active draft for API exports"
+                        />
+                    </div>
+                </div>
                 <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                        {apiEndpoint}
+                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/draft`}
                     </code>
-                    <Button variant="outline" size="sm" onClick={handleCopyLink}>
+                    <Button variant="outline" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/draft`);
+                        toast.success('Draft API link copied to clipboard');
+                    }}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
                         Copy
                     </Button>
@@ -419,17 +462,30 @@ export default function GameDetailPage() {
 
             {/* ── API Export Link (Stats) ── */}
             <div className="rounded-xl border bg-card p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Link2 className="h-4 w-4" />
-                    API EXPORT
-                </h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Link2 className="h-4 w-4" />
+                        API Export (Stats)
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground mr-1">
+                            {activeStatsGameId === gameId ? 'Active' : 'Inactive'}
+                        </span>
+                        <Switch
+                            checked={activeStatsGameId === gameId}
+                            onCheckedChange={() => handleSetActiveExport('game-results')}
+                            disabled={isSettingActive}
+                            title="Set this game as the active game-results for API exports"
+                        />
+                    </div>
+                </div>
                 <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                        {`${apiEndpoint.replace('/draft/', '/stats/')}`}
+                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/game-results`}
                     </code>
                     <Button variant="outline" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(`${apiEndpoint.replace('/draft/', '/stats/')}`)
-                        toast.success('Stats API link copied to clipboard')
+                        navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/game-results`)
+                        toast.success('Game Results API link copied to clipboard')
                     }}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
                         Copy

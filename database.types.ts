@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_api_exports: {
+        Row: {
+          game_id: number | null
+          id: number
+          match_id: number | null
+          title: string
+        }
+        Insert: {
+          game_id?: number | null
+          id?: number
+          match_id?: number | null
+          title: string
+        }
+        Update: {
+          game_id?: number | null
+          id?: number
+          match_id?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_api_exports_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "active_api_exports_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       articles: {
         Row: {
           authored_by: string

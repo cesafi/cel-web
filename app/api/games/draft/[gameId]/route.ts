@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GameDraftService } from '@/services/game-draft';
 import { GameRosterService } from '@/services/game-roster';
-import { formatResponse, getFormatParam, vmixResponse } from '@/lib/utils/vmix-format';
 import { getSupabaseServer } from '@/lib/supabase/server';
 
+// ── CSV helpers ──
+const escapeCsv = (v: any): string => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+};
+const row = (vals: (string | number | null | undefined)[]): string =>
+    vals.map(escapeCsv).join(',') + '\r\n';
+
+const N = 'None'; // Filler for missing data
+
 /**
- * Public API endpoint for fetching game draft state.
- * Used by external overlays (like OBS) to display live drafts.
- * Enhanced: includes character_stats with pick/win rates and avg KDA for each drafted character.
+ * Draft CSV export — 15-column grid (A–O)
+ *
+ * Layout mirrors draft-template-mlbb.csv:
+ *   A = Blue label | B–F = Blue data (1–5) | G–I = Centre | J–N = Red data (5–1, reversed) | O = Red label
  */
 export async function GET(
     request: NextRequest,
@@ -16,35 +28,19 @@ export async function GET(
     try {
         const { gameId: gameIdStr } = await params;
         const gameId = parseInt(gameIdStr, 10);
-        const format = getFormatParam(request);
-        const table = new URL(request.url).searchParams.get('table') as string | null;
+        if (isNaN(gameId)) return NextResponse.json({ error: 'Invalid game ID' }, { status: 400 });
 
-        if (isNaN(gameId)) {
-            return NextResponse.json({ error: 'Invalid game ID' }, { status: 400 });
-        }
-
-        // We use getSupabaseServer just for the raw game fetch to get team context
         const supabase = await getSupabaseServer();
+
+        // ── 1. Game + relations ──
         const { data: game, error: gameError } = await supabase
             .from('games')
             .select(`
                 *,
                 match:matches(
-                    stage_id,
-                    match_participants(
-                        team_id,
-                        team:schools_teams(
-                            id, 
-                            name, 
-                            school:schools(abbreviation, logo_url)
-                        )
-                    ),
-                    esports_seasons_stages(
-                        season_id,
-                        esports_categories(
-                            esports(name)
-                        )
-                    )
+                    id, stage_id, best_of,
+                    match_participants(team_id, match_score, team:schools_teams(id, name, school:schools(abbreviation, name))),
+                    esports_seasons_stages(season_id, competition_stage, esports_categories(esports(name)))
                 ),
                 mlbb_map:mlbb_maps(name),
                 valorant_map:valorant_maps(name)
@@ -52,276 +48,327 @@ export async function GET(
             .eq('id', gameId)
             .single();
 
-        if (gameError || !game) {
-            return NextResponse.json({ error: 'Game not found' }, { status: 404 });
-        }
+        if (gameError || !game) return NextResponse.json({ error: 'Game not found' }, { status: 404 });
 
-        // Fetch draft actions and rosters in parallel
+        // ── 2. Draft + Rosters ──
         const [draftRes, rosterRes] = await Promise.all([
             GameDraftService.getByGameId(gameId),
-            GameRosterService.getByGameId(gameId)
+            GameRosterService.getByGameId(gameId),
         ]);
-
-        if (!draftRes.success || !rosterRes.success) {
+        if (!draftRes.success || !rosterRes.success)
             return NextResponse.json({ error: 'Failed to fetch draft data' }, { status: 500 });
+
+        // ── 3. Teams ──
+        const parts = game.match?.match_participants || [];
+        const teams = parts.map((p: any) => {
+            if (!p.team) return null;
+            const school = Array.isArray(p.team.school) ? p.team.school[0] : p.team.school;
+            return { id: p.team.id, name: p.team.name, abbr: school?.abbreviation || N, schoolName: school?.name || N, score: p.match_score || 0 };
+        }).filter(Boolean) as { id: string; name: string; abbr: string; schoolName: string; score: number }[];
+
+        // ── 4. Blue / Red side ──
+        const coinToss = game.coin_toss_winner || null;
+        const sideSel = game.side_selection || null;
+        const t1 = teams[0] ?? null;
+        const t2 = teams[1] ?? null;
+        let blue = t1;
+        let red = t2;
+
+        if (coinToss && t1 && t2) {
+            if (sideSel === 'blue') {
+                blue = coinToss === t1.id ? t1 : t2;
+                red = coinToss === t1.id ? t2 : t1;
+            } else if (sideSel === 'red') {
+                red = coinToss === t1.id ? t1 : t2;
+                blue = coinToss === t1.id ? t2 : t1;
+            } else {
+                blue = coinToss === t1.id ? t1 : t2;
+                red = coinToss === t1.id ? t2 : t1;
+            }
         }
 
-        const matchTeams = game.match?.match_participants || [];
-        const teams = matchTeams.map((p: any) => {
-            if (!p.team) return null;
+        const blueId = blue?.id || '';
+        const redId = red?.id || '';
+        const blueAbbr = blue?.abbr || N;
+        const redAbbr = red?.abbr || N;
+        const blueName = blue?.schoolName || N;
+        const redName = red?.schoolName || N;
+        const blueScore = blue?.score ?? 0;
+        const redScore = red?.score ?? 0;
 
-            // Handle both array and single object returns for school relation
-            const schoolData = Array.isArray(p.team.school) ? p.team.school[0] : p.team.school;
-
-            return {
-                id: p.team.id,
-                name: p.team.name,
-                abbreviation: schoolData?.abbreviation || null,
-                logo_url: schoolData?.logo_url || null
-            };
-        }).filter(Boolean);
-
-        // --- Character Stats Enhancement ---
-        // Determine game type from esport name and fetch character stats
+        // ── 5. Context info ──
         const esportName = (game.match as any)?.esports_seasons_stages?.esports_categories?.esports?.name || '';
         const seasonId = (game.match as any)?.esports_seasons_stages?.season_id;
         const isValorant = esportName.toLowerCase().includes('valorant');
-
-        let characterStatsMap: Record<number, any> = {};
-
-        // Collect unique hero/agent IDs from draft actions
-        const draftActions = draftRes.data || [];
-        const heroIds = [...new Set(
-            draftActions
-                .map((a: any) => a.hero_id)
-                .filter((id: any) => id != null)
-        )] as number[];
-
-        if (heroIds.length > 0) {
-            try {
-                if (isValorant) {
-                    const { data: agentStats } = await supabase
-                        .from('mv_valorant_agent_stats' as any)
-                        .select('*')
-                        .in('agent_id', heroIds)
-                        .eq('season_id', seasonId);
-
-                    // Aggregate by agent_id (may have multiple rows per stage)
-                    const agentMap = new Map<number, any>();
-                    for (const row of (agentStats as any[]) || []) {
-                        const existing = agentMap.get(row.agent_id);
-                        if (existing) {
-                            existing.total_picks += row.total_picks;
-                            existing.total_wins += row.total_wins;
-                            existing.total_kills += row.total_kills;
-                            existing.total_deaths += row.total_deaths;
-                            existing.total_assists += row.total_assists;
-                        } else {
-                            agentMap.set(row.agent_id, { ...row });
-                        }
-                    }
-
-                    for (const [id, row] of agentMap) {
-                        const picks = row.total_picks || 0;
-                        characterStatsMap[id] = {
-                            character_id: id,
-                            character_name: row.agent_name,
-                            icon_url: row.icon_url,
-                            role: row.agent_role,
-                            total_picks: picks,
-                            total_wins: row.total_wins,
-                            win_rate: picks > 0 ? ((row.total_wins / picks) * 100).toFixed(1) : '0.0',
-                            avg_kills: picks > 0 ? (row.total_kills / picks).toFixed(1) : '0.0',
-                            avg_deaths: picks > 0 ? (row.total_deaths / picks).toFixed(1) : '0.0',
-                            avg_assists: picks > 0 ? (row.total_assists / picks).toFixed(1) : '0.0',
-                            avg_kda: row.total_deaths > 0
-                                ? ((row.total_kills + row.total_assists) / row.total_deaths).toFixed(2)
-                                : (row.total_kills + row.total_assists).toFixed(2),
-                        };
-                    }
-                } else {
-                    // MLBB
-                    const { data: heroStats } = await supabase
-                        .from('mv_mlbb_hero_stats' as any)
-                        .select('*')
-                        .in('hero_id', heroIds)
-                        .eq('season_id', seasonId);
-
-                    // Aggregate by hero_id
-                    const heroMap = new Map<number, any>();
-                    for (const row of (heroStats as any[]) || []) {
-                        const existing = heroMap.get(row.hero_id);
-                        if (existing) {
-                            existing.total_picks += row.total_picks;
-                            existing.total_wins += row.total_wins;
-                            existing.total_kills += row.total_kills;
-                            existing.total_deaths += row.total_deaths;
-                            existing.total_assists += row.total_assists;
-                            existing.avg_gold_weighted += (row.avg_gold || 0) * row.total_picks;
-                            existing.avg_damage_weighted += (row.avg_damage || 0) * row.total_picks;
-                        } else {
-                            heroMap.set(row.hero_id, {
-                                ...row,
-                                avg_gold_weighted: (row.avg_gold || 0) * row.total_picks,
-                                avg_damage_weighted: (row.avg_damage || 0) * row.total_picks,
-                            });
-                        }
-                    }
-
-                    for (const [id, row] of heroMap) {
-                        const picks = row.total_picks || 0;
-                        characterStatsMap[id] = {
-                            character_id: id,
-                            character_name: row.hero_name,
-                            icon_url: row.icon_url,
-                            total_picks: picks,
-                            total_wins: row.total_wins,
-                            win_rate: picks > 0 ? ((row.total_wins / picks) * 100).toFixed(1) : '0.0',
-                            avg_kills: picks > 0 ? (row.total_kills / picks).toFixed(1) : '0.0',
-                            avg_deaths: picks > 0 ? (row.total_deaths / picks).toFixed(1) : '0.0',
-                            avg_assists: picks > 0 ? (row.total_assists / picks).toFixed(1) : '0.0',
-                            avg_kda: row.total_deaths > 0
-                                ? ((row.total_kills + row.total_assists) / row.total_deaths).toFixed(2)
-                                : (row.total_kills + row.total_assists).toFixed(2),
-                            avg_gold: picks > 0 ? Math.round(row.avg_gold_weighted / picks) : 0,
-                            avg_damage: picks > 0 ? Math.round(row.avg_damage_weighted / picks) : 0,
-                        };
-                    }
-                }
-            } catch (statsError) {
-                // Non-fatal: if stats fail, just return empty map
-                console.warn('Failed to fetch character stats for draft:', statsError);
-            }
-        }
-
-        // Build a team ID → display info lookup
-        const teamLookup: Record<string, { name: string; abbreviation: string }> = {};
-        for (const t of teams) {
-            if (t) teamLookup[t.id] = { name: t.name, abbreviation: t.abbreviation || '' };
-        }
-
-        // Build roster lookup: team_id → sort_order → player IGN
-        const rosterLookup: Record<string, Record<number, string>> = {};
-        for (const r of (rosterRes.data || []) as any[]) {
-            const tid = r.team_id;
-            if (!rosterLookup[tid]) rosterLookup[tid] = {};
-            rosterLookup[tid][r.sort_order] = r.player?.ign || '';
-        }
-
-        // ── vMix-friendly flat output (csv / json-flat / xml) ──
-        // ── Output padding for vMix ──
-        const mapName = game.mlbb_map?.name || game.valorant_map?.name || '';
+        const mapName = game.mlbb_map?.name || game.valorant_map?.name || N;
         const gameNumber = game.game_number || 1;
+        const bestOf = (game.match as any)?.best_of || 3;
 
-        if (format !== 'json') {
-            const rawBoard = (draftRes.data || []).map((action: any, idx: number) => {
-                const stats = action.hero_id ? characterStatsMap[action.hero_id] : null;
-                const teamInfo = action.team_id ? teamLookup[action.team_id] : null;
+        // ── 6. Draft actions split by side ──
+        const actions = (draftRes.data || []) as any[];
+        const blueBans = actions.filter((a: any) => a.team_id === blueId && a.action_type === 'ban').sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const redBans = actions.filter((a: any) => a.team_id === redId && a.action_type === 'ban').sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const bluePicks = actions.filter((a: any) => a.team_id === blueId && a.action_type === 'pick').sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const redPicks = actions.filter((a: any) => a.team_id === redId && a.action_type === 'pick').sort((a: any, b: any) => a.sort_order - b.sort_order);
 
-                // For IGN mapping, first check if drafted action has a player relation.
-                // Otherwise, fallback to the roster lookup based on the team's sort order mapping.
-                // Draft actions in MLBB are typically: 10 bans (sort 1-5, 6-10), 10 picks (sort 11-15, 16-20)
-                let playerIgn = action.player?.ign || '';
-
-                // If it's a pick action and no explicitly joined player IGN exists, try fallback
-                if (!playerIgn && action.action_type === 'pick' && action.team_id) {
-                    // Try to guess the slot based on index or let the client/overlay handle it.
-                    // The easiest guess is `sort_order` or mapping the Nth pick to the Nth roster order.
-
-                    // We can map action.sort_order directly. MLBB often maps pick 1 to roster 1.
-                    // If not, we fall back to finding the first available roster spot.
-                    playerIgn = rosterLookup[action.team_id]?.[action.sort_order] || '';
-                    if (!playerIgn) {
-                        playerIgn = Object.values(rosterLookup[action.team_id] || {})[0] || '';
-                    }
-                }
-
-                return {
-                    order: idx + 1,
-                    action: action.action_type || '',
-                    team: teamInfo?.abbreviation || teamInfo?.name || '',
-                    hero: stats?.character_name || action.hero_name || '',
-                    player: playerIgn,
-                    win_rate: stats?.win_rate ? `${stats.win_rate}%` : '',
-                    total_picks: stats?.total_picks ?? '',
-                    avg_kda: stats?.avg_kda || '',
-                    map: mapName,
-                    game_number: gameNumber
-                };
-            });
-
-            // Calculate max rows needed based on format
-            // Valorant: usually 10 picks
-            // MLBB: 10 bans + 10 picks = 20
-            const maxRows = isValorant ? 10 : 20;
-
-            const draftBoard = [];
-            for (let i = 0; i < maxRows; i++) {
-                if (i < rawBoard.length) {
-                    draftBoard.push({ ...rawBoard[i], order: i + 1 });
-                } else {
-                    // Filler row
-                    draftBoard.push({
-                        order: i + 1,
-                        action: '',
-                        team: '',
-                        hero: '',
-                        player: '',
-                        win_rate: '',
-                        total_picks: '',
-                        avg_kda: '',
-                        map: mapName,
-                        game_number: gameNumber
-                    });
-                }
-            }
-
-            // Support ?table= for pulling specific sub-data
-            if (table) {
-                const tables: Record<string, any[]> = {
-                    draft: draftBoard,
-                    teams: teams.map((t: any) => ({
-                        team: t.name,
-                        school: t.abbreviation || '',
-                        logo_url: t.logo_url || '',
-                    })),
-                    rosters: (rosterRes.data || []).map((r: any) => ({
-                        team: teamLookup[r.team_id]?.abbreviation || teamLookup[r.team_id]?.name || '',
-                        slot: r.sort_order,
-                        player: r.player?.ign || '',
-                        role: r.player?.role || '',
-                    })),
-                };
-                const selected = tables[table];
-                if (!selected) {
-                    return NextResponse.json(
-                        { error: `Unknown table: ${table}. Available: ${Object.keys(tables).join(', ')}` },
-                        { status: 400 }
-                    );
-                }
-                return vmixResponse(selected, format, table);
-            }
-
-            // Default flat: return the draft board
-            return vmixResponse(draftBoard, format, 'draft');
+        // ── 7. Roster ──
+        const roster: Record<string, Record<number, { ign: string; role: string }>> = {};
+        for (const r of (rosterRes.data || []) as any[]) {
+            if (!roster[r.team_id]) roster[r.team_id] = {};
+            roster[r.team_id][r.sort_order] = { ign: r.player?.ign || N, role: r.player_role || N };
         }
 
-        // ── Default JSON (backward compatible, full payload) ──
-        return vmixResponse({
-            game: {
-                id: game.id,
-                game_number: game.game_number,
-                map_name: game.mlbb_map?.name || game.valorant_map?.name || '',
+        // ── 8. Global hero stats (for ban rate) ──
+        const heroIds = [...new Set(actions.map((a: any) => a.hero_id).filter(Boolean))] as number[];
+        let globalStats: Record<number, any> = {};
+
+        if (heroIds.length > 0 && seasonId) {
+            try {
+                const view = isValorant ? 'mv_valorant_agent_stats' : 'mv_mlbb_hero_stats';
+                const col = isValorant ? 'agent_id' : 'hero_id';
+                const { data } = await supabase.from(view as any).select('*').in(col, heroIds).eq('season_id', seasonId);
+                for (const r of (data || []) as any[]) {
+                    const id = r[col];
+                    const ex = globalStats[id];
+                    if (ex) {
+                        ex.total_picks += r.total_picks || 0; ex.total_wins += r.total_wins || 0;
+                        ex.total_bans += r.total_bans || 0; ex.total_kills += r.total_kills || 0;
+                        ex.total_deaths += r.total_deaths || 0; ex.total_assists += r.total_assists || 0;
+                        ex.total_games += r.total_games || 0;
+                    } else {
+                        globalStats[id] = {
+                            total_picks: r.total_picks || 0, total_wins: r.total_wins || 0,
+                            total_bans: r.total_bans || 0, total_kills: r.total_kills || 0,
+                            total_deaths: r.total_deaths || 0, total_assists: r.total_assists || 0,
+                            total_games: r.total_games || 0,
+                        };
+                    }
+                }
+            } catch { /* non-fatal */ }
+        }
+
+        // ── 9. Team-specific hero stats (for picks) ──
+        type Agg = { games: Set<number>; wins: Set<number>; k: number; d: number; a: number; teamGames: number };
+        const blueHS: Record<number, Agg> = {};
+        const redHS: Record<number, Agg> = {};
+
+        if (heroIds.length > 0 && seasonId) {
+            try {
+                const tbl = isValorant ? 'stats_valorant_game_player' : 'stats_mlbb_game_player';
+                const { data: raw } = await supabase
+                    .from(tbl)
+                    .select('game_character_id, team_id, kills, deaths, assists, game_id, games!inner(match:matches!inner(stage_id, esports_seasons_stages!inner(season_id)))')
+                    .in('game_character_id', heroIds)
+                    .in('team_id', [blueId, redId].filter(Boolean))
+                    .not('game_character_id', 'is', null);
+
+                const gids = [...new Set((raw || []).map((r: any) => r.game_id))];
+                const winners: Record<number, string> = {};
+                if (gids.length > 0) {
+                    const { data: w } = await supabase.from('view_game_winners' as any).select('game_id, winner_team_id').in('game_id', gids);
+                    for (const r of (w || []) as any[]) if (r.game_id && r.winner_team_id) winners[r.game_id] = r.winner_team_id;
+                }
+
+                const tgSets: Record<string, Set<number>> = {};
+                for (const r of (raw || []) as any[]) {
+                    const hid = r.game_character_id, tid = r.team_id;
+                    if (!hid || !tid) continue;
+                    if (r.games?.match?.esports_seasons_stages?.season_id !== seasonId) continue;
+
+                    if (!tgSets[tid]) tgSets[tid] = new Set();
+                    tgSets[tid].add(r.game_id);
+
+                    const store = tid === blueId ? blueHS : redHS;
+                    if (!store[hid]) store[hid] = { games: new Set(), wins: new Set(), k: 0, d: 0, a: 0, teamGames: 0 };
+                    const ag = store[hid];
+                    if (!ag.games.has(r.game_id)) {
+                        ag.games.add(r.game_id);
+                        if (winners[r.game_id] === tid) ag.wins.add(r.game_id);
+                    }
+                    ag.k += r.kills || 0; ag.d += r.deaths || 0; ag.a += r.assists || 0;
+                }
+                for (const hid of heroIds) {
+                    if (blueHS[hid]) blueHS[hid].teamGames = tgSets[blueId]?.size || 0;
+                    if (redHS[hid]) redHS[hid].teamGames = tgSets[redId]?.size || 0;
+                }
+            } catch (e) { console.warn('Team hero stats error:', e); }
+        }
+
+        // ── 10. Ban history from previous games ──
+        let banHistory: { blueBans: string[]; redBans: string[] }[] = [];
+        if (game.match_id) {
+            try {
+                const { data: allGames } = await supabase
+                    .from('games')
+                    .select('id, game_number')
+                    .eq('match_id', game.match_id)
+                    .order('game_number', { ascending: true });
+
+                const otherGameIds = (allGames || [])
+                    .filter((g: any) => g.id !== gameId)
+                    .map((g: any) => g.id);
+
+                if (otherGameIds.length > 0) {
+                    const { data: otherDrafts } = await supabase
+                        .from('game_draft_actions')
+                        .select('game_id, team_id, action_type, hero_name, sort_order')
+                        .in('game_id', otherGameIds)
+                        .eq('action_type', 'ban')
+                        .order('sort_order', { ascending: true });
+
+                    // Group by game
+                    const byGame: Record<number, any[]> = {};
+                    for (const d of (otherDrafts || []) as any[]) {
+                        if (!byGame[d.game_id]) byGame[d.game_id] = [];
+                        byGame[d.game_id].push(d);
+                    }
+
+                    // Map game_id to game_number for ordering
+                    const gameOrder = (allGames || []).filter((g: any) => g.id !== gameId);
+                    for (const g of gameOrder) {
+                        const draftBans = byGame[g.id] || [];
+                        // Determine which team was blue/red in that game (approximate: use same blueId/redId)
+                        const bBans = draftBans.filter((d: any) => d.team_id === blueId).map((d: any) => d.hero_name || N);
+                        const rBans = draftBans.filter((d: any) => d.team_id === redId).map((d: any) => d.hero_name || N);
+                        banHistory.push({
+                            blueBans: pad5(bBans),
+                            redBans: pad5(rBans),
+                        });
+                    }
+                }
+            } catch { /* non-fatal */ }
+        }
+
+        // ── Helpers ──
+        function pad5(arr: string[]): string[] {
+            const r = arr.slice(0, 5);
+            while (r.length < 5) r.push(N);
+            return r;
+        }
+        const heroName = (a: any) => a?.hero_name || N;
+
+        const fmtBanRate = (hid: number | null): string => {
+            if (!hid) return N;
+            const g = globalStats[hid];
+            if (!g || !g.total_bans) return N;
+            const totalAppearances = (g.total_bans || 0) + (g.total_picks || 0);
+            if (totalAppearances === 0) return N;
+            return `${((g.total_bans / totalAppearances) * 100).toFixed(0)}%`;
+        };
+        const fmtWR = (hid: number | null, store: Record<number, Agg>): string => {
+            if (!hid) return N;
+            const a = store[hid];
+            if (!a || a.games.size === 0) return N;
+            return `${((a.wins.size / a.games.size) * 100).toFixed(0)}%`;
+        };
+        const fmtKDA = (hid: number | null, store: Record<number, Agg>): string => {
+            if (!hid) return N;
+            const a = store[hid];
+            if (!a) return N;
+            if (a.d === 0) return a.k + a.a > 0 ? `${(a.k + a.a).toFixed(1)}` : N;
+            return ((a.k + a.a) / a.d).toFixed(2);
+        };
+        const fmtPR = (hid: number | null, store: Record<number, Agg>): string => {
+            if (!hid) return N;
+            const a = store[hid];
+            if (!a || a.teamGames === 0) return N;
+            return `${((a.games.size / a.teamGames) * 100).toFixed(0)}%`;
+        };
+
+        // Padded arrays (1–5)
+        const bBanNames = pad5(blueBans.map(heroName));
+        const rBanNames = pad5(redBans.map(heroName));
+        const bPickNames = pad5(bluePicks.map(heroName));
+        const rPickNames = pad5(redPicks.map(heroName));
+        const bBanIds = blueBans.map((a: any) => a.hero_id || null); while (bBanIds.length < 5) bBanIds.push(null);
+        const rBanIds = redBans.map((a: any) => a.hero_id || null); while (rBanIds.length < 5) rBanIds.push(null);
+        const bPickIds = bluePicks.map((a: any) => a.hero_id || null); while (bPickIds.length < 5) bPickIds.push(null);
+        const rPickIds = redPicks.map((a: any) => a.hero_id || null); while (rPickIds.length < 5) rPickIds.push(null);
+        const bIgns = pad5(Array.from({ length: 5 }, (_, i) => roster[blueId]?.[i]?.ign || N));
+        const rIgns = pad5(Array.from({ length: 5 }, (_, i) => roster[redId]?.[i]?.ign || N));
+        const bRoles = pad5(Array.from({ length: 5 }, (_, i) => roster[blueId]?.[i]?.role || N));
+        const rRoles = pad5(Array.from({ length: 5 }, (_, i) => roster[redId]?.[i]?.role || N));
+
+        // Red side is REVERSED in the template (5,4,3,2,1)
+        const rev = <T,>(a: T[]) => [...a].reverse();
+
+        // ═══════════════════════════════════════════
+        //  BUILD CSV — 15 columns (A–O)
+        //  Matches draft-template-mlbb.csv exactly
+        // ═══════════════════════════════════════════
+        let csv = '';
+
+        // Row 1: BLUE,,,,,,,MLBB DRAFTING,,,,,,,RED
+        csv += row(['BLUE', '', '', '', '', '', '', isValorant ? 'VALORANT DRAFTING' : 'MLBB DRAFTING', '', '', '', '', '', '', 'RED']);
+
+        // Row 2: SCHOOL ABBREVIATION,,,,,,SCORE,BO3,SCORE,,,,,,SCHOOL ABBREVIATION
+        csv += row([blueAbbr, '', '', '', '', '', 'SCORE', `BO${bestOf}`, 'SCORE', '', '', '', '', '', redAbbr]);
+
+        // Row 3: SCHOOL NAME,,,,,,score,GAME N,score,,,,,,SCHOOL NAME
+        csv += row([blueName, '', '', '', '', '', blueScore, `GAME ${gameNumber}`, redScore, '', '', '', '', '', redName]);
+
+        // Row 4: ,,,,,,,MAP,,,,,,,
+        csv += row(['', '', '', '', '', '', '', 'MAP', '', '', '', '', '', '', '']);
+
+        // Row 5: BANS,BAN1..5,,mapName,,BAN5..1,BANS
+        csv += row(['BANS', ...bBanNames, '', mapName, '', ...rev(rBanNames), 'BANS']);
+
+        // Row 6: BAN RATE
+        csv += row(['BAN RATE', ...bBanIds.map(fmtBanRate), '', '', '', ...rev(rBanIds).map(fmtBanRate), 'BAN RATE']);
+
+        // Row 7: empty
+        csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+
+        // Row 8: PLAYERS
+        csv += row(['PLAYERS', ...bIgns, '', '', '', ...rev(rIgns), 'PLAYERS']);
+
+        // Row 9: ROLES
+        csv += row(['ROLES', ...bRoles, '', '', '', ...rev(rRoles), 'ROLES']);
+
+        // Row 10: empty
+        csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+
+        // Row 11: PICKS
+        csv += row(['PICKS', ...bPickNames, '', '', '', ...rev(rPickNames), 'PICKS']);
+
+        // Row 12: KDA
+        csv += row(['KDA', ...bPickIds.map(id => fmtKDA(id, blueHS)), '', '', '', ...rev(rPickIds).map(id => fmtKDA(id, redHS)), 'KDA']);
+
+        // Row 13: WR (win rate)
+        csv += row(['WR', ...bPickIds.map(id => fmtWR(id, blueHS)), '', '', '', ...rev(rPickIds).map(id => fmtWR(id, redHS)), 'WR']);
+
+        // Row 14: PICK RATE
+        csv += row(['PICK RATE', ...bPickIds.map(id => fmtPR(id, blueHS)), '', '', '', ...rev(rPickIds).map(id => fmtPR(id, redHS)), 'PICK RATE']);
+
+        // Rows 15-17: empty
+        csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+        csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+        csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+
+        // Rows 18-20: Ban history (GAME 1 BAN, GAME 2 BAN, GAME 3 BAN)
+        const totalGames = bestOf || 3;
+        for (let i = 1; i <= totalGames; i++) {
+            const hist = banHistory[i - 1];
+            const label = `GAME ${i} BAN`;
+            if (hist) {
+                csv += row([label, ...hist.blueBans, '', '', '', ...rev(hist.redBans), label]);
+            } else {
+                csv += row([label, N, N, N, N, N, '', '', '', N, N, N, N, N, label]);
+            }
+        }
+
+        // ── Return CSV ──
+        return new NextResponse(csv, {
+            status: 200,
+            headers: {
+                'Content-Type': 'text/csv; charset=utf-8',
+                'Content-Disposition': `attachment; filename="draft-game-${gameId}.csv"`,
+                'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5',
             },
-            teams,
-            draft_actions: draftRes.data,
-            rosters: rosterRes.data,
-            character_stats: characterStatsMap
-        }, format, 'draft');
+        });
 
     } catch (error) {
-        console.error('Error fetching game draft:', error);
+        console.error('Error generating draft CSV:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
-

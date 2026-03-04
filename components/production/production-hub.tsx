@@ -49,7 +49,7 @@ const LINK_CARDS: LinkCard[] = [
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/production/players/stats?${p}`;
+      return `${b}/api/export/player-stats?${p}`;
     },
   },
   {
@@ -58,7 +58,7 @@ const LINK_CARDS: LinkCard[] = [
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game, metric: f.metric || 'total_kills', limit: f.leaderboardLimit || '5' });
       if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/production/players/leaderboard?${p}`;
+      return `${b}/api/export/leaderboard?${p}`;
     },
   },
   {
@@ -69,7 +69,7 @@ const LINK_CARDS: LinkCard[] = [
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/production/characters/stats?${p}`;
+      return `${b}/api/export/character-stats?${p}`;
     },
   },
   {
@@ -80,29 +80,29 @@ const LINK_CARDS: LinkCard[] = [
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/production/teams/stats?${p}`;
+      return `${b}/api/export/team-stats?${p}`;
     },
   },
   {
     id: 'h2h-teams', title: 'Head-to-Head: Teams', description: 'Side-by-side team comparison',
     category: 'h2h', icon: Swords, game: 'both',
     buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game, mode: f.h2hMode || 'both' });
+      const p = new URLSearchParams({ game: f.game });
       if (f.teamA) p.set('teamA', f.teamA);
       if (f.teamB) p.set('teamB', f.teamB);
       if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/production/head-to-head/teams?${p}`;
+      return `${b}/api/export/h2h-teams?${p}`;
     },
   },
   {
     id: 'h2h-players', title: 'Head-to-Head: Players', description: 'Side-by-side player comparison',
     category: 'h2h', icon: Swords, game: 'both',
     buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game, mode: f.h2hMode || 'both' });
+      const p = new URLSearchParams({ game: f.game });
       if (f.playerA) p.set('playerA', f.playerA);
       if (f.playerB) p.set('playerB', f.playerB);
       if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/production/head-to-head/players?${p}`;
+      return `${b}/api/export/h2h-players?${p}`;
     },
   },
   {
@@ -112,18 +112,13 @@ const LINK_CARDS: LinkCard[] = [
       const p = new URLSearchParams();
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
-      return `${b}/api/production/maps/stats?${p}`;
+      return `${b}/api/export/map-stats?${p}`;
     },
-  },
-  {
-    id: 'map-vetoes', title: 'Map Vetoes', description: 'Full veto sequence per match',
-    category: 'maps', icon: Map, game: 'valorant',
-    buildUrl: (b, f) => `${b}/api/production/maps/vetoes/${f.matchId || '0'}`,
   },
   {
     id: 'match-overview', title: 'Match Overview', description: 'Scores, teams, schedule, stream',
     category: 'match', icon: Trophy, game: 'both',
-    buildUrl: (b, f) => `${b}/api/production/matches/${f.matchId || '0'}`,
+    buildUrl: (b, f) => `${b}/api/export/match-overview?matchId=${f.matchId || '0'}`,
   },
   {
     id: 'draft', title: 'Draft + Character Stats', description: 'Live draft with pick/ban rates',
@@ -133,17 +128,17 @@ const LINK_CARDS: LinkCard[] = [
   {
     id: 'game-stats', title: 'Per-Game Stats', description: 'Individual game player stats',
     category: 'match', icon: BarChart3, game: 'both',
-    buildUrl: (b, f) => `${b}/api/games/stats/${f.matchId || '0'}`,
+    buildUrl: (b, f) => `${b}/api/games/game-results/${f.matchId || '0'}`,
   },
   {
     id: 'standings', title: 'Standings', description: 'League standings by stage',
     category: 'standings', icon: Trophy, game: 'both',
     buildUrl: (b, f) => {
-      const p = new URLSearchParams();
+      const p = new URLSearchParams({ game: f.game });
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/production/standings?${p}`;
+      return `${b}/api/export/standings?${p}`;
     },
   },
 ];
@@ -237,7 +232,7 @@ export default function ProductionHub() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORY_META)));
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -258,7 +253,7 @@ export default function ProductionHub() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/production/filters');
+        const res = await fetch('/api/production/filters?format=json');
         const json = await res.json();
         if (json.success) {
           setSeasons(json.data.seasons || []);
@@ -278,7 +273,7 @@ export default function ProductionHub() {
     if (!filters.seasonId) { setAllStages([]); return; }
     async function fetchStages() {
       try {
-        const res = await fetch('/api/production/filters');
+        const res = await fetch('/api/production/filters?format=json');
         const json = await res.json();
         // Extract unique stages from matches for this season
         if (json.success) {
@@ -306,14 +301,14 @@ export default function ProductionHub() {
   // ─── Fetch team players ─────────────────────
   useEffect(() => {
     if (!filters.teamA) { setTeamAPlayers([]); return; }
-    fetch(`/api/production/filters?teamId=${filters.teamA}`)
+    fetch(`/api/production/filters?format=json&teamId=${filters.teamA}`)
       .then(r => r.json()).then(j => { if (j.success) setTeamAPlayers(j.data.players || []); })
       .catch(() => {});
   }, [filters.teamA]);
 
   useEffect(() => {
     if (!filters.teamB) { setTeamBPlayers([]); return; }
-    fetch(`/api/production/filters?teamId=${filters.teamB}`)
+    fetch(`/api/production/filters?format=json&teamId=${filters.teamB}`)
       .then(r => r.json()).then(j => { if (j.success) setTeamBPlayers(j.data.players || []); })
       .catch(() => {});
   }, [filters.teamB]);
@@ -444,7 +439,7 @@ export default function ProductionHub() {
   const fetchPreview = useCallback(async (url: string, cardId: string) => {
     if (previewId === cardId) { setPreviewId(null); setPreviewData(null); return; }
     setPreviewId(cardId); setPreviewLoading(true);
-    try { const r = await fetch(url); setPreviewData(await r.json()); } catch { setPreviewData({ error: 'Failed' }); }
+    try { const r = await fetch(url); setPreviewData(await r.text()); } catch { setPreviewData('Error: Failed to fetch'); }
     finally { setPreviewLoading(false); }
   }, [previewId]);
 
@@ -733,10 +728,54 @@ export default function ProductionHub() {
                           {url}
                         </div>
                         {isPrev && (
-                          <div className="bg-muted/10 border border-border/20 rounded-lg p-3 max-h-60 overflow-auto">
+                          <div className="bg-muted/10 border border-border/20 rounded-lg overflow-hidden">
                             {previewLoading
-                              ? <div className="flex items-center gap-2 text-xs text-muted-foreground/60"><RefreshCw className="h-3 w-3 animate-spin" />Loading...</div>
-                              : <pre className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap leading-relaxed">{JSON.stringify(previewData, null, 2)?.substring(0, 3000)}{(JSON.stringify(previewData, null, 2)?.length || 0) > 3000 && '\n... (truncated)'}</pre>}
+                              ? <div className="flex items-center gap-2 text-xs text-muted-foreground/60 p-3"><RefreshCw className="h-3 w-3 animate-spin" />Loading...</div>
+                              : previewData ? (() => {
+                                const csvText = typeof previewData === 'string' ? previewData : String(previewData);
+                                const csvRows = csvText.split(/\r?\n/).filter(r => r.trim());
+                                const parsed = csvRows.map(r => {
+                                  const cols: string[] = [];
+                                  let current = '';
+                                  let inQuotes = false;
+                                  for (let i = 0; i < r.length; i++) {
+                                    if (r[i] === '"') { inQuotes = !inQuotes; }
+                                    else if (r[i] === ',' && !inQuotes) { cols.push(current); current = ''; }
+                                    else { current += r[i]; }
+                                  }
+                                  cols.push(current);
+                                  return cols;
+                                });
+                                return (
+                                  <div className="max-h-72 overflow-auto">
+                                    <table className="w-full text-[11px] border-collapse">
+                                      <tbody>
+                                        {parsed.map((cols, ri) => {
+                                          const isEmpty = cols.every(c => !c.trim());
+                                          if (isEmpty) return <tr key={ri} className="h-3" />;
+                                          const isHeader = ri === 0;
+                                          return (
+                                            <tr key={ri} className={cn(
+                                              isHeader ? 'bg-primary/10 font-semibold text-foreground/90' : 'hover:bg-muted/30',
+                                              ri > 0 && ri % 2 === 0 && 'bg-muted/10'
+                                            )}>
+                                              {cols.map((c, ci) => (
+                                                <td key={ci} className={cn(
+                                                  'px-2 py-1 whitespace-nowrap border-b border-border/10',
+                                                  !c.trim() && 'opacity-0',
+                                                  ci === 0 && 'sticky left-0 bg-inherit z-10'
+                                                )}>
+                                                  {c || '\u00A0'}
+                                                </td>
+                                              ))}
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                );
+                              })() : <div className="text-xs text-muted-foreground/50 p-3">No data</div>}
                           </div>
                         )}
                       </div>

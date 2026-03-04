@@ -18,6 +18,7 @@ import { getActiveMlbbMaps } from '@/actions/mlbb-maps';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { getActiveApiExports, setActiveApiExportMatch } from '@/actions/active-api-exports';
 import {
   ArrowLeft,
   Calendar,
@@ -37,11 +38,14 @@ import {
   Info,
   Timer,
   ExternalLink,
-  Video
+  Video,
+  Link2,
+  Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 // Status badge config
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
@@ -70,6 +74,7 @@ export default function LeagueOperatorMatchDetailsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingActive, setIsSettingActive] = useState(false);
 
   const { data: match, isLoading, error } = useMatchByIdWithFullDetails(matchId);
 
@@ -101,6 +106,34 @@ export default function LeagueOperatorMatchDetailsPage() {
     },
     enabled: isMlbb,
   });
+
+  // Fetch active exports
+  const { data: activeExports = [] } = useQuery({
+    queryKey: ['active-api-exports'],
+    queryFn: async () => {
+      const result = await getActiveApiExports();
+      return result.success ? result.data : [];
+    }
+  });
+
+  const activeMapVetoMatchId = activeExports.find((e: any) => e.title === 'valorant-map-veto')?.match_id;
+
+  const handleSetActiveMapVetoExport = async () => {
+    setIsSettingActive(true);
+    try {
+      const result = await setActiveApiExportMatch('valorant-map-veto', matchId);
+      if (result.success) {
+        toast.success('Active map veto export updated');
+        queryClient.invalidateQueries({ queryKey: ['active-api-exports'] });
+      } else {
+        toast.error(result.error || 'Failed to update active export');
+      }
+    } catch {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSettingActive(false);
+    }
+  };
 
   if (isLoading) {
     return <MatchDetailSkeleton />;
@@ -475,6 +508,39 @@ export default function LeagueOperatorMatchDetailsPage() {
       {/* ── Map Veto Section ── */}
       {isValorant && team1?.schools_teams && team2?.schools_teams && (
         <div className="space-y-4">
+          {/* ── API Export Link (Map Veto) ── */}
+          <div className="rounded-xl border bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                API Export (Map Veto)
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground mr-1">
+                  {activeMapVetoMatchId === matchId ? 'Active' : 'Inactive'}
+                </span>
+                <Switch
+                  checked={activeMapVetoMatchId === matchId}
+                  onCheckedChange={handleSetActiveMapVetoExport}
+                  disabled={isSettingActive}
+                  title="Set this match as the active map veto for API exports"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
+                {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/valorant-map-veto`}
+              </code>
+              <Button variant="outline" size="sm" onClick={() => {
+                navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/valorant-map-veto`);
+                toast.success('Map Veto API link copied to clipboard');
+              }}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                Copy
+              </Button>
+            </div>
+          </div>
+
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Swords className="h-5 w-5" />
             Map Veto

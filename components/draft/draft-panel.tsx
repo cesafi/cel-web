@@ -108,7 +108,7 @@ const roleTextColors: Record<string, string> = {
 
 // Standard MLBB role mapping for auto-fill
 const MLBB_SLOT_ROLES = ['Fighter', 'Marksman', 'Mage', 'Assassin', 'Tank'];
-const MLBB_SLOT_LABELS = ['EXP', 'GOLD', 'MID', 'JUNGLE', 'ROAM'];
+const MLBB_SLOT_LABELS = ['EXP', 'Gold', 'Mid', 'Jungle', 'Roam'];
 
 export function DraftPanel({
     gameId,
@@ -324,7 +324,7 @@ export function DraftPanel({
     };
 
     // VALO free-pick handler
-    const handleValorantPick = (teamId: string, character: GameCharacter, slotIndex: number) => {
+    const handleValorantPick = async (teamId: string, character: GameCharacter, slotIndex: number) => {
         if (!isAdmin) return;
         // Use the actual slot index so the agent lands in the correct slot
         const sortOrder = slotIndex + 1;
@@ -338,6 +338,18 @@ export function DraftPanel({
             sort_order: (teamId === team1.id ? 0 : 100) + sortOrder,
             is_locked: true
         });
+
+        // Also update the roster with the new agent's role if a player is already assigned
+        const teamRoster = teamId === team1.id ? team1Roster : team2Roster;
+        const existingEntry = teamRoster.find(r => r.sort_order === slotIndex);
+        if (existingEntry && character.role) {
+            assignPlayerMutation.mutate({
+                teamId: existingEntry.team_id,
+                playerId: existingEntry.player_id,
+                role: character.role,
+                sortOrder: existingEntry.sort_order
+            });
+        }
     };
 
     const handleCharacterSwap = (actionId: string, newCharacter: GameCharacter) => {
@@ -350,14 +362,69 @@ export function DraftPanel({
                 hero_id: newCharacter.id
             }
         });
+
+        if (isValorant && newCharacter.role) {
+            const action = actions.find(a => a.id === actionId);
+            if (action) {
+                // Determine slot index
+                const slotIndex = (action.sort_order % 100) - 1;
+                const teamRoster = action.team_id === team1.id ? team1Roster : team2Roster;
+                const existingEntry = teamRoster.find(r => r.sort_order === slotIndex);
+                if (existingEntry) {
+                    assignPlayerMutation.mutate({
+                        teamId: existingEntry.team_id,
+                        playerId: existingEntry.player_id,
+                        role: newCharacter.role,
+                        sortOrder: existingEntry.sort_order
+                    });
+                }
+            }
+        }
     };
 
-    const handleCharacterTrade = (action1Id: string, action2Id: string) => {
+    const handleCharacterTrade = async (action1Id: string, action2Id: string) => {
         if (!isAdmin) return;
         const action1 = actions.find(a => a.id === action1Id);
         const action2 = actions.find(a => a.id === action2Id);
         if (!action1 || !action2) return;
+        
         tradeActionMutation.mutate({ action1, action2 });
+
+        if (isValorant) {
+            // Also swap their roles in the roster
+            try {
+                const char1Role = characters.find(c => c.id === action1.hero_id)?.role;
+                const char2Role = characters.find(c => c.id === action2.hero_id)?.role;
+                
+                const slot1 = (action1.sort_order % 100) - 1;
+                const slot2 = (action2.sort_order % 100) - 1;
+                
+                const roster1 = action1.team_id === team1.id ? team1Roster : team2Roster;
+                const roster2 = action2.team_id === team1.id ? team1Roster : team2Roster;
+                
+                const entry1 = roster1.find(r => r.sort_order === slot1);
+                const entry2 = roster2.find(r => r.sort_order === slot2);
+
+                if (entry1 && char2Role) {
+                    assignPlayerMutation.mutate({
+                        teamId: entry1.team_id,
+                        playerId: entry1.player_id,
+                        role: char2Role,
+                        sortOrder: entry1.sort_order
+                    });
+                }
+                if (entry2 && char1Role) {
+                    assignPlayerMutation.mutate({
+                        teamId: entry2.team_id,
+                        playerId: entry2.player_id,
+                        role: char1Role,
+                        sortOrder: entry2.sort_order
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to update roles after trade", error);
+            }
+        }
     };
 
     // Smart Auto-Fill
@@ -387,7 +454,7 @@ export function DraftPanel({
                         game_id: gameId,
                         team_id: teamId,
                         player_id: matchingPlayer.id,
-                        player_role: isValorant ? (matchingPlayer.role || targetRole) : (MLBB_SLOT_LABELS[i] || targetRole),
+                        player_role: isValorant ? targetRole : (MLBB_SLOT_LABELS[i] || targetRole),
                         sort_order: i
                     });
                     assignedPlayerIds.add(matchingPlayer.id);
@@ -414,7 +481,7 @@ export function DraftPanel({
                         game_id: gameId,
                         team_id: teamId,
                         player_id: player.id,
-                        player_role: isValorant ? (player.role || 'Flex') : (MLBB_SLOT_LABELS[i] || 'Flex'),
+                        player_role: isValorant ? 'Flex' : (MLBB_SLOT_LABELS[i] || 'Flex'),
                         sort_order: i
                     });
                     filled++;
@@ -519,7 +586,12 @@ export function DraftPanel({
                         onPickAgent={(char, slot) => handleValorantPick(team1.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeAgent={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
-                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
+                        onAssignPlayer={(pid, role, idx) => {
+                            const pIndex = team1Roster.length > 0 ? (actions.find(a => a.action_type === 'pick' && a.team_id === team1.id && a.sort_order === idx + 1) ? idx + 1 : idx + 1) : idx + 1;
+                            const pick = actions.find(a => a.team_id === team1.id && a.action_type === 'pick' && a.sort_order === pIndex);
+                            const agentRole = pick ? characters.find(c => c.name === pick.hero_name)?.role : null;
+                            assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role: agentRole || 'Flex', sortOrder: idx });
+                        }}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
@@ -536,7 +608,12 @@ export function DraftPanel({
                         onPickAgent={(char, slot) => handleValorantPick(team2.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeAgent={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
-                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
+                        onAssignPlayer={(pid, role, idx) => {
+                            const pIndex = team2Roster.length > 0 ? (actions.find(a => a.action_type === 'pick' && a.team_id === team2.id && a.sort_order === idx + 101) ? idx + 101 : idx + 101) : idx + 101;
+                            const pick = actions.find(a => a.team_id === team2.id && a.action_type === 'pick' && a.sort_order === pIndex);
+                            const agentRole = pick ? characters.find(c => c.name === pick.hero_name)?.role : null;
+                            assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role: agentRole || 'Flex', sortOrder: idx });
+                        }}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
@@ -661,7 +738,7 @@ export function DraftPanel({
                         isAdmin={isAdmin}
                         onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeCharacter={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
-                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: leftTeam.id, playerId: pid, role, sortOrder: idx })}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: leftTeam.id, playerId: pid, role: MLBB_SLOT_LABELS[idx] || role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: leftTeam.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(leftTeam.id, leftTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
@@ -740,7 +817,7 @@ export function DraftPanel({
                         isAdmin={isAdmin}
                         onSwapCharacter={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeCharacter={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
-                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: rightTeam.id, playerId: pid, role, sortOrder: idx })}
+                        onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: rightTeam.id, playerId: pid, role: MLBB_SLOT_LABELS[idx] || role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: rightTeam.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(rightTeam.id, rightTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
@@ -927,6 +1004,7 @@ function ValorantTeamPanel({
                                             slotIndex={i}
                                             roster={roster}
                                             onAssign={onAssignPlayer}
+                                            slotRole={heroRole || undefined}
                                         />
                                     )
                                 )}
@@ -1021,12 +1099,13 @@ function CharacterPickerPopover({
 // ══════════════════════════════════
 
 function PlayerPickerPopover({
-    players, slotIndex, roster, onAssign
+    players, slotIndex, roster, onAssign, slotRole
 }: {
     players: { id: string; ign: string; role: string | null }[];
     slotIndex: number;
     roster: any[];
     onAssign: (playerId: string, role: string, sortOrder: number) => void;
+    slotRole?: string;
 }) {
     const [open, setOpen] = useState(false);
     const assignedIds = new Set(roster.map((r: any) => r.player_id));
@@ -1047,7 +1126,7 @@ function PlayerPickerPopover({
                             key={p.id}
                             className="w-full text-left text-xs px-2 py-1.5 hover:bg-muted rounded-md flex items-center justify-between"
                             onClick={() => {
-                                onAssign(p.id, p.role || 'Flex', slotIndex);
+                                onAssign(p.id, slotRole || p.role || 'Flex', slotIndex);
                                 setOpen(false);
                             }}
                         >
@@ -1309,6 +1388,7 @@ function MlbbTeamColumn({
                                         slotIndex={i}
                                         roster={roster}
                                         onAssign={onAssignPlayer}
+                                        slotRole={MLBB_SLOT_LABELS[i]}
                                     />
                                 )}
                             </div>
