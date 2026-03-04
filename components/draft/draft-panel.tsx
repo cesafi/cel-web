@@ -326,9 +326,8 @@ export function DraftPanel({
     // VALO free-pick handler
     const handleValorantPick = (teamId: string, character: GameCharacter, slotIndex: number) => {
         if (!isAdmin) return;
-        // Record as a pick action
-        const existingTeamPicks = actions.filter(a => a.team_id === teamId && a.action_type === 'pick');
-        const sortOrder = existingTeamPicks.length + 1;
+        // Use the actual slot index so the agent lands in the correct slot
+        const sortOrder = slotIndex + 1;
 
         submitActionMutation.mutate({
             game_id: gameId,
@@ -817,7 +816,8 @@ function ValorantTeamPanel({
             {/* Agent Slots */}
             <div className="p-4 space-y-2">
                 {slots.map((_, i) => {
-                    const pick = picks[i];
+                    const teamOffset = picks.length > 0 && picks[0]?.sort_order > 50 ? 100 : 0;
+                    const pick = picks.find(p => p.sort_order === teamOffset + i + 1);
                     const icon = pick ? getHeroIcon(pick.hero_name) : null;
                     const rosterEntry = roster.find(r => r.sort_order === i);
                     const playerDetails = rosterEntry ? players.find(p => p.id === rosterEntry.player_id) : null;
