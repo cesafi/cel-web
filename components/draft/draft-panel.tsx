@@ -507,7 +507,6 @@ export function DraftPanel({
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Team 1 */}
                     <ValorantTeamPanel
                         team={team1}
                         teamId={team1.id}
@@ -519,12 +518,12 @@ export function DraftPanel({
                         isAdmin={isAdmin}
                         onPickAgent={(char, slot) => handleValorantPick(team1.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
+                        onTradeAgent={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
-                    {/* Team 2 */}
                     <ValorantTeamPanel
                         team={team2}
                         teamId={team2.id}
@@ -536,6 +535,7 @@ export function DraftPanel({
                         isAdmin={isAdmin}
                         onPickAgent={(char, slot) => handleValorantPick(team2.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
+                        onTradeAgent={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
                         onAssignPlayer={(pid, role, idx) => assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role, sortOrder: idx })}
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
@@ -758,7 +758,7 @@ export function DraftPanel({
 
 function ValorantTeamPanel({
     team, teamId, picks, roster, players, characters, takenCharacters, isAdmin,
-    onPickAgent, onSwapAgent, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
+    onPickAgent, onSwapAgent, onTradeAgent, onAssignPlayer, onUnassignPlayer, onAutoFill, onAutoFillGame1
 }: {
     team: DraftPanelProps['team1'];
     teamId: string;
@@ -770,11 +770,13 @@ function ValorantTeamPanel({
     isAdmin: boolean;
     onPickAgent: (char: GameCharacter, slotIndex: number) => void;
     onSwapAgent: (actionId: string, char: GameCharacter) => void;
+    onTradeAgent?: (action1Id: string, action2Id: string) => void;
     onAssignPlayer: (playerId: string, role: string, sortOrder: number) => void;
     onUnassignPlayer: (sortOrder: number) => void;
     onAutoFill: () => void;
     onAutoFillGame1?: () => void;
 }) {
+    const [tradeTargetId, setTradeTargetId] = useState<string | null>(null);
     const slots = Array.from({ length: 5 });
 
     const getHeroIcon = (name: string) => characters.find(c => c.name === name)?.icon_url;
@@ -829,7 +831,7 @@ function ValorantTeamPanel({
                             <div className="flex-1">
                                 {pick ? (
                                     <div className={cn(
-                                        "flex items-center gap-3 p-2.5 rounded-lg border group relative",
+                                        "flex items-center gap-3 p-2.5 rounded-lg border group/pick relative",
                                         heroRole ? roleColors[heroRole]?.replace('/10', '/5') : 'bg-muted/30'
                                     )}>
                                         <LazyImage src={icon} alt={pick.hero_name} className="w-10 h-10 rounded-md" />
@@ -843,17 +845,48 @@ function ValorantTeamPanel({
                                         </div>
                                         {isAdmin && (
                                             <div className={cn(
-                                                "absolute inset-x-0 bottom-0 top-0 flex items-center justify-end px-2 bg-background/80 backdrop-blur-sm z-10 transition-all duration-200",
-                                                "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
+                                                "absolute inset-x-0 bottom-0 top-0 flex items-center justify-center gap-1 px-2 bg-background/80 backdrop-blur-sm z-10 transition-all duration-200",
+                                                tradeTargetId ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover/pick:opacity-100 group-hover/pick:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto"
                                             )}>
-                                                <CharacterPickerPopover
-                                                    slotIndex={i}
-                                                    characters={characters}
-                                                    takenCharacters={takenCharacters}
-                                                    isAdmin={isAdmin}
-                                                    onPick={(char) => onSwapAgent(pick.id, char)}
-                                                    isSwapMode={true}
-                                                />
+                                                {tradeTargetId && tradeTargetId !== pick.id ? (
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="h-7 text-xs px-2 shadow-sm rounded-md"
+                                                        onClick={() => {
+                                                            onTradeAgent?.(tradeTargetId, pick.id);
+                                                            setTradeTargetId(null);
+                                                        }}
+                                                    >
+                                                        Swap Here
+                                                    </Button>
+                                                ) : (
+                                                    <CharacterPickerPopover
+                                                        slotIndex={i}
+                                                        characters={characters}
+                                                        takenCharacters={takenCharacters}
+                                                        isAdmin={isAdmin}
+                                                        onPick={(char) => onSwapAgent(pick.id, char)}
+                                                        isSwapMode={true}
+                                                    />
+                                                )}
+
+                                                {/* Only show Swap/Cancel on the initiating pick or when no trade is active */}
+                                                {(!tradeTargetId || tradeTargetId === pick.id) && (
+                                                    <Button
+                                                        variant={tradeTargetId === pick.id ? "secondary" : "outline"}
+                                                        size="sm"
+                                                        className={cn(
+                                                            "h-7 text-xs px-2 shadow-sm rounded-md",
+                                                            tradeTargetId === pick.id
+                                                                ? ""
+                                                                : "border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                                        )}
+                                                        onClick={() => setTradeTargetId(tradeTargetId === pick.id ? null : pick.id)}
+                                                    >
+                                                        {tradeTargetId === pick.id ? "Cancel" : "Swap"}
+                                                    </Button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -16,7 +16,8 @@ import {
   Copy,
   ExternalLink,
   ArrowLeftRight,
-  Trash2
+  Trash2,
+  Undo2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ import {
   getValorantMapVetoesByMatchId,
   createValorantMapVeto,
   deleteValorantMapVetoesByMatchId,
+  deleteValorantMapVetoById,
   updateValorantMapVetoById
 } from '@/actions/valorant-map-vetoes';
 import { performPublicVeto, selectPublicVetoSide } from '@/actions/veto-public';
@@ -259,6 +261,27 @@ export function MapVetoPanel({
     await selectSideMutation.mutateAsync({ vetoId, side });
   };
 
+  // Undo last veto mutation
+  const undoVetoMutation = useMutation({
+    mutationFn: async () => {
+      if (vetoes.length === 0) throw new Error('No vetoes to undo');
+      const lastVeto = vetoes[vetoes.length - 1] as ValorantMapVetoWithTeam;
+      // If the last veto has a pending side selection, clear the side instead of deleting
+      if ((lastVeto.action === 'pick' || lastVeto.action === 'remain') && lastVeto.side_selected) {
+        const result = await updateValorantMapVetoById({ id: lastVeto.id, side_selected: null });
+        if (!result.success) throw new Error(result.error);
+        return result;
+      }
+      const result = await deleteValorantMapVetoById(lastVeto.id);
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['valorant-map-vetoes', matchId] });
+      toast.success('Last veto undone');
+    },
+  });
+
   // Reset veto mutation
   const resetVetoMutation = useMutation({
     mutationFn: async () => {
@@ -365,7 +388,7 @@ export function MapVetoPanel({
 
   let sequenceTeam1Id = team1.id;
   let sequenceTeam2Id = team2.id;
-  
+
   if (coinTossWinnerId) {
     if (tossWinnerChoice === 'team1') {
       sequenceTeam1Id = coinTossWinnerId;
@@ -515,6 +538,15 @@ export function MapVetoPanel({
             >
               <Copy className="w-4 h-4 mr-2" />
               {team2.abbreviation} Link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => undoVetoMutation.mutate()}
+              disabled={undoVetoMutation.isPending || vetoes.length === 0}
+            >
+              <Undo2 className="w-4 h-4 mr-2" />
+              Undo
             </Button>
             <Button
               variant="outline"
