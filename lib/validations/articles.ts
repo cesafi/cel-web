@@ -49,7 +49,7 @@ export const createArticleSchema = z.object({
     .min(1, { message: 'Article title is required.' })
     .max(255, { message: 'Title cannot exceed 255 characters.' }),
   content: ArticleContentSchema,
-  cover_image_url: z.string().min(1, { message: 'Cover image URL is required.' }),
+  cover_image_url: z.string().nullable().optional(),
   authored_by: z.string().min(1, { message: 'Author is required.' }),
   slug: z.string().min(1, { message: 'Slug is required.' }),
   status: z
@@ -77,7 +77,7 @@ export const updateArticleSchema = z.object({
     .max(255, { message: 'Title cannot exceed 255 characters.' })
     .optional(),
   content: ArticleContentSchema.optional(),
-  cover_image_url: z.string().optional(),
+  cover_image_url: z.string().nullable().optional(),
   authored_by: z.string().min(1, { message: 'Author cannot be empty.' }).optional(),
   slug: z.string().min(1, { message: 'Slug cannot be empty.' }).optional(),
   status: z

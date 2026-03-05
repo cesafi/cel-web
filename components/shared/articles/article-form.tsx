@@ -367,7 +367,7 @@ export function ArticleForm({
                   onUpload={(url) => setFormData((prev) => ({ ...prev, cover_image_url: url }))}
                   onRemove={() => setFormData((prev) => ({ ...prev, cover_image_url: '' }))}
                   preset="ARTICLE_COVER"
-                  currentImageUrl={formData.cover_image_url}
+                  currentImageUrl={formData.cover_image_url || ''}
                   placeholder="Upload article cover image"
                   description="Upload a cover image for your article (16:9 aspect ratio recommended)"
                   required={false}

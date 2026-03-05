@@ -54,7 +54,7 @@ export type Database = {
         Row: {
           authored_by: string
           content: Json
-          cover_image_url: string
+          cover_image_url: string | null
           created_at: string
           id: string
           published_at: string | null
@@ -66,7 +66,7 @@ export type Database = {
         Insert: {
           authored_by: string
           content: Json
-          cover_image_url: string
+          cover_image_url?: string | null
           created_at?: string
           id?: string
           published_at?: string | null
@@ -78,7 +78,7 @@ export type Database = {
         Update: {
           authored_by?: string
           content?: Json
-          cover_image_url?: string
+          cover_image_url?: string | null
           created_at?: string
           id?: string
           published_at?: string | null
@@ -1443,6 +1443,7 @@ export type Database = {
           season_id: number | null
           stage_id: number | null
           total_assists: number | null
+          total_bans: number | null
           total_deaths: number | null
           total_kills: number | null
           total_picks: number | null
