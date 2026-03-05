@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GameDraftService } from '@/services/game-draft';
 import { GameRosterService } from '@/services/game-roster';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getMatchWeekAndDay } from '@/services/schedule-utils';
 
 // ── CSV helpers ──
 const escapeCsv = (v: any): string => {
@@ -38,7 +39,7 @@ export async function GET(
             .select(`
                 *,
                 match:matches(
-                    id, stage_id, best_of,
+                    id, stage_id, best_of, scheduled_at,
                     match_participants(team_id, match_score, team:schools_teams(id, name, school:schools(abbreviation, name))),
                     esports_seasons_stages(season_id, competition_stage, esports_categories(esports(name)))
                 ),
@@ -99,10 +100,16 @@ export async function GET(
         // ── 5. Context info ──
         const esportName = (game.match as any)?.esports_seasons_stages?.esports_categories?.esports?.name || '';
         const seasonId = (game.match as any)?.esports_seasons_stages?.season_id;
+        const scheduledAt = (game.match as any)?.scheduled_at || null;
         const isValorant = esportName.toLowerCase().includes('valorant');
         const mapName = game.mlbb_map?.name || game.valorant_map?.name || N;
         const gameNumber = game.game_number || 1;
         const bestOf = (game.match as any)?.best_of || 3;
+        
+        let matchWeekAndDay = 'None';
+        if (seasonId) {
+            matchWeekAndDay = await getMatchWeekAndDay((game.match as any).id, seasonId, scheduledAt);
+        }
 
         // ── 6. Draft actions split by side ──
         const actions = (draftRes.data || []) as any[];
@@ -194,8 +201,8 @@ export async function GET(
             } catch (e) { console.warn('Team hero stats error:', e); }
         }
 
-        // ── 10. Ban history from previous games ──
-        let banHistory: { blueBans: string[]; redBans: string[] }[] = [];
+        // ── 10. Draft history from previous games ──
+        let draftHistory: { blueBans: string[]; redBans: string[]; bluePicks: string[]; redPicks: string[] }[] = [];
         if (game.match_id) {
             try {
                 const { data: allGames } = await supabase
@@ -213,7 +220,7 @@ export async function GET(
                         .from('game_draft_actions')
                         .select('game_id, team_id, action_type, hero_name, sort_order')
                         .in('game_id', otherGameIds)
-                        .eq('action_type', 'ban')
+                        .in('action_type', ['ban', 'pick'])
                         .order('sort_order', { ascending: true });
 
                     // Group by game
@@ -226,13 +233,17 @@ export async function GET(
                     // Map game_id to game_number for ordering
                     const gameOrder = (allGames || []).filter((g: any) => g.id !== gameId);
                     for (const g of gameOrder) {
-                        const draftBans = byGame[g.id] || [];
+                        const gameDrafts = byGame[g.id] || [];
                         // Determine which team was blue/red in that game (approximate: use same blueId/redId)
-                        const bBans = draftBans.filter((d: any) => d.team_id === blueId).map((d: any) => d.hero_name || N);
-                        const rBans = draftBans.filter((d: any) => d.team_id === redId).map((d: any) => d.hero_name || N);
-                        banHistory.push({
+                        const bBans = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'ban').map((d: any) => d.hero_name || N);
+                        const rBans = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'ban').map((d: any) => d.hero_name || N);
+                        const bPicks = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'pick').map((d: any) => d.hero_name || N);
+                        const rPicks = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'pick').map((d: any) => d.hero_name || N);
+                        draftHistory.push({
                             blueBans: pad5(bBans),
                             redBans: pad5(rBans),
+                            bluePicks: pad5(bPicks),
+                            redPicks: pad5(rPicks),
                         });
                     }
                 }
@@ -298,8 +309,8 @@ export async function GET(
         // ═══════════════════════════════════════════
         let csv = '';
 
-        // Row 1: BLUE,,,,,,,MLBB DRAFTING,,,,,,,RED
-        csv += row(['BLUE', '', '', '', '', '', '', isValorant ? 'VALORANT DRAFTING' : 'MLBB DRAFTING', '', '', '', '', '', '', 'RED']);
+        // Row 1: BLUE,,,,,,,MLBB DRAFTING,WEEK X DAY Y,,,,,,RED
+        csv += row(['BLUE', '', '', '', '', '', '', isValorant ? 'VALORANT DRAFTING' : 'MLBB DRAFTING', matchWeekAndDay, '', '', '', '', '', 'RED']);
 
         // Row 2: SCHOOL ABBREVIATION,,,,,,SCORE,BO3,SCORE,,,,,,SCHOOL ABBREVIATION
         csv += row([blueAbbr, '', '', '', '', '', 'SCORE', `BO${bestOf}`, 'SCORE', '', '', '', '', '', redAbbr]);
@@ -345,15 +356,18 @@ export async function GET(
         csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
         csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
 
-        // Rows 18-20: Ban history (GAME 1 BAN, GAME 2 BAN, GAME 3 BAN)
+        // Rows 18+: Draft history (GAME 1 BAN, GAME 1 PICK, GAME 2 BAN, GAME 2 PICK, etc)
         const totalGames = bestOf || 3;
         for (let i = 1; i <= totalGames; i++) {
-            const hist = banHistory[i - 1];
-            const label = `GAME ${i} BAN`;
+            const hist = draftHistory[i - 1];
+            const banLabel = `GAME ${i} BAN`;
+            const pickLabel = `GAME ${i} PICK`;
             if (hist) {
-                csv += row([label, ...hist.blueBans, '', '', '', ...rev(hist.redBans), label]);
+                csv += row([banLabel, ...hist.blueBans, '', '', '', ...rev(hist.redBans), banLabel]);
+                csv += row([pickLabel, ...hist.bluePicks, '', '', '', ...rev(hist.redPicks), pickLabel]);
             } else {
-                csv += row([label, N, N, N, N, N, '', '', '', N, N, N, N, N, label]);
+                csv += row([banLabel, N, N, N, N, N, '', '', '', N, N, N, N, N, banLabel]);
+                csv += row([pickLabel, N, N, N, N, N, '', '', '', N, N, N, N, N, pickLabel]);
             }
         }
 

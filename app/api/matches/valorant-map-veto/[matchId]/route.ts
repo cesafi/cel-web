@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getMatchWeekAndDay } from '@/services/schedule-utils';
 
 // ── CSV helpers ──
 const escapeCsv = (v: any): string => {
@@ -42,7 +43,7 @@ export async function GET(
         const { data: match, error: matchError } = await supabase
             .from('matches')
             .select(`
-                id, best_of, coin_toss_winner_id, coin_toss_result, stage_id,
+                id, best_of, coin_toss_winner_id, coin_toss_result, stage_id, scheduled_at,
                 match_participants(id, team_id, match_score, team:schools_teams(id, name, school:schools(abbreviation, name))),
                 esports_seasons_stages(season_id)
             `)
@@ -52,6 +53,11 @@ export async function GET(
         if (matchError || !match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
 
         const seasonId = (match as any).esports_seasons_stages?.season_id;
+        const scheduledAt = match.scheduled_at || null;
+        let matchWeekAndDay = 'None';
+        if (seasonId) {
+            matchWeekAndDay = await getMatchWeekAndDay(match.id, seasonId, scheduledAt);
+        }
 
         // ── 2. Teams ──
         const parts = match.match_participants || [];
@@ -254,8 +260,8 @@ export async function GET(
         // ═══════════════════════════════════════════
         let csv = '';
 
-        // Row 1: BLUE,,,,,,,VALORANT MAP VETO,,,,,,,RED
-        csv += row(['BLUE', '', '', '', '', '', '', 'VALORANT MAP VETO', '', '', '', '', '', '', 'RED']);
+        // Row 1: BLUE,,,,,,,VALORANT MAP VETO,WEEK X DAY Y,,,,,RED
+        csv += row(['BLUE', '', '', '', '', '', '', 'VALORANT MAP VETO', matchWeekAndDay, '', '', '', '', '', 'RED']);
 
         // Row 2: SCHOOL ABBREVIATION,,,,,,COIN TOSS WINNER,BO{n},SIDE CHOSEN,,,,,,SCHOOL ABBREVIATION
         csv += row([blueAbbr, '', '', '', '', '', 'COIN TOSS WINNER', `BO${bestOf}`, 'SIDE CHOSEN', '', '', '', '', '', redAbbr]);

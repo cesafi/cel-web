@@ -4,6 +4,7 @@ import { StatsValorantService } from '@/services/stats-valorant';
 import { GameDraftService } from '@/services/game-draft';
 import { GameRosterService } from '@/services/game-roster';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getMatchWeekAndDay } from '@/services/schedule-utils';
 
 // ── CSV helpers ──
 const escapeCsv = (v: any): string => {
@@ -43,7 +44,7 @@ export async function GET(
             .select(`
                 *,
                 match:matches(
-                    id, stage_id, best_of,
+                    id, stage_id, best_of, scheduled_at,
                     match_participants(id, team_id, match_score, team:schools_teams(id, name, school:schools(abbreviation, name))),
                     esports_seasons_stages(season_id, competition_stage, esports_categories(esports(name)))
                 ),
@@ -112,6 +113,13 @@ export async function GET(
         const mapName = game.mlbb_map?.name || game.valorant_map?.name || N;
         const gameNumber = game.game_number || 1;
         const bestOf = (game.match as any)?.best_of || 3;
+        
+        const seasonId = (game.match as any)?.esports_seasons_stages?.season_id;
+        const scheduledAt = (game.match as any)?.scheduled_at || null;
+        let matchWeekAndDay = 'None';
+        if (seasonId) {
+            matchWeekAndDay = await getMatchWeekAndDay((game.match as any).id, seasonId, scheduledAt);
+        }
 
         // ── 6. Roster ──
         const roster: Record<string, Record<number, { ign: string; role: string }>> = {};
@@ -196,8 +204,8 @@ export async function GET(
 
         if (isValorant) {
             // ─── VALORANT: 15 columns (A–O) ───
-            // Row 1: BLUE,,,,,,,VALO GAME RESULTS,,,,,,,RED
-            csv += row(['BLUE', '', '', '', '', '', '', 'VALO GAME RESULTS', '', '', '', '', '', '', 'RED']);
+            // Row 1: BLUE,,,,,,,VALO GAME RESULTS,WEEK X DAY Y,,,,,,RED
+            csv += row(['BLUE', '', '', '', '', '', '', 'VALO GAME RESULTS', matchWeekAndDay, '', '', '', '', '', 'RED']);
 
             // Row 2: SCHOOL ABBREVIATION,,,,,,SCORE,BO3,SCORE,,,,,,SCHOOL ABBREVIATION
             csv += row([blueAbbr, '', '', '', '', '', 'SCORE', `BO${bestOf}`, 'SCORE', '', '', '', '', '', redAbbr]);
@@ -271,8 +279,8 @@ export async function GET(
 
         } else {
             // ─── MLBB: 17 columns (A–Q, extra 2 empty trailing) ───
-            // Row 1: BLUE,,,,,,,MLBB DRAFTING,,,,,,,RED,,
-            csv += row(['BLUE', '', '', '', '', '', '', 'MLBB GAME RESULTS', '', '', '', '', '', '', 'RED', '', '']);
+            // Row 1: BLUE,,,,,,,MLBB GAME RESULTS,WEEK X DAY Y,,,,,RED,,
+            csv += row(['BLUE', '', '', '', '', '', '', 'MLBB GAME RESULTS', matchWeekAndDay, '', '', '', '', '', 'RED', '', '']);
 
             // Row 2: SCHOOL ABBREVIATION,,,,,,SCORE,BO3,SCORE,,,,,,SCHOOL ABBREVIATION,,
             csv += row([blueAbbr, '', '', '', '', '', 'SCORE', `BO${bestOf}`, 'SCORE', '', '', '', '', '', redAbbr, '', '']);
