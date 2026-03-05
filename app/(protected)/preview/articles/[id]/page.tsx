@@ -94,6 +94,7 @@ export default function ArticlePreviewPage() {
     readTime: readTimeResult.formattedTime,
     wordCount: readTimeResult.words,
     image: article.cover_image_url || '/img/cesafi-banner.jpg',
+    coverPosition: article.cover_image_position as { x: number; y: number; scale: number } | null,
     tags: (article.content as { tags?: string[] })?.tags || [],
     status: article.status
   };
@@ -150,6 +151,11 @@ export default function ArticlePreviewPage() {
             alt={displayArticle.title} 
             fill 
             className="object-cover" 
+            style={displayArticle.coverPosition ? {
+              objectPosition: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
+              transform: `scale(${displayArticle.coverPosition.scale})`,
+              transformOrigin: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
+            } : undefined}
             priority 
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />

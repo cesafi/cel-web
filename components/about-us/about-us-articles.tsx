@@ -51,7 +51,8 @@ export default async function AboutUsArticles() {
               publishedAt: article.published_at || article.created_at,
               category: (article.content as { category?: string })?.category || 'General',
               readTime: readTimeResult.formattedTime,
-              image: article.cover_image_url || '/img/cesafi-banner.jpg'
+              image: article.cover_image_url || '/img/cesafi-banner.jpg',
+              coverPosition: article.cover_image_position as { x: number; y: number; scale: number } | null
             };
 
             return (

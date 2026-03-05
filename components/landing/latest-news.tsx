@@ -26,6 +26,7 @@ export default function LatestNews({ initialArticles }: LatestNewsProps) {
       category: (article.content as { category?: string })?.category || 'General',
       readTime: readTimeResult.formattedTime,
       image: article.cover_image_url || '/img/cesafi-banner.jpg',
+      coverPosition: article.cover_image_position as { x: number; y: number; scale: number } | null,
       featured: (article.content as { featured?: boolean })?.featured || index === 0,
       viewCount: article.view_count
     };

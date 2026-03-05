@@ -27,7 +27,7 @@ export default function SchoolsGrid({ schools }: SchoolsGridProps) {
     <section id="schools-section" className="relative bg-background pt-16 pb-12 overflow-hidden transition-colors duration-300">
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16 md:mb-20">
-          <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
+          <h2 className={`${moderniz.className} text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
             Participating <span className="text-gradient-cel">Schools</span>
           </h2>
           <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>

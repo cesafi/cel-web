@@ -83,6 +83,7 @@ export type Database = {
         Row: {
           authored_by: string
           content: Json
+          cover_image_position: Json | null
           cover_image_url: string | null
           created_at: string
           id: string
@@ -96,6 +97,7 @@ export type Database = {
         Insert: {
           authored_by: string
           content: Json
+          cover_image_position?: Json | null
           cover_image_url?: string | null
           created_at?: string
           id?: string
@@ -109,6 +111,7 @@ export type Database = {
         Update: {
           authored_by?: string
           content?: Json
+          cover_image_position?: Json | null
           cover_image_url?: string | null
           created_at?: string
           id?: string

@@ -20,6 +20,7 @@ import { ZodError } from 'zod';
 import { LexicalEditor } from '@/components/shared/articles/lexical-editor';
 import { DateTimeInput } from '@/components/ui/datetime-input';
 import { ImageUpload } from '@/components/shared/image-upload';
+import { CoverImageAdjuster, CoverImagePosition } from '@/components/shared/articles/cover-image-adjuster';
 import slugify from 'slugify';
 import { ArrowLeft, Save } from 'lucide-react';
 
@@ -48,6 +49,7 @@ export function ArticleForm({
         title: article.title,
         content: article.content,
         cover_image_url: article.cover_image_url,
+        cover_image_position: article.cover_image_position as CoverImagePosition | null,
         authored_by: article.authored_by,
         slug: article.slug,
         status: article.status,
@@ -58,6 +60,7 @@ export function ArticleForm({
         title: '',
         content: {},
         cover_image_url: '',
+        cover_image_position: null,
         authored_by: '',
         slug: '',
         status: 'review',
@@ -76,6 +79,7 @@ export function ArticleForm({
         title: article.title,
         content: article.content || {},
         cover_image_url: article.cover_image_url,
+        cover_image_position: article.cover_image_position as CoverImagePosition | null,
         authored_by: article.authored_by,
         status: article.status,
         published_at: article.published_at || null
@@ -86,6 +90,7 @@ export function ArticleForm({
         title: '',
         content: {},
         cover_image_url: '',
+        cover_image_position: null,
         authored_by: '',
         slug: '',
         status: 'review',
@@ -365,7 +370,7 @@ export function ArticleForm({
               <CardContent className="space-y-4">
                 <ImageUpload
                   onUpload={(url) => setFormData((prev) => ({ ...prev, cover_image_url: url }))}
-                  onRemove={() => setFormData((prev) => ({ ...prev, cover_image_url: '' }))}
+                  onRemove={() => setFormData((prev) => ({ ...prev, cover_image_url: '', cover_image_position: null }))}
                   preset="ARTICLE_COVER"
                   currentImageUrl={formData.cover_image_url || ''}
                   placeholder="Upload article cover image"
@@ -373,6 +378,13 @@ export function ArticleForm({
                   required={false}
                   error={errors.cover_image_url}
                 />
+                {formData.cover_image_url && (
+                  <CoverImageAdjuster
+                    imageUrl={formData.cover_image_url}
+                    position={(formData as Record<string, unknown>).cover_image_position as CoverImagePosition | null}
+                    onChange={(position) => setFormData((prev) => ({ ...prev, cover_image_position: position }))}
+                  />
+                )}
               </CardContent>
             </Card>
 

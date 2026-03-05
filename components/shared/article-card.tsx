@@ -22,6 +22,7 @@ interface ArticleCardProps {
     category?: string;
     readTime?: string;
     image: string;
+    coverPosition?: { x: number; y: number; scale: number } | null;
     featured?: boolean;
     viewCount?: number;
   };
@@ -45,6 +46,11 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                 alt={article.title}
                 fill
                 className="object-cover"
+                style={article.coverPosition ? {
+                  objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                  transform: `scale(${article.coverPosition.scale})`,
+                  transformOrigin: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                } : undefined}
               />
               <div className="absolute top-4 left-4">
                 <Badge className="bg-primary text-primary-foreground">
@@ -104,6 +110,9 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                 alt={article.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-200"
+                style={article.coverPosition ? {
+                  objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                } : undefined}
               />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -147,6 +156,11 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
             alt={article.title}
             fill
             className="object-cover"
+            style={article.coverPosition ? {
+              objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+              transform: `scale(${article.coverPosition.scale})`,
+              transformOrigin: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+            } : undefined}
           />
         </div>
         <CardContent className="p-6 flex flex-col h-[calc(100%-12rem)]">

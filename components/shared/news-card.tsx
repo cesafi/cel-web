@@ -30,7 +30,8 @@ export default function NewsCard({ article, index, className = '' }: NewsCardPro
     publishedAt: article.published_at || article.created_at,
     author: article.authored_by || 'CESAFI Media Team',
     category: (article.content as { category?: string })?.category || 'General',
-    readTime: readTimeResult.formattedTime
+    readTime: readTimeResult.formattedTime,
+    coverPosition: article.cover_image_position as { x: number; y: number; scale: number } | null
   };
 
   return (
@@ -49,6 +50,11 @@ export default function NewsCard({ article, index, className = '' }: NewsCardPro
             alt={newsArticle.title}
             fill
             className="object-cover"
+            style={newsArticle.coverPosition ? {
+              objectPosition: `${newsArticle.coverPosition.x}% ${newsArticle.coverPosition.y}%`,
+              transform: `scale(${newsArticle.coverPosition.scale})`,
+              transformOrigin: `${newsArticle.coverPosition.x}% ${newsArticle.coverPosition.y}%`,
+            } : undefined}
           />
         </div>
         <CardContent className="p-6 flex flex-col h-[calc(100%-12rem)]">

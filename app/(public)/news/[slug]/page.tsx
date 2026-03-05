@@ -78,6 +78,7 @@ export default function NewsArticlePage() {
     readTime: readTimeResult.formattedTime,
     wordCount: readTimeResult.words,
     image: article.cover_image_url || '/img/cesafi-banner.jpg',
+    coverPosition: article.cover_image_position as { x: number; y: number; scale: number } | null,
     tags: (article.content as { tags?: string[] })?.tags || []
   };
 
@@ -94,6 +95,11 @@ export default function NewsArticlePage() {
             alt={displayArticle.title}
             fill
             className="object-cover"
+            style={displayArticle.coverPosition ? {
+              objectPosition: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
+              transform: `scale(${displayArticle.coverPosition.scale})`,
+              transformOrigin: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
+            } : undefined}
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -259,6 +265,7 @@ export default function NewsArticlePage() {
                   category:
                     (relatedArticle.content as { category?: string })?.category || 'General',
                   image: relatedArticle.cover_image_url || '/img/cesafi-banner.jpg',
+                  coverPosition: relatedArticle.cover_image_position as { x: number; y: number; scale: number } | null,
                   publishedAt: relatedArticle.published_at || relatedArticle.created_at
                 };
 
@@ -277,6 +284,11 @@ export default function NewsArticlePage() {
                           alt={relatedDisplayArticle.title}
                           fill
                           className="object-cover"
+                          style={relatedDisplayArticle.coverPosition ? {
+                            objectPosition: `${relatedDisplayArticle.coverPosition.x}% ${relatedDisplayArticle.coverPosition.y}%`,
+                            transform: `scale(${relatedDisplayArticle.coverPosition.scale})`,
+                            transformOrigin: `${relatedDisplayArticle.coverPosition.x}% ${relatedDisplayArticle.coverPosition.y}%`,
+                          } : undefined}
                         />
                       </div>
                       <CardContent className="p-6">
