@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, MapPin, Play, Trophy } from 'lucide-react';
+import { Flame, MapPin, Play, Trophy, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { ScheduleMatch } from '@/lib/types/matches';
 import { determineWinner } from './utils';
@@ -217,7 +217,10 @@ export default function MatchCard({ match }: MatchCardProps) {
                 <span className="text-xs font-semibold uppercase tracking-wider text-red-500">Live</span>
               </div>
             ) : isFinished ? (
-              <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-muted-foreground">completed</span>
+              <div className="flex items-center justify-end gap-1 text-muted-foreground group-hover:text-primary transition-colors">
+                <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider hidden sm:inline">Match Details</span>
+                <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </div>
             ) : (
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">{match.displayTime || 'TBD'}</span>
             )}
