@@ -45,14 +45,12 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
-        <div className="text-center mb-10 sm:mb-20">
-          <h2 className={`${moderniz.className} text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-4 sm:mb-8 leading-tight`}>
-            FREQUENTLY
-            <br />
-            <span className="text-primary">ASKED QUESTIONS</span>
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
+            Frequently Asked <span className="text-gradient-cel">Questions</span>
           </h2>
-          <p className={`${roboto.className} text-base sm:text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed`}>
-            Quick answers to the most common questions about CESAFI.
+          <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
+            Quick answers to the most common questions about CESAFI
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import { School } from '@/lib/types/schools';
 import Image from 'next/image';
+import { moderniz, roboto } from '@/lib/fonts';
 
 interface SchoolsGridProps {
   schools: School[];
@@ -23,11 +24,16 @@ export default function SchoolsGrid({ schools }: SchoolsGridProps) {
   }));
 
   return (
-    <section className="relative bg-background pt-16 pb-12 overflow-hidden transition-colors duration-300">
+    <section id="schools-section" className="relative bg-background pt-16 pb-12 overflow-hidden transition-colors duration-300">
       <div className="container mx-auto px-4 relative z-10">
-        <h2 className="text-center text-3xl md:text-4xl font-bold mb-12 font-moderniz uppercase tracking-wider">
-          <span className="text-teal">Participating</span> <span className="text-emerald">Schools</span>
-        </h2>
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
+            Participating <span className="text-gradient-cel">Schools</span>
+          </h2>
+          <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
+            The member institutions competing in CESAFI esports
+          </p>
+        </div>
 
         <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 lg:gap-14">
           {logos.map((school, index) => (

@@ -134,27 +134,25 @@ export default function PhotoGallery() {
     <>
       <section ref={ref} className="bg-background relative overflow-hidden">
         {/* Header */}
-        <div className="py-16 md:py-20">
-          <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16 md:mb-20">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className={`${moderniz.className} mb-2 md:mb-4 text-3xl md:text-4xl leading-tight font-bold text-foreground lg:text-5xl xl:text-6xl`}
+              className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}
             >
-              PHOTO
-              <br />
-              <span className="text-primary">GALLERY</span>
+              Photo <span className="text-gradient-cel">Gallery</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className={`${roboto.className} mx-auto max-w-4xl text-sm md:text-xl leading-relaxed text-muted-foreground lg:text-2xl`}
+              className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}
             >
-              Capturing the spirit, passion, and excellence of CESAFI.
+              Capturing the spirit, passion, and excellence of CESAFI
             </motion.p>
           </div>
         </div>

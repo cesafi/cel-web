@@ -39,15 +39,12 @@ export default function LatestNews({ initialArticles }: LatestNewsProps) {
     <section className="py-32 bg-background relative overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-20">
-          <h2 className={`${moderniz.className} text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-8 leading-tight`}>
-            LATEST
-            <br />
-            <span className="text-primary">NEWS</span>
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
+            Latest <span className="text-gradient-cel">News</span>
           </h2>
-          <p className={`${roboto.className} text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed`}>
-            Stay updated with the latest happenings in CESAFI.
-            From championship victories to groundbreaking partnerships.
+          <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
+            Stay updated with the latest happenings in CESAFI
           </p>
         </div>
 

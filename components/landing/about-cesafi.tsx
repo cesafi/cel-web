@@ -3,6 +3,7 @@
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { moderniz, roboto } from '@/lib/fonts';
 
 export default function AboutCesafi() {
@@ -160,7 +161,7 @@ export default function AboutCesafi() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
                 transition={{ duration: 1, delay: 0.5 }}
-                className={`${moderniz.className} text-foreground text-4xl leading-[1.2] font-bold tracking-tight xl:text-5xl 2xl:text-6xl`}
+                className={`${moderniz.className} text-foreground leading-[1.2] font-bold tracking-tight text-3xl md:text-4xl xl:text-5xl 2xl:text-6xl`}
               >
                 Showcasing
                 <span className="text-gradient-cel"> top-class performance</span> and
@@ -174,33 +175,35 @@ export default function AboutCesafi() {
                 initial={{ opacity: 0, y: 40 }}
                 animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
                 transition={{ duration: 1.2, delay: 0.8 }}
-                className={`${roboto.className} text-muted-foreground max-w-4xl text-xl leading-relaxed lg:text-2xl xl:text-3xl`}
+                className={`${roboto.className} text-muted-foreground max-w-4xl text-base leading-relaxed sm:text-lg md:text-xl lg:text-2xl xl:text-3xl`}
               >
                 Honoring the athletes, coaches, and institutions who define the future of
                 competitive sports in Cebu.
               </motion.p>
 
-              <motion.button
-                initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                animate={
-                  isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.9 }
-                }
-                transition={{
-                  duration: 0.8,
-                  delay: 1.2,
-                  type: 'spring',
-                  stiffness: 200,
-                  damping: 20
-                }}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
-                }}
-                whileTap={{ scale: 0.95 }}
-                className={`${moderniz.className} bg-foreground hover:bg-foreground/90 text-background rounded-2xl px-10 py-5 text-xl font-semibold tracking-wide uppercase shadow-lg transition-all duration-300`}
-              >
-                Learn More
-              </motion.button>
+              <Link href="/about-us">
+                <motion.button
+                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                  animate={
+                    isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.9 }
+                  }
+                  transition={{
+                    duration: 0.8,
+                    delay: 1.2,
+                    type: 'spring',
+                    stiffness: 200,
+                    damping: 20
+                  }}
+                  whileHover={{
+                    scale: 1.05,
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`${moderniz.className} bg-foreground hover:bg-foreground/90 text-background rounded-2xl px-10 py-5 text-base font-semibold tracking-wide uppercase shadow-lg transition-all duration-300 sm:text-lg md:text-xl`}
+                >
+                  Learn More
+                </motion.button>
+              </Link>
             </motion.div>
           </div>
         </div>

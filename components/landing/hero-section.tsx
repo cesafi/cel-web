@@ -200,56 +200,86 @@ export default function HeroSection({ initialData }: HeroSectionProps) {
         </div>
       </div>
 
-      {/* Desktop Content - Bottom Left */}
-      <div className="relative z-10 hidden h-full items-end justify-start px-8 pt-8 pb-36 lg:flex">
-        <div className="mx-auto flex w-full max-w-7xl items-end justify-between space-y-6">
-          <div className="space-y-6">
-            {/* Floating Animated Logo (Only show in Live mode or if desired) */}
-            <div className="animate-fade-in-up animation-delay-1000 opacity-0">
-              <div className="animate-float-gentle flex h-32 w-32 items-center justify-center">
-                <Image
-                  src="/img/cesafi-logo.webp"
-                  alt="CESAFI Logo"
-                  width={256}
-                  height={256}
-                  className="h-full w-full object-contain drop-shadow-2xl"
-                />
-              </div>
+      {/* Desktop Content - Centered */}
+      <div className="relative z-10 hidden h-full items-center justify-center lg:flex">
+        <div className="flex flex-col items-center text-center space-y-8">
+          {/* Large Centered Logo */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.3, type: 'spring', stiffness: 80, damping: 15 }}
+          >
+            <div className="animate-float-gentle flex h-56 w-56 items-center justify-center xl:h-64 xl:w-64">
+              <Image
+                src="/img/cesafi-logo.webp"
+                alt="CESAFI Logo"
+                width={320}
+                height={320}
+                className="h-full w-full object-contain drop-shadow-2xl"
+              />
             </div>
+          </motion.div>
 
-            {/* Watch Live Button - Desktop */}
-            {isLive ? (
-              <div className="animate-fade-in-up animation-delay-2000 opacity-0">
-                <button
-                  onClick={handleLiveClick}
-                  className="font-moderniz flex animate-pulse items-center space-x-2 rounded-xl border-2 border-red-500/50 bg-red-600 px-8 py-4 text-base font-semibold text-white shadow-xl transition-all duration-300 hover:scale-105 hover:bg-red-700 hover:shadow-red-500/25"
-                >
-                  <Play className="h-5 w-5 fill-white" />
-                  <span>Watch Live</span>
-                </button>
-              </div>
-            ) : (
-              <div className="animate-fade-in-up animation-delay-2000 opacity-0">
-                <h1 className="font-moderniz mb-4 text-4xl font-black text-white drop-shadow-lg md:text-6xl">
-                  CESAFI
-                  <br />
-                  <span className="text-white/90">ESPORTS LEAGUE</span>
-                </h1>
-                <p className="text-lg text-white/90 drop-shadow-md md:text-xl">
-                  The den of the best esports student athletes
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          {/* Watch Live Button - Desktop (Live mode) */}
+          {isLive ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+            >
+              <button
+                onClick={handleLiveClick}
+                className="font-moderniz flex animate-pulse items-center space-x-2 rounded-xl border-2 border-red-500/50 bg-red-600 px-8 py-4 text-base font-semibold text-white shadow-xl transition-all duration-300 hover:scale-105 hover:bg-red-700 hover:shadow-red-500/25"
+              >
+                <Play className="h-5 w-5 fill-white" />
+                <span>Watch Live</span>
+              </button>
+            </motion.div>
+          ) : (
+            <>
+              {/* Title */}
+              <motion.h1
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 0.7 }}
+                className="font-moderniz text-7xl font-black text-white drop-shadow-lg xl:text-8xl"
+              >
+                CESAFI
+                <br />
+                <span className="text-white/90">ESPORTS LEAGUE</span>
+              </motion.h1>
 
-      {/* Scroll Indicator */}
-      <div className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transform animate-bounce">
-        <div className="flex cursor-pointer flex-col items-center text-white/70 transition-colors hover:text-white">
-          <span className="mb-2 text-xs font-medium">Scroll</span>
-          <ChevronDown className="h-6 w-6" />
+              {/* Subtitle */}
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 1.1 }}
+                className="text-xl text-white/80 drop-shadow-md xl:text-2xl"
+              >
+                The den of the best esports student athletes
+              </motion.p>
+            </>
+          )}
         </div>
+
+        {/* Scroll Down Indicator */}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.6 }}
+          onClick={() => {
+            document.getElementById('schools-section')?.scrollIntoView({ behavior: 'smooth' })
+          }}
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/60 hover:text-white/90 transition-colors duration-300 cursor-pointer"
+        >
+          <span className="text-xs font-medium uppercase tracking-widest">Scroll</span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <ChevronDown className="h-6 w-6" />
+          </motion.div>
+        </motion.button>
       </div>
     </section>
   )

@@ -2,6 +2,7 @@
 import { getActiveSponsors } from '@/actions/sponsors';
 import { Sponsor } from '@/lib/types/sponsors';
 import SponsorLogoList from './sponsor-logo-list';
+import { moderniz, roboto } from '@/lib/fonts';
 
 export default async function SponsorsGrid() {
   const sponsorsResponse = await getActiveSponsors();
@@ -22,9 +23,14 @@ export default async function SponsorsGrid() {
   return (
     <section className="bg-background py-12 overflow-hidden transition-colors duration-300">
       <div className="container mx-auto px-4">
-        <h2 className="text-center text-3xl md:text-4xl font-bold mb-12 font-moderniz uppercase tracking-wider">
-          <span className="text-emerald">Our</span> <span className="text-teal">Partners</span>
-        </h2>
+        <div className="text-center mb-16 md:mb-20">
+          <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
+            Our <span className="text-gradient-cel">Partners</span>
+          </h2>
+          <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
+            Proudly supported by our valued sponsors and partners
+          </p>
+        </div>
 
         <SponsorLogoList sponsors={sponsors} />
       </div>
