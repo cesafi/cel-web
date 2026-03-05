@@ -197,7 +197,7 @@ export default function DateNavigation({
   }, [uniqueEsports]);
 
   return (
-    <div className="sticky top-20 z-20 mt-4 space-y-4 rounded-xl border border-border/60 bg-card/95 p-4 shadow-sm backdrop-blur-md md:p-5 transition-all">
+    <div className="sticky top-20 z-20 mt-4 space-y-4 border border-border/60 bg-card/95 p-4 shadow-sm backdrop-blur-md md:p-5 transition-all">
       {/* Header Row: Date Title + Game Selector */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
          {/* Left: Current Date Title */}

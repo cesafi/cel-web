@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import ShareButtons from '@/components/shared/share-buttons';
+import ArticleViewTracker from '@/components/articles/article-view-tracker';
+import ViewCounter from '@/components/articles/view-counter';
 import { moderniz, roboto } from '@/lib/fonts';
 import { useArticleBySlug, useRecentPublishedArticles } from '@/hooks/use-articles';
 import { renderArticleContent, extractSmartExcerpt, getArticleContentProps } from '@/lib/utils/content-renderer';
@@ -81,6 +83,9 @@ export default function NewsArticlePage() {
 
   return (
     <div className="bg-background min-h-screen py-4">
+      {/* Track article view */}
+      <ArticleViewTracker articleId={article.id} />
+
       {/* Hero Image */}
       <section className="relative h-[40vh] overflow-hidden md:h-[50vh]">
         <div className="absolute inset-0">
@@ -145,6 +150,7 @@ export default function NewsArticlePage() {
                   <Clock className="h-4 w-4" />
                   <span>{displayArticle.readTime}</span>
                 </div>
+                <ViewCounter count={article.view_count} className="text-sm text-muted-foreground" />
               </div>
 
               {/* Share Buttons - Top */}

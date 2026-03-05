@@ -7,6 +7,7 @@ import { Calendar, ArrowRight, Clock, Pen } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ViewCounter from '@/components/articles/view-counter';
 import { moderniz, roboto } from '@/lib/fonts';
 import { formatSmartDate } from '@/lib/utils/date';
 
@@ -22,6 +23,7 @@ interface ArticleCardProps {
     readTime?: string;
     image: string;
     featured?: boolean;
+    viewCount?: number;
   };
   variant?: 'default' | 'featured' | 'compact';
   index?: number;
@@ -73,6 +75,9 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                       <span>{article.readTime}</span>
                     </div>
                   )}
+                  {article.viewCount != null && (
+                    <ViewCounter count={article.viewCount} className="text-xs sm:text-sm text-muted-foreground/80" />
+                  )}
                 </div>
                 <Link href={`/news/${article.slug}`} className="block sm:inline-block pt-2">
                   <Button className="w-full sm:w-auto">
@@ -115,6 +120,9 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                     <Clock className="h-3 w-3 flex-shrink-0" />
                     <span>{article.readTime}</span>
                   </div>
+                )}
+                {article.viewCount != null && (
+                  <ViewCounter count={article.viewCount} className="text-[11px] sm:text-xs text-muted-foreground/80" />
                 )}
               </div>
             </div>
@@ -165,6 +173,9 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                   <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
                   <span>{article.readTime}</span>
                 </div>
+              )}
+              {article.viewCount != null && (
+                <ViewCounter count={article.viewCount} className="text-[11px] sm:text-xs text-muted-foreground/80" />
               )}
             </div>
             <Link href={`/news/${article.slug}`} className="block">

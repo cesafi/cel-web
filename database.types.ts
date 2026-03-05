@@ -50,6 +50,35 @@ export type Database = {
           },
         ]
       }
+      article_views: {
+        Row: {
+          article_id: string
+          id: string
+          viewed_at: string
+          viewer_id: string
+        }
+        Insert: {
+          article_id: string
+          id?: string
+          viewed_at?: string
+          viewer_id: string
+        }
+        Update: {
+          article_id?: string
+          id?: string
+          viewed_at?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_views_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       articles: {
         Row: {
           authored_by: string
@@ -62,6 +91,7 @@ export type Database = {
           status: Database["public"]["Enums"]["article_status"]
           title: string
           updated_at: string
+          view_count: number
         }
         Insert: {
           authored_by: string
@@ -74,6 +104,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["article_status"]
           title: string
           updated_at?: string
+          view_count?: number
         }
         Update: {
           authored_by?: string
@@ -86,6 +117,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["article_status"]
           title?: string
           updated_at?: string
+          view_count?: number
         }
         Relationships: []
       }
@@ -1819,6 +1851,10 @@ export type Database = {
       is_head_writer: { Args: never; Returns: boolean }
       is_league_operator: { Args: never; Returns: boolean }
       is_writer: { Args: never; Returns: boolean }
+      track_article_view: {
+        Args: { p_article_id: string; p_viewer_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       article_status: "review" | "published" | "draft" | "archived" | "featured"

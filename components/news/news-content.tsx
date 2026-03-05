@@ -73,7 +73,8 @@ export default function NewsContent({
       category: (article.content as { category?: string })?.category || 'General',
       readTime: readTimeResult.formattedTime,
       image: article.cover_image_url || '/img/cesafi-banner.jpg',
-      featured: (article.content as { featured?: boolean })?.featured || false
+      featured: (article.content as { featured?: boolean })?.featured || false,
+      viewCount: article.view_count
     };
   });
 

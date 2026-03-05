@@ -7,6 +7,7 @@ import { moderniz, roboto } from '@/lib/fonts';
 import { MatchWithFullDetails } from '@/lib/types/matches';
 import Image from 'next/image';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 interface UpcomingGamesProps {
   initialMatches: MatchWithFullDetails[];
@@ -97,7 +98,7 @@ function TeamDisplay({
         <div className={`${moderniz.className} text-xl sm:text-2xl ${size === 'large' ? 'lg:text-3xl' : ''} font-bold text-foreground leading-tight tracking-wide`}>
           {abbreviation}
         </div>
-        <div className={`${roboto.className} text-[10px] sm:text-sm text-muted-foreground/60 leading-tight mt-0.5 max-w-[100px] sm:max-w-[140px] truncate`}>
+        <div className={`${roboto.className} text-[10px] hidden lg:block text-muted-foreground/60 leading-tight mt-0.5 truncate`}>
           {name}
         </div>
       </div>
@@ -223,12 +224,12 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Calendar className="w-3.5 h-3.5" />
-                        <span>{new Date(featured.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                        <span>{format(new Date(featured.date), 'MMM d, yyyy')}</span>
                       </div>
                       {featured.venue && featured.venue !== 'TBD' && (
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                           <MapPin className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">{featured.venue}</span>
+                          <span>{featured.venue}</span>
                         </div>
                       )}
                     </div>
@@ -325,7 +326,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
                             <div className={`${moderniz.className} text-lg lg:text-xl font-bold text-foreground leading-tight tracking-wide truncate sm:hidden lg:block`}>
                               {game.teamA.abbreviation}
                             </div>
-                            <div className={`${roboto.className} text-[10px] text-muted-foreground/50 truncate max-w-[100px] ml-auto sm:hidden lg:block`}>
+                            <div className={`${roboto.className} text-[10px] text-muted-foreground/50 truncate max-w-[100px] ml-auto hidden lg:block`}>
                               {game.teamA.name}
                             </div>
                           </div>
@@ -356,7 +357,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
                             <div className={`${moderniz.className} text-lg lg:text-xl font-bold text-foreground leading-tight tracking-wide truncate sm:hidden lg:block`}>
                               {game.teamB.abbreviation}
                             </div>
-                            <div className={`${roboto.className} text-[10px] text-muted-foreground/50 truncate max-w-[100px] sm:hidden lg:block`}>
+                            <div className={`${roboto.className} text-[10px] text-muted-foreground/50 truncate max-w-[100px] hidden lg:block`}>
                               {game.teamB.name}
                             </div>
                           </div>
@@ -365,12 +366,20 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
 
                       {/* Bottom: date + venue */}
                       <div className="flex items-center justify-between pt-4 border-t border-border/20">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
-                          <Calendar className="w-3 h-3" />
-                          <span>{new Date(game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+                            <Calendar className="w-3 h-3" />
+                            <span>{format(new Date(game.date), 'MMM d')}</span>
+                          </div>
+                          {game.venue && game.venue !== 'TBD' && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+                              <MapPin className="w-3 h-3" />
+                              <span className="truncate max-w-[80px] lg:max-w-[120px]">{game.venue}</span>
+                            </div>
+                          )}
                         </div>
                         <span className="text-xs text-muted-foreground/40">
-                          {new Date(game.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          {format(new Date(game.date), 'h:mm a')}
                         </span>
                       </div>
                     </div>

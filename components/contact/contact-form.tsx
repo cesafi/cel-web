@@ -53,7 +53,7 @@ export default function ContactForm() {
       const result = await sendContactEmail(data);
 
       if (result.success) {
-        toast.success('Message sent successfully! We&apos;ll get back to you soon.');
+        toast.success('Message sent successfully! We will get back to you soon.');
         reset();
       } else {
         toast.error(result.error || 'Failed to send message. Please try again.');
@@ -105,7 +105,7 @@ export default function ContactForm() {
           <Label htmlFor="subject">Subject *</Label>
           <Select
             value={selectedSubject}
-            onValueChange={(value) => setValue('subject', value as ContactFormData['subject'])}
+            onValueChange={(value) => setValue('subject', value as ContactFormData['subject'], { shouldValidate: true })}
           >
             <SelectTrigger className={errors.subject ? 'border-destructive' : ''}>
               <SelectValue placeholder="Select a subject" />
