@@ -20,6 +20,8 @@ interface CharacterStatsTableProps {
 
 const mlbbColumns = [
     { key: 'games_played', label: 'Picks', tooltip: 'Total Games Picked', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'total_bans', label: 'Bans', tooltip: 'Total Times Banned', sortable: true, width: 'min-w-[80px] w-[80px]' },
+    { key: 'ban_rate', label: 'Ban%', tooltip: 'Ban Rate %', sortable: true, width: 'min-w-[80px] w-[80px]' },
     { key: 'win_rate', label: 'WR%', tooltip: 'Win Rate %', sortable: true, width: 'min-w-[80px] w-[80px]' },
     { key: 'avg_kda', label: 'KDA', tooltip: 'Kill Death Assist Ratio', sortable: true, width: 'min-w-[80px] w-[80px]' },
     { key: 'avg_kills', label: 'KPG', tooltip: 'Average Kills Per Game', sortable: true, width: 'min-w-[70px] w-[70px]' },
@@ -90,7 +92,7 @@ export function CharacterStatsTable({
         const ratio = value / max;
 
         // Handling for "Lower is Better" stats
-        if (key.includes('death')) {
+        if (key.includes('death') || key.includes('ban')) {
             if (ratio > 0.8) return { backgroundColor: 'rgba(239, 68, 68, 0.15)' }; // Red tint
             return {};
         }
@@ -108,7 +110,7 @@ export function CharacterStatsTable({
 
         if (value === null || value === undefined) return '-';
         if (typeof value === 'number') {
-            if (key.includes('win_rate')) {
+            if (key.includes('_rate')) {
                 return value.toFixed(1) + '%';
             }
             if (key.includes('per_game') || key.includes('avg_') || key.includes('kda')) {
