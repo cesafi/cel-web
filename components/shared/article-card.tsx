@@ -81,9 +81,7 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                       <span>{article.readTime}</span>
                     </div>
                   )}
-                  {article.viewCount != null && (
-                    <ViewCounter count={article.viewCount} className="text-xs sm:text-sm text-muted-foreground/80" />
-                  )}
+                
                 </div>
                 <Link href={`/news/${article.slug}`} className="block sm:inline-block pt-2">
                   <Button className="w-full sm:w-auto">
@@ -130,9 +128,7 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                     <span>{article.readTime}</span>
                   </div>
                 )}
-                {article.viewCount != null && (
-                  <ViewCounter count={article.viewCount} className="text-[11px] sm:text-xs text-muted-foreground/80" />
-                )}
+               
               </div>
             </div>
           </div>
@@ -188,9 +184,7 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
                   <span>{article.readTime}</span>
                 </div>
               )}
-              {article.viewCount != null && (
-                <ViewCounter count={article.viewCount} className="text-[11px] sm:text-xs text-muted-foreground/80" />
-              )}
+              
             </div>
             <Link href={`/news/${article.slug}`} className="block">
               <Button variant="outline" size="sm" className="w-full text-xs sm:text-sm h-8 sm:h-9">
