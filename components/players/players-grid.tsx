@@ -14,6 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toPlayerSlug } from '@/lib/utils/player-slug';
 import { RichSportCategory } from '../schedule/schedule-content';
+import { getAllSchoolsTeams } from '@/actions/schools-teams';
+import { getAllSchools } from '@/actions/schools';
+import { getAllPlayersWithTeams } from '@/actions/players';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -23,7 +26,7 @@ type GameType = 'mlbb' | 'valorant' | 'all';
 type FilterOption = { id: number | string; label: string; value: string };
 
 export default function PlayersGrid( { availableRichSports }: { availableRichSports: RichSportCategory[]; }) {
-  const [game, setGame] = useState<GameType | string>('all');
+  const [game, setGame] = useState<GameType | string>('mlbb');
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +38,11 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [filtersLoading, setFiltersLoading] = useState(true);
+
+  // Additional data for mapping missing relationships
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [allSchools, setAllSchools] = useState<any[]>([]);
+  const [allTeams, setAllTeams] = useState<any[]>([]);
 
   const uniqueEsports = useMemo(() => {
     if (!availableRichSports || availableRichSports.length === 0) return [];
@@ -49,7 +57,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
   }, [availableRichSports]);
 
   const gameOptions: GameOption[] = useMemo(() => {
-      const options: GameOption[] = [{ id: 'all', name: 'All Esports', shortName: 'All Games' }];
+      const options: GameOption[] = [];
       
       const sortedEsports = [...uniqueEsports].sort((a, b) => {
         if (a.name.toLowerCase().includes('mobile legends')) return -1;
@@ -69,22 +77,53 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
       return options;
     }, [uniqueEsports]);
 
-  // Fetch seasons on mount
+  // Fetch seasons and supporting data on mount
   useEffect(() => {
-    async function fetchSeasons() {
+    async function fetchInitialData() {
       setFiltersLoading(true);
+      // Fetch available seasons
       const result = await getAvailableSeasons();
       if (result.success && result.data) {
         const mapped = result.data.map((s: any) => ({
           id: s.id,
           label: s.name || `Season ${s.id}`,
-          value: s.id.toString()
+          value: s.id.toString(),
+          originalData: s
         }));
         setSeasons(mapped);
+        
+        // Auto-select the latest season by start_at date if not already set
+        if (mapped.length > 0) {
+           const latestSeason = [...mapped].sort((a, b) => {
+             const dateA = new Date(a.originalData?.start_at || 0).getTime();
+             const dateB = new Date(b.originalData?.start_at || 0).getTime();
+             return dateB - dateA; // Descending order
+           })[0];
+           
+           setSelectedSeason((prev) => prev !== null ? prev : Number(latestSeason.value));
+        }
       }
+
+      // Fetch all teams and schools to properly map missing relationships
+      try {
+        const [teamsResult, schoolsResult] = await Promise.all([
+          getAllSchoolsTeams(),
+          getAllSchools()
+        ]);
+        
+        if (teamsResult.success && teamsResult.data) {
+          setAllTeams(teamsResult.data);
+        }
+        if (schoolsResult.success && schoolsResult.data) {
+          setAllSchools(schoolsResult.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch teams/schools for mapping", err);
+      }
+      
       setFiltersLoading(false);
     }
-    fetchSeasons();
+    fetchInitialData();
   }, []);
 
   // Fetch teams when season or game changes (cascading)
@@ -140,46 +179,95 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
   const fetchPlayers = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: any = {
-        season_id: selectedSeason || undefined,
-        team_id: selectedTeam || undefined,
-        search_query: debouncedSearch || undefined,
-      };
-
-      const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
-      const isVAL = game === 'all' || game === 'valorant' || game === '1';
-
-      let combinedPlayers: any[] = [];
-
-      if (isMLBB) {
-        const result = await getMlbbStats(filters);
-        if (result.success && result.data) {
-          combinedPlayers = [...combinedPlayers, ...(result.data as any[]).map(p => ({ ...p, game: 'mlbb' }))];
-        }
+      const result = await getAllPlayersWithTeams();
+      if (result.success && result.data) {
+        setAllPlayers(result.data);
+      } else {
+        setAllPlayers([]);
       }
-
-      if (isVAL) {
-        const result = await getValorantStats(filters);
-        if (result.success && result.data) {
-          combinedPlayers = [...combinedPlayers, ...(result.data as any[]).map(p => ({ ...p, game: 'valorant' }))];
-        }
-      }
-
-      // De-duplicate if same player ID shows up in both? (unlikely but safe)
-      // and sort by IGN
-      combinedPlayers.sort((a, b) => (a.player_ign || '').localeCompare(b.player_ign || ''));
-      
-      setPlayers(combinedPlayers);
-    } catch {
-      setPlayers([]);
+    } catch (err) {
+      console.error("Failed to fetch players", err);
+      setAllPlayers([]);
     } finally {
       setLoading(false);
     }
-  }, [game, selectedSeason, selectedTeam, debouncedSearch]);
+  }, []);
 
   useEffect(() => {
     fetchPlayers();
   }, [fetchPlayers]);
+
+  // Client-side filtering and grouping
+  const filteredPlayers = useMemo(() => {
+    return allPlayers.filter(player => {
+      // 1. Season Filter - Check if player has an entry in player_seasons for this season
+      const playerSeasons = player.player_seasons || [];
+      const hasSeasonMatch = !selectedSeason || playerSeasons.some((ps: any) => ps.team?.season_id === selectedSeason);
+      if (!hasSeasonMatch) return false;
+
+      // 2. Game Filter
+      // We need to determine the game. In the players table, we might need to look at the team assigned in that season.
+      const targetSeasonEntry = selectedSeason 
+        ? playerSeasons.find((ps: any) => ps.team?.season_id === selectedSeason)
+        : playerSeasons[0]; // Default to latest/first if no season selected
+
+      const teamGame = targetSeasonEntry?.team?.esports_categories?.esports?.name?.toLowerCase() || '';
+      
+      const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
+      const isVAL = game === 'all' || game === 'valorant' || game === '1';
+
+      if (isMLBB && !isVAL && !teamGame.includes('mobile legends')) return false;
+      if (isVAL && !isMLBB && !teamGame.includes('valorant')) return false;
+
+      // 3. Team Filter
+      if (selectedTeam && targetSeasonEntry?.team_id !== selectedTeam) return false;
+
+      // 4. Search Filter
+      if (debouncedSearch) {
+        const searchLower = debouncedSearch.toLowerCase();
+        const ign = (player.ign || '').toLowerCase();
+        const firstName = (player.first_name || '').toLowerCase();
+        const lastName = (player.last_name || '').toLowerCase();
+        if (!ign.includes(searchLower) && !firstName.includes(searchLower) && !lastName.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).sort((a, b) => (a.ign || '').localeCompare(b.ign || ''));
+  }, [allPlayers, game, selectedSeason, selectedTeam, debouncedSearch]);
+
+  const groupedPlayers = useMemo(() => {
+    const groups: Record<string, { name: string; abbrev: string; logo: string | null; players: any[] }> = {};
+
+    filteredPlayers.forEach(player => {
+      const playerSeasons = player.player_seasons || [];
+      const targetSeasonEntry = selectedSeason 
+        ? playerSeasons.find((ps: any) => ps.team?.season_id === selectedSeason)
+        : playerSeasons[0];
+
+      const school = targetSeasonEntry?.team?.schools;
+      const schoolName = school?.name || 'Unassigned';
+      const schoolAbbrev = school?.abbreviation || '---';
+      const schoolLogo = school?.logo_url || null;
+
+      if (!groups[schoolName]) {
+        groups[schoolName] = {
+          name: schoolName,
+          abbrev: schoolAbbrev,
+          logo: schoolLogo,
+          players: []
+        };
+      }
+      groups[schoolName].players.push(player);
+    });
+
+    return Object.values(groups).sort((a, b) => {
+      if (a.name === 'Unassigned') return 1;
+      if (b.name === 'Unassigned') return -1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredPlayers, selectedSeason]);
 
   const handleGameChange = (newGame: string) => {
     setGame(newGame);
@@ -188,19 +276,19 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
     setDebouncedSearch('');
   };
 
-  const handleSeasonChange = (seasonId: number | null) => {
+  const handleSeasonChange = (seasonId: number) => {
     setSelectedSeason(seasonId);
     setSelectedTeam(null);
   };
 
   const handleClearFilters = () => {
-    setSelectedSeason(null);
-    setSelectedTeam(null);
     setSearchQuery('');
     setDebouncedSearch('');
+    setSelectedTeam(null);
+    // Don't clear selectedSeason since "All Seasons" is removed
   };
 
-  const hasActiveFilters = selectedSeason || selectedTeam || searchQuery;
+  const hasActiveFilters = selectedTeam || searchQuery;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
@@ -260,16 +348,15 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
           {/* Season */}
           <div className="col-span-2 sm:col-span-auto w-full sm:w-auto">
             <Select
-              value={selectedSeason?.toString() || "all"}
-              onValueChange={(val) => handleSeasonChange(val === "all" ? null : Number(val))}
-              disabled={filtersLoading}
+              value={selectedSeason?.toString() || ""}
+              onValueChange={(val) => handleSeasonChange(Number(val))}
+              disabled={filtersLoading || seasons.length === 0}
             >
               <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
-                <SelectValue placeholder="All Seasons" />
+                <SelectValue placeholder="Select Season" />
               </SelectTrigger>
               <SelectContent>
                 <ScrollArea className="h-[200px]">
-                  <SelectItem value="all">All Seasons</SelectItem>
                   {seasons.map((s: FilterOption) => (
                     <SelectItem key={s.id} value={s.value}>{s.label}</SelectItem>
                   ))}
@@ -315,100 +402,113 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
 
       {/* Results count */}
       <p className={`${roboto.className} text-xs text-muted-foreground/50 mb-4`}>
-        {loading ? 'Searching...' : `${players.length} player${players.length !== 1 ? 's' : ''} found`}
+        {loading ? 'Searching...' : `${filteredPlayers.length} player${filteredPlayers.length !== 1 ? 's' : ''} found`}
       </p>
 
-      {/* Players Grid */}
+      {/* Players Grid / Groups */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
         </div>
-      ) : players.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-          {players.map((player: any, index: number) => {
-            const kda = player.total_deaths > 0
-              ? ((player.total_kills + player.total_assists) / player.total_deaths).toFixed(2)
-              : 'Perfect';
+      ) : filteredPlayers.length > 0 ? (
+        <div className="space-y-12 pb-16">
+          {groupedPlayers.map(group => {
             return (
-              <motion.div
-                key={player.player_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.5) }}
-              >
-                {(() => {
-                  const playerHref = `/players/${toPlayerSlug(player.player_ign || '')}`;
-                  const cardContent = (
-                    <div className="rounded-xl border border-border/40 bg-card/60 hover:border-border/60 hover:bg-card/80 transition-all duration-300 p-3 sm:p-4 text-center">
-                      {/* Photo */}
-                      <div className="relative h-12 w-12 sm:h-14 sm:w-14 mx-auto mb-2 sm:mb-3">
-                        {player.player_photo_url ? (
-                          <Image
-                            src={player.player_photo_url}
-                            alt={player.player_ign || ''}
-                            fill
-                            className="rounded-full object-cover border border-border/40"
-                          />
-                        ) : (
-                          <div className="h-full w-full rounded-full bg-muted/50 flex items-center justify-center border border-border/40">
-                            <span className="text-base sm:text-lg font-bold text-muted-foreground/30">
-                              {player.player_ign?.charAt(0) || '?'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+              <div key={group.name} className="space-y-6">
+                {/* School Section Header */}
+                <div className="flex items-center gap-3 border-b border-border/50 pb-3">
+                  {group.logo && (
+                    <Image
+                      src={group.logo}
+                      alt={`${group.name} logo`}
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 object-contain"
+                    />
+                  )}
+                  <h2 className="text-3xl hidden lg:block font-mango-grotesque font-bold tracking-wide">
+                    {group.name}
+                  </h2>
+                  <h2 className="text-3xl lg:hidden font-mango-grotesque font-bold tracking-wide">
+                    {group.abbrev}
+                  </h2>
+                </div>
 
-                      {/* IGN */}
-                      <h3 className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                        {player.player_ign || 'Unknown'}
-                      </h3>
+                {/* School Players Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                  {group.players.map((player: any, index: number) => {
+                    const playerHref = `/players/${toPlayerSlug(player.ign || '')}`;
+                    
+                    // Prioritize primary photo, fallback to secondary
+                    const playerPhoto = player.photo_url || player.photo_url_secondary || null;
+                    const firstNameSpliced = `${player.first_name}`.trim().split(' ').slice(0, 2).join(' ')
+                    const fullName = `${(firstNameSpliced)} ${player.last_name || ''}`.trim();
 
-                      {/* Team / School */}
-                      <div className="mt-1 sm:mt-1.5 flex items-center justify-center gap-1.5">
-                        {player.team_logo_url && (
-                          <Image
-                            src={player.team_logo_url}
-                            alt=""
-                            width={14}
-                            height={14}
-                            className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full object-cover"
-                          />
-                        )}
-                        <span className="text-[9px] sm:text-[10px] text-muted-foreground/50 truncate">
-                          {player.school_abbreviation || player.team_name || ''}
-                        </span>
-                      </div>
+                    return (
+                      <motion.div
+                        key={player.id || player.ign + index}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.4) }}
+                      >
+                        <Link href={playerHref} className="group block h-full">
+                          <div className="relative flex flex-col h-[320px] sm:h-[360px] w-full rounded-2xl border border-border/30 bg-gradient-to-b from-card/80 to-background overflow-hidden hover:border-primary/50 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                            
+                            {/* Background School Logo Watermark */}
+                            {group.logo && (
+                              <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.05] dark:opacity-10 mix-blend-multiply dark:mix-blend-plus-lighter pointer-events-none p-6">
+                                <Image
+                                  src={group.logo}
+                                  alt="School Watermark"
+                                  fill
+                                  className="object-contain"
+                                />
+                              </div>
+                            )}
 
-                      {/* Stats preview */}
-                      <div className="mt-2 pt-2 border-t border-border/20 space-y-0.5">
-                        <div className="flex justify-between text-[10px]">
-                          <span className="text-muted-foreground/40">KDA</span>
-                          <span className="font-medium text-foreground/70">{kda}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px]">
-                          <span className="text-muted-foreground/40">GP</span>
-                          <span className="font-medium text-foreground/70">{player.games_played || 0}</span>
-                        </div>
-                        {game === 'mlbb' && player.avg_rating != null && (
-                          <div className="flex justify-between text-[10px]">
-                            <span className="text-muted-foreground/40">Rating</span>
-                            <span className="font-medium text-foreground/70">{Number(player.avg_rating).toFixed(2)}</span>
+                            {/* Player Photo (Aesthetic leaning right) */}
+                            <div className="absolute inset-y-0 left-8 w-[100%] z-10 flex items-end justify-center overflow-hidden grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500">
+                              {playerPhoto && (
+                                <Image
+                                  src={playerPhoto}
+                                  alt={`${player.ign} photo`}
+                                  fill
+                                  sizes="(max-width: 768px) 100vw, 300px"
+                                  className="object-contain object-bottom sm:object-right-bottom drop-shadow-2xl opacity-95 group-hover:scale-110 group-hover:opacity-100 transition-all duration-700"
+                                />
+                              )}
+                            </div>
+
+                            {/* Text Information Sidebar (Left Side) */}
+                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background via-background/80 to-transparent z-20 flex flex-col justify-end p-6">
+                              
+                              <div className="w-full pr-2">
+                                {/* IGN */}
+                                <h3 className="text-3xl sm:text-xl font-mango-grotesque font-bold text-foreground group-hover:text-primary transition-colors tracking-widest uppercase drop-shadow-2xl break-words leading-[0.9] mb-4">
+                                  {player.ign || 'Unknown'}
+                                </h3>
+                                
+                                {/* Divider */}
+                                <div className="w-12 h-0.5 bg-primary/60 mb-5 group-hover:w-full transition-all duration-700"></div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                  {/* Real Names Layout */}
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-xs font-bold text-foreground/80 tracking-tight uppercase leading-tight">
+                                      {fullName || '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                            </div>
                           </div>
-                        )}
-                        {game === 'valorant' && player.avg_acs != null && (
-                          <div className="flex justify-between text-[10px]">
-                            <span className="text-muted-foreground/40">ACS</span>
-                            <span className="font-medium text-foreground/70">{Math.round(player.avg_acs)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                  return (
-                    <Link href={playerHref} className="group block">{cardContent}</Link>
-                  );
-                })()}
-              </motion.div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>

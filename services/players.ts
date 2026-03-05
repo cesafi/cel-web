@@ -65,7 +65,18 @@ export class PlayerService extends BaseService {
         .select(`
             *,
             player_seasons(
-                team:schools_teams(id, name, school_id, schools(id, name, abbreviation, logo_url))
+                team:schools_teams(
+                    id, 
+                    name, 
+                    school_id, 
+                    season_id,
+                    esport_category_id,
+                    esports_categories(
+                        id,
+                        esports(id, name)
+                    ),
+                    schools(id, name, abbreviation, logo_url)
+                )
             )
         `)
         .order('ign', { ascending: true });

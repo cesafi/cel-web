@@ -10,7 +10,7 @@ export default async function NewsPage() {
     pageSize: 6,
     sortBy: 'created_at',
     sortOrder: 'desc',
-    filters: { status: 'published' }
+    filters: { status: 'published', published_at: { lte: new Date().toISOString() } }
   });
 
   const articlesData = articlesResult.success && articlesResult.data ? articlesResult.data : null;

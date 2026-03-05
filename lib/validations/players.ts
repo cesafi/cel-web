@@ -10,6 +10,7 @@ export const createPlayerSchema = z.object({
   first_name: z.string().optional().nullable(),
   last_name: z.string().optional().nullable(),
   photo_url: optionalUrl.optional(),
+  photo_url_secondary: optionalUrl.optional(),
   role: z.string().optional().nullable(),
   is_active: z.boolean().default(true)
 });
@@ -20,6 +21,7 @@ export const updatePlayerSchema = z.object({
   first_name: z.string().optional().nullable(),
   last_name: z.string().optional().nullable(),
   photo_url: optionalUrl.optional(),
+  photo_url_secondary: optionalUrl.optional(),
   role: z.string().optional().nullable(),
   is_active: z.boolean().optional()
 });

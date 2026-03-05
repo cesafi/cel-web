@@ -38,6 +38,7 @@ export function PlayerModal({
     first_name: '',
     last_name: '',
     photo_url: '',
+    photo_url_secondary: '',
     role: '',
     is_active: true
   });
@@ -63,6 +64,9 @@ export function PlayerModal({
           first_name: player.first_name || '',
           last_name: player.last_name || '',
           photo_url: player.photo_url || '',
+          // Use optional chaining safely just in case the type isn't fully updated yet,
+          // though Typescript might complain if we don't cast or if it's strictly typed.
+          photo_url_secondary: (player as any).photo_url_secondary || '',
           role: player.role || '',
           is_active: player.is_active ?? true
         });
@@ -72,6 +76,7 @@ export function PlayerModal({
           first_name: '',
           last_name: '',
           photo_url: '',
+          photo_url_secondary: '',
           role: '',
           is_active: true
         });
@@ -186,11 +191,27 @@ export function PlayerModal({
                 currentImageUrl={formData.photo_url || undefined}
                 onUpload={(url) => handleInputChange('photo_url', url)}
                 onRemove={() => handleInputChange('photo_url', '')}
-                placeholder="Upload player photo"
-                description="Upload a photo of the player. Recommended: 300x300px."
+                placeholder="Upload primary photo"
+                description="Upload the primary photo of the player. Recommended: 300x300px."
                 showPreview={true}
                 showRemoveButton={true}
                 error={errors.photo_url}
+              />
+            </div>
+
+            {/* Secondary Photo Upload */}
+            <div className="space-y-2">
+              <Label>Secondary Photo</Label>
+              <ImageUpload
+                preset="PLAYER_PHOTO"
+                currentImageUrl={(formData as any).photo_url_secondary || undefined}
+                onUpload={(url) => handleInputChange('photo_url_secondary', url)}
+                onRemove={() => handleInputChange('photo_url_secondary', '')}
+                placeholder="Upload secondary photo"
+                description="Upload an alternate photo (e.g., informal, no-background). Recommended: 300x300px."
+                showPreview={true}
+                showRemoveButton={true}
+                error={errors.photo_url_secondary}
               />
             </div>
 

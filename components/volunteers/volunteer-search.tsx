@@ -23,7 +23,7 @@ export default function VolunteerSearch({
   };
 
   return (
-    <div className="relative max-w-2xl mx-auto">
+    <div className="relative w-full">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -33,10 +33,8 @@ export default function VolunteerSearch({
           onChange={(e) => onSearchChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className={`pl-10 pr-10 h-12 text-base border-2 transition-all duration-200 ${
-            isFocused 
-              ? 'border-primary shadow-lg shadow-primary/20' 
-              : 'border-border hover:border-primary/50'
+          className={`pl-9 pr-9 bg-muted/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary w-full h-10 text-sm transition-all duration-200 ${
+            isFocused ? 'ring-1 ring-primary' : ''
           }`}
         />
         {searchTerm && (
@@ -44,22 +42,12 @@ export default function VolunteerSearch({
             variant="ghost"
             size="sm"
             onClick={handleClear}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </Button>
         )}
       </div>
-      
-      {/* Search results count indicator */}
-      {searchTerm && (
-        <div className="mt-2 text-sm text-muted-foreground text-center">
-          <span className="inline-flex items-center gap-1">
-            <Search className="h-3 w-3" />
-            Searching for &quot;{searchTerm}&quot;
-          </span>
-        </div>
-      )}
     </div>
   );
 }

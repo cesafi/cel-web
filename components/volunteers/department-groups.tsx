@@ -64,22 +64,17 @@ export default function DepartmentGroups({ departmentGroups, isLoading }: Depart
           className="space-y-8"
         >
           {/* Department Header */}
-          <div className="flex items-center gap-4 pb-4 border-b border-border/30">
-            <div className="p-3 bg-primary/10 rounded-lg">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className={`${moderniz.className} text-2xl md:text-3xl font-bold text-foreground`}>
+          <div className="flex items-center justify-between gap-4 pb-3 border-b border-border/50">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-6 w-6 text-primary/80" />
+              <h3 className="text-3xl font-mango-grotesque font-bold uppercase tracking-wide text-foreground">
                 {group.department.name}
               </h3>
-              <p className={`${roboto.className} text-muted-foreground`}>
-                {group.volunteers.length} volunteer{group.volunteers.length !== 1 ? 's' : ''}
-              </p>
             </div>
           </div>
 
           {/* Volunteers Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {group.volunteers.map((volunteer, volunteerIndex) => (
               <motion.div
                 key={volunteer.id}

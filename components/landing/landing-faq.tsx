@@ -141,23 +141,17 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
           viewport={{ once: true }}
           className="text-center space-y-4"
         >
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <Link href="/about-us#faq">
-              <button className={`${roboto.className} bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
-                About CESAFI FAQs
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
+          <div className="text-center mt-10 md:mt-12 flex flex-col gap-3 sm:gap-4 justify-center">
             <Link href="/faq">
-              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
-                All FAQs
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-          </div>
-          <p className={`${roboto.className} text-sm text-muted-foreground`}>
-            Find more detailed answers and organization-specific information
-          </p>
+                <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+                  View All FAQs
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            <p className={`${roboto.className} text-sm text-muted-foreground`}>
+              Find more detailed answers and organization-specific information
+            </p>
+        </div>
         </motion.div>
       </div>
     </section>

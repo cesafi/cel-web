@@ -96,6 +96,7 @@ export class ArticleService extends BaseService {
         .from(TABLE_NAME)
         .select('*')
         .eq('status', 'published')
+        .lte('published_at', new Date().toISOString())
         .order('published_at', { ascending: false })
         .limit(limit);
 

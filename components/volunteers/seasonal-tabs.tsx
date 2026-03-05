@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DepartmentGroups from './department-groups';
 import VolunteerSearch from './volunteer-search';
 import { Calendar, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { moderniz, roboto } from '@/lib/fonts';
 import { Season } from '@/lib/types/seasons';
 import { Volunteer } from '@/lib/types/volunteers';
@@ -98,63 +100,46 @@ export default function SeasonalTabs({
   return (
     <section className="py-16 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Season Tabs */}
-        <div className="flex justify-center mb-12">
-          <div className="flex gap-2 p-1 bg-muted/30 rounded-lg overflow-x-auto max-w-full scrollbar-hide">
-            {seasons.map((season) => (
-              <button
-                key={season.id}
-                onClick={() => setSelectedSeasonId(season.id)}
-                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 flex-shrink-0 whitespace-nowrap ${selectedSeasonId === season.id
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
+        {/* Unified Search and Filters Container */}
+        <div className="w-full bg-card/40 backdrop-blur-md border border-border/50 shadow-lg rounded-xl overflow-hidden mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 sm:p-4">
+            
+            {/* Left: Season Select Dropdown */}
+            <div className="w-full sm:w-auto min-w-[200px]">
+              <Select
+                value={selectedSeasonId?.toString() || ""}
+                onValueChange={(val) => setSelectedSeasonId(Number(val))}
               >
-                <span className={moderniz.className}>
-                  {season.name || `Season ${season.id}`}
-                </span>
-              </button>
-            ))}
+                <SelectTrigger className="h-10 w-full bg-background shadow-sm font-medium text-sm border-border/50">
+                  <SelectValue placeholder="Select Season" />
+                </SelectTrigger>
+                <SelectContent>
+                  <ScrollArea className="h-[200px]">
+                    {seasons.map((season) => (
+                      <SelectItem key={season.id} value={season.id.toString()}>
+                        {season.name || `Season ${season.id}`}
+                      </SelectItem>
+                    ))}
+                  </ScrollArea>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Right: Search Bar */}
+            <div className="w-full sm:w-[300px]">
+              <VolunteerSearch 
+                searchTerm={searchTerm} 
+                onSearchChange={setSearchTerm} 
+              />
+            </div>
+            
           </div>
         </div>
 
-        {/* Season Info */}
-        {selectedSeason && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-12"
-          >
-            <h2 className={`${moderniz.className} text-3xl md:text-4xl font-bold text-foreground mb-4`}>
-              {selectedSeason.name || `Season ${selectedSeason.id}`}
-            </h2>
-            <div className="flex items-center justify-center gap-6 text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                <span className={`${roboto.className} text-sm`}>
-                  {filteredVolunteers.length} Volunteers
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                <span className={`${roboto.className} text-sm`}>
-                  {groupedVolunteers.length} Departments
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Search Bar */}
-        {selectedSeason && (
-          <div className="mb-12">
-            <VolunteerSearch 
-              searchTerm={searchTerm} 
-              onSearchChange={setSearchTerm} 
-            />
-          </div>
-        )}
+        {/* Results count text matching players page */}
+        <p className={`${roboto.className} text-xs text-muted-foreground/50 mb-8`}>
+          {filteredVolunteers.length} volunteer{filteredVolunteers.length !== 1 ? 's' : ''} found in {groupedVolunteers.length} department{groupedVolunteers.length !== 1 ? 's' : ''}
+        </p>
 
         {/* Department Groups */}
         <AnimatePresence mode="wait">

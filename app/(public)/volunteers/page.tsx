@@ -19,35 +19,10 @@ export default async function VolunteersPage() {
   const seasons: Season[] = seasonsResult.success && seasonsResult.data ? seasonsResult.data : [];
   const volunteers: Volunteer[] = volunteersResult.success && volunteersResult.data ? volunteersResult.data : [];
   const departments: Department[] = departmentsResult.success && departmentsResult.data ? departmentsResult.data : [];
-
-  // Calculate metrics server-side
-  const activeVolunteers = volunteers.filter(volunteer => volunteer.is_active !== false);
-  const totalActiveVolunteers = activeVolunteers.length;
-  const totalDepartments = departments.length;
-  const totalSeasons = seasons.length;
-
-  const stats = [
-    { 
-      icon: Users, 
-      value: totalActiveVolunteers.toString(), 
-      label: 'Active Volunteers',
-    },
-    { 
-      icon: Briefcase, 
-      value: totalDepartments.toString(), 
-      label: 'Departments',
-    },
-    { 
-      icon: Calendar, 
-      value: totalSeasons.toString(), 
-      label: 'Seasons',
-    },
-  ];
-
   return (
     <>
       {/* Hero Section */}
-      <section className="relative min-h-[60vh] overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10 pt-16 sm:min-h-[70vh] sm:pt-20">
+      <section className="relative min-h-[40vh] overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10 pt-16 sm:min-h-[50vh] sm:pt-20">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzM2YzYxIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] bg-repeat" />
@@ -66,26 +41,6 @@ export default async function VolunteersPage() {
               Dedicated individuals who make CESAFI possible through their passion, 
               commitment, and unwavering support for student athletics across all seasons.
             </p>
-
-            {/* Main Stats */}
-            <div className="grid grid-cols-3 gap-3 max-w-4xl mx-auto mb-8 sm:gap-8 sm:mb-12">
-              {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="flex flex-col items-center group"
-                >
-                  <div className="p-2 sm:p-4 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors duration-300 mb-2 sm:mb-4">
-                    <stat.icon className="h-4 w-4 sm:h-8 sm:w-8 text-primary" />
-                  </div>
-                  <div className={`${moderniz.className} text-xl sm:text-3xl md:text-4xl font-bold text-foreground mb-0.5 sm:mb-2`}>
-                    {stat.value}
-                  </div>
-                  <div className={`${roboto.className} text-muted-foreground text-[10px] sm:text-sm font-medium text-center`}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>

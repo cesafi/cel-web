@@ -171,7 +171,7 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="relative w-full h-[40vh] min-h-[300px] overflow-hidden"
+        className="relative w-full h-[50vh] min-h-[400px] overflow-hidden bg-zinc-950"
       >
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[url('/img/cclex-banner.webp')] bg-cover bg-center bg-no-repeat" />
@@ -185,42 +185,85 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
           </Button>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
-          <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-6">
-            <div className="relative h-24 w-24 md:h-32 md:w-32 flex-shrink-0">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl scale-125" />
-              {player.photo_url ? (
-                <Image src={player.photo_url} alt={player.ign} fill className="relative z-10 rounded-full object-cover border-2 border-primary/40 shadow-2xl" />
-              ) : (
-                <div className="relative z-10 h-full w-full rounded-full bg-muted/50 border-2 border-border/40 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-muted-foreground/40">{player.ign?.charAt(0) || '?'}</span>
+        <div className="absolute inset-x-0 bottom-0 h-full w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex h-full items-end justify-between">
+            {/* Player Info (Left Side) */}
+            <div className="pb-8 md:pb-12 text-white relative z-20 max-w-2xl">
+              <h1 className="font-mango-grotesque text-6xl md:text-8xl lg:text-9xl font-bold tracking-wide leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
+                {player.ign}
+              </h1>
+              
+              <div className="flex flex-wrap items-center gap-4 mt-4">
+                {player.first_name && (
+                  <span className="text-lg md:text-xl font-medium text-white/90 drop-shadow-md">
+                    {player.first_name} {player.last_name}
+                  </span>
+                )}
+                {player.role && (
+                  <Badge variant="outline" className="border-white/30 bg-black/20 backdrop-blur-sm text-white px-3 py-1 text-xs uppercase tracking-[0.2em] shadow-lg">
+                    {player.role}
+                  </Badge>
+                )}
+                {teamName && (
+                  <span className="text-lg md:text-xl font-medium text-primary-400 drop-shadow-md">
+                    {teamName}
+                  </span>
+                )}
+              </div>
+              
+              {schoolInfo && (
+                <div className="flex items-center gap-3 mt-4">
+                  {schoolInfo.logo_url && (
+                    <div className="p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg">
+                      <Image 
+                        src={schoolInfo.logo_url} 
+                        alt={schoolInfo.name} 
+                        width={32} 
+                        height={32} 
+                        className="h-8 w-8 object-contain drop-shadow-lg" 
+                      />
+                    </div>
+                  )}
+                  <span className="text-sm md:text-base font-medium text-white/70 drop-shadow-sm">
+                    {schoolInfo.name}
+                  </span>
                 </div>
               )}
             </div>
 
-            <div className="text-white text-center md:text-left pb-2">
-              <h1 className="font-mango-grotesque text-4xl md:text-5xl lg:text-6xl font-bold tracking-wide leading-none drop-shadow-lg">
-                {player.ign}
-              </h1>
-              <div className="flex flex-wrap items-center gap-3 mt-2 justify-center md:justify-start">
-                {player.first_name && (
-                  <span className="text-sm text-white/60">{player.first_name} {player.last_name}</span>
-                )}
-                {player.role && (
-                  <Badge variant="outline" className="border-white/20 text-white/70 text-[10px] uppercase tracking-widest">
-                    {player.role}
-                  </Badge>
-                )}
-                {teamName && <span className="text-sm text-white/50">{teamName}</span>}
-              </div>
-              {schoolInfo && (
-                <div className="flex items-center gap-2 mt-2 justify-center md:justify-start">
-                  {schoolInfo.logo_url && <Image src={schoolInfo.logo_url} alt="" width={20} height={20} className="h-5 w-5 object-contain" />}
-                  <span className="text-xs text-white/40">{schoolInfo.name}</span>
+            {/* Player Photo (Right Side, Overlapping) */}
+            <div className="relative h-full w-1/2 max-w-[500px] hidden md:block">
+              <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl scale-150 translate-y-20" />
+              {((player as any).photo_url_secondary || player.photo_url) ? (
+                <Image 
+                  src={(player as any).photo_url_secondary || player.photo_url} 
+                  alt={player.ign} 
+                  fill 
+                  className="relative z-10 object-contain object-bottom drop-shadow-[0_0_30px_rgba(0,0,0,0.8)]"
+                  priority
+                />
+              ) : (
+                <div className="relative z-10 h-full w-full flex items-end justify-center pb-8">
+                  <div className="h-48 w-48 rounded-full bg-muted/40 backdrop-blur-sm border-2 border-white/10 flex items-center justify-center shadow-2xl">
+                     <span className="text-6xl font-mango-grotesque font-bold text-white/50">{player.ign?.charAt(0) || '?'}</span>
+                  </div>
                 </div>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Mobile Player Photo Overlay */}
+        <div className="absolute bottom-0 right-4 h-2/3 w-1/2 md:hidden">
+          {((player as any).photo_url_secondary || player.photo_url) && (
+            <Image 
+              src={(player as any).photo_url_secondary || player.photo_url} 
+              alt={player.ign} 
+              fill 
+              className="object-contain object-bottom opacity-50 drop-shadow-[0_0_15px_rgba(0,0,0,0.8)] mask-image-b-fade"
+              priority
+            />
+          )}
         </div>
       </motion.div>
 
