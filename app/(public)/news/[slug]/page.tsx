@@ -141,22 +141,20 @@ export default function NewsArticlePage() {
             </h1>
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-muted-foreground flex flex-col sm:flex-row  gap-6 text-sm">
-                <div className="flex flex-row gap-8">
+              <div className="text-muted-foreground grid grid-cols-2 gap-y-3 gap-x-6 sm:flex sm:flex-wrap text-sm">
                 <div className="flex items-center gap-2">
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4 shrink-0" />
                   <span>by {displayArticle.author}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4 shrink-0" />
                   <span>{formatSmartDate(displayArticle.publishedAt)}</span>
                 </div>
-                </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                  <Clock className="h-4 w-4 shrink-0" />
                   <span>{displayArticle.readTime}</span>
                 </div>
-                <ViewCounter count={article.view_count} className="text-sm text-muted-foreground" />
+                <ViewCounter count={article.view_count} className="flex items-center gap-2 text-sm text-muted-foreground shrink-0" />
               </div>
 
               {/* Share Buttons - Top */}
