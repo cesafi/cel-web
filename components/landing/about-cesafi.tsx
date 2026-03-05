@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { moderniz, roboto } from '@/lib/fonts';
+import { ArrowRight } from 'lucide-react';
 
 export default function AboutCesafi() {
   const ref = useRef(null);
@@ -164,8 +165,8 @@ export default function AboutCesafi() {
                 className={`${moderniz.className} text-foreground leading-[1.2] font-bold tracking-tight text-3xl md:text-4xl xl:text-5xl 2xl:text-6xl`}
               >
                 Showcasing
-                <span className="text-gradient-cel"> top-class performance</span> and
-                <span className="text-gradient-cel-reverse"> innovation</span> from the best of the best.
+                <span className="text-primary"> top-class performance</span> and
+                <span className="text-primary"> innovation</span> from the best of the best.
               </motion.p>
             </motion.div>
 
@@ -199,9 +200,10 @@ export default function AboutCesafi() {
                     boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
                   }}
                   whileTap={{ scale: 0.95 }}
-                  className={`${moderniz.className} bg-foreground hover:bg-foreground/90 text-background rounded-2xl px-10 py-5 text-base font-semibold tracking-wide uppercase shadow-lg transition-all duration-300 sm:text-lg md:text-xl`}
+                  className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}
                 >
                   Learn More
+                  <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
             </motion.div>

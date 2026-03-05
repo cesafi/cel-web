@@ -92,12 +92,19 @@ export default function ScheduleContent({
 
   const matches = data?.matches || [];
 
-  const handleLoadMore = useCallback((direction: 'future' | 'past') => {
+  const [isWaiting, setIsWaiting] = useState(false);
+
+  const handleLoadMore = useCallback(async (direction: 'future' | 'past') => {
+    setIsWaiting(true);
+    // Add artificial delay for smoother perceived loading
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
     if (direction === 'future' && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     } else if (direction === 'past' && hasPreviousPage && !isFetchingPreviousPage) {
       fetchPreviousPage();
     }
+    setIsWaiting(false);
   }, [hasNextPage, hasPreviousPage, isFetchingNextPage, isFetchingPreviousPage, fetchNextPage, fetchPreviousPage]);
 
   const handleEsportChange = useCallback((esportId: string) => {
@@ -174,9 +181,9 @@ export default function ScheduleContent({
           onLoadMore={handleLoadMore}
           hasMoreFuture={data ? hasNextPage : initialHasMoreFuture}
           hasMorePast={data ? hasPreviousPage : initialHasMorePast}
-          isLoading={isFetching}
-          isFetchingNextPage={isFetchingNextPage}
-          isFetchingPreviousPage={isFetchingPreviousPage}
+          isLoading={isFetching || isWaiting}
+          isFetchingNextPage={isFetchingNextPage || isWaiting}
+          isFetchingPreviousPage={isFetchingPreviousPage || isWaiting}
           selectedEsportId={selectedEsport}
           onEsportChange={handleEsportChange}
           selectedDivision={selectedDivision}

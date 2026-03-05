@@ -143,7 +143,7 @@ export default function PhotoGallery() {
               transition={{ duration: 0.6 }}
               className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}
             >
-              Photo <span className="text-gradient-cel">Gallery</span>
+              Photo <span className="text-primary">Gallery</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}

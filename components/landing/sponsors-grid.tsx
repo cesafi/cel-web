@@ -25,7 +25,7 @@ export default async function SponsorsGrid() {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16 md:mb-20">
           <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
-            Our <span className="text-gradient-cel">Partners</span>
+            Our <span className="text-primary">Partners</span>
           </h2>
           <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
             Proudly supported by our valued sponsors and partners

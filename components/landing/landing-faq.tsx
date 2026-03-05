@@ -47,7 +47,7 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
         {/* Header */}
         <div className="text-center mb-16 md:mb-20">
           <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
-            Frequently Asked <span className="text-gradient-cel">Questions</span>
+            Frequently Asked <span className="text-primary">Questions</span>
           </h2>
           <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
             Quick answers to the most common questions about CESAFI
@@ -55,7 +55,7 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
         </div>
 
         {/* FAQ Items */}
-        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-6 mb-10 sm:mb-16">
+        <div className="max-w-3xl mx-auto space-y-2 sm:space-y-4 mb-8 sm:mb-12">
           {topFaqs.map((item, index) => (
             <motion.div
               key={item.id}
@@ -67,14 +67,14 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
             >
               <button
                 onClick={() => toggleItem(item.id)}
-                className="w-full p-5 sm:p-8 text-left flex items-center justify-between hover:bg-muted/50 transition-all duration-300 group"
+                className="w-full p-4 sm:p-5 text-left flex items-center justify-between hover:bg-muted/50 transition-all duration-300 group"
               >
-                <span className={`${moderniz.className} text-base sm:text-xl font-semibold text-foreground transition-colors duration-300 pr-3 ${openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
+                <span className={`${moderniz.className} text-sm sm:text-base font-semibold text-foreground transition-colors duration-300 pr-3 ${openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
                   }`}>
                   {item.question}
                 </span>
                 <motion.div
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 ${openItems.includes(item.id)
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 ${openItems.includes(item.id)
                       ? 'bg-primary text-primary-foreground scale-110'
                       : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'
                     }`}
@@ -86,9 +86,9 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
                     {openItems.includes(item.id) ? (
-                      <Minus className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     ) : (
-                      <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     )}
                   </motion.div>
                 </motion.div>
@@ -116,12 +116,12 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
                     }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-5 sm:px-8 sm:pb-8">
+                    <div className="px-4 pb-4 sm:px-5 sm:pb-5">
                       <motion.p
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.2 }}
-                        className={`${roboto.className} text-muted-foreground leading-relaxed text-base sm:text-lg`}
+                        className={`${roboto.className} text-muted-foreground leading-relaxed text-sm sm:text-base`}
                       >
                         {item.answer}
                       </motion.p>
@@ -149,7 +149,7 @@ export default function LandingFaq({ initialFaqs = [] }: LandingFaqProps) {
               </button>
             </Link>
             <Link href="/faq">
-              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-5 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
                 All FAQs
                 <ArrowRight className="w-4 h-4" />
               </button>

@@ -3,7 +3,8 @@ import { Article } from '@/lib/types/articles';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatTableDate } from '@/lib/utils/date';
-import { Pencil, Trash2, Eye, ExternalLink, User, FileText } from 'lucide-react';
+import { Pencil, Trash2, Eye, ExternalLink, User, FileText, Link as LinkIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -178,6 +179,31 @@ export const getArticlesTableActions = (
       size: 'sm' as const,
       disabled: (article: Article) => article.status !== 'published'
     }] : []),
+    // Copy link action (available for all statuses)
+    {
+      key: 'copy-link',
+      label: 'Copy Link',
+      icon: (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <LinkIcon className="h-4 w-4" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Copy article link</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
+      onClick: (article: Article) => {
+        const url = `${window.location.origin}/news/${article.slug}`;
+        navigator.clipboard.writeText(url)
+          .then(() => toast.success('Link copied to clipboard'))
+          .catch(() => toast.error('Failed to copy link'));
+      },
+      variant: 'ghost' as const,
+      size: 'sm' as const,
+    },
     // Edit action - conditional based on role and status
     {
       key: 'edit',

@@ -283,14 +283,14 @@
 
 /* Gradient text utilities for CESAFI branding */
 .text-gradient-cel {
-  background: linear-gradient(to right, var(--pale), var(--yale));
+  background: linear-gradient(to right, var(--pale) 46%, var(--yale) 54%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-cel-reverse {
-  background: linear-gradient(to right, var(--yale), var(--pale));
+  background: linear-gradient(to right, var(--yale) 48%, var(--pale) 52%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -142,7 +142,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
       <section className="py-24 md:py-32 bg-background relative overflow-hidden">
         <div className="container mx-auto px-4 text-center">
           <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
-            Upcoming <span className="text-gradient-cel">Games</span>
+            Upcoming <span className="text-primary">Games</span>
           </h2>
           <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto`}>
             {upcomingGames.length === 0
@@ -170,7 +170,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
           className="text-center mb-14 md:mb-20"
         >
           <h2 className={`${moderniz.className} text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6`}>
-            Upcoming <span className="text-gradient-cel">Games</span>
+            Upcoming <span className="text-primary">Games</span>
           </h2>
           <p className={`${roboto.className} text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto font-light`}>
             Mark your calendars for the next epic showdowns in CESAFI esports
@@ -400,7 +400,7 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
         >
           <div className="text-center mt-10 md:mt-12 flex flex-col gap-3 sm:gap-4 justify-center">
           <Link href="/schedule">
-              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-5 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
                 View Full Schedule
                 <ArrowRight className="w-4 h-4" />
               </button>

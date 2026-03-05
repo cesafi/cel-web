@@ -79,7 +79,7 @@ export default function FaqContent({ initialFaqItems }: FaqContentProps) {
 
   return (
     <section className="py-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Search and Filter */}
         <div className="mb-12 space-y-6">
@@ -127,7 +127,7 @@ export default function FaqContent({ initialFaqItems }: FaqContentProps) {
         )}
 
         {/* FAQ Items */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {filteredFaqItems.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto mb-4 bg-muted/30 rounded-full flex items-center justify-center">
@@ -151,10 +151,10 @@ export default function FaqContent({ initialFaqItems }: FaqContentProps) {
               >
                 <button
                   onClick={() => toggleItem(item.id)}
-                  className="w-full p-6 text-left flex items-start justify-between hover:bg-muted/30 transition-all duration-300 group"
+                  className="w-full p-4 sm:p-5 text-left flex items-start justify-between hover:bg-muted/30 transition-all duration-300 group"
                 >
                   <div className="flex-1 pr-4">
-                    <span className={`${moderniz.className} text-lg font-semibold text-foreground transition-colors duration-300 ${
+                    <span className={`${moderniz.className} text-sm sm:text-base font-semibold text-foreground transition-colors duration-300 ${
                       openItems.includes(item.id) ? 'text-primary' : 'group-hover:text-primary/80'
                     }`}>
                       {item.question}
@@ -168,9 +168,9 @@ export default function FaqContent({ initialFaqItems }: FaqContentProps) {
                     )}
                   </div>
                   <motion.div 
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
                       openItems.includes(item.id) 
-                        ? 'bg-primary text-primary-foreground' 
+                        ? 'bg-primary text-primary-foreground scale-110' 
                         : 'bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary'
                     }`}
                     whileHover={{ scale: 1.1 }}
@@ -181,9 +181,9 @@ export default function FaqContent({ initialFaqItems }: FaqContentProps) {
                       transition={{ duration: 0.3, ease: "easeInOut" }}
                     >
                       {openItems.includes(item.id) ? (
-                        <Minus className="w-4 h-4" />
+                        <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       ) : (
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       )}
                     </motion.div>
                   </motion.div>
@@ -211,12 +211,12 @@ export default function FaqContent({ initialFaqItems }: FaqContentProps) {
                       }}
                       className="overflow-hidden"
                     >
-                      <div className="px-6 pb-6">
+                      <div className="px-4 pb-4 sm:px-5 sm:pb-5">
                         <motion.p 
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: 0.2 }}
-                          className={`${roboto.className} text-muted-foreground leading-relaxed`}
+                          className={`${roboto.className} text-muted-foreground leading-relaxed text-sm sm:text-base`}
                         >
                           {item.answer}
                         </motion.p>
