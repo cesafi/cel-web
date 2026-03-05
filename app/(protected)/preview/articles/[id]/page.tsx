@@ -117,7 +117,7 @@ export default function ArticlePreviewPage() {
               </Badge>
               <Button variant="outline" size="sm" onClick={() => router.back()}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Articles
+                Go Back
               </Button>
             </div>
           </div>
@@ -258,11 +258,11 @@ export default function ArticlePreviewPage() {
               </div>
             </div>
 
-            {/* Back to Articles */}
+            {/* Go Back */}
             <div className="mt-12 pt-8 border-t border-border/30">
               <Button variant="outline" className="group" onClick={() => router.back()}>
                 <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-                Back to Articles Management
+                Go Back
               </Button>
             </div>
           </motion.div>

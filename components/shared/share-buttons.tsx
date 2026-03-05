@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Share2, Facebook, Link as LinkIcon, X } from 'lucide-react';
+import { Share2, Facebook, Link as LinkIcon, X, Twitter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { moderniz } from '@/lib/fonts';
@@ -107,7 +107,7 @@ export default function ShareButtons({
           onClick={() => handleShare('x')}
           disabled={disabled || isSharing}
         >
-          <X className="h-4 w-4" />
+          <Twitter className="h-4 w-4" />
         </Button>
         <Button
           variant="outline"
@@ -140,8 +140,8 @@ export default function ShareButtons({
           disabled={disabled || isSharing}
           className="flex items-center gap-2"
         >
-          <X className="h-4 w-4" />
-          X
+          <Twitter className="h-4 w-4" />
+          Twitter
         </Button>
         <Button
           variant="outline"
@@ -178,8 +178,8 @@ export default function ShareButtons({
           disabled={disabled || isSharing}
           className="flex items-center gap-2"
         >
-          <X className="h-4 w-4" />
-          X
+          <Twitter className="h-4 w-4" />
+          Twitter
         </Button>
         <Button
           variant="outline"
@@ -222,8 +222,8 @@ export default function ShareButtons({
           onClick={() => handleShare('x')}
           disabled={disabled || isSharing}
         >
-          <X className="mr-2 h-4 w-4" />
-          X
+          <Twitter className="mr-2 h-4 w-4" />
+          Twitter
         </Button>
         <Button
           variant="outline"
