@@ -164,7 +164,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
           <Users className="h-16 w-16 text-muted-foreground mx-auto" />
           <h1 className="text-2xl font-bold">Team Not Found</h1>
           <Button onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
+            <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
           </Button>
         </div>
       </div>
@@ -196,12 +196,12 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
       >
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[url('/img/cclex-banner.webp')] bg-cover bg-center bg-no-repeat" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </div>
 
         <div className="absolute top-6 left-6 z-10">
           <Button variant="ghost" size="sm" onClick={() => router.back()} className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
+            <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
           </Button>
         </div>
 
@@ -631,9 +631,9 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
                       {map.splash_image_url && (
                         <div className="relative h-24 w-full">
                           <Image src={map.splash_image_url} alt={map.map_name} fill className="object-cover opacity-40" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
                           <div className="absolute bottom-2 left-3">
-                            <h4 className="font-mango-grotesque text-lg font-bold text-foreground">{map.map_name}</h4>
+                            <h4 className="font-mango-grotesque text-lg font-bold text-white">{map.map_name}</h4>
                           </div>
                         </div>
                       )}

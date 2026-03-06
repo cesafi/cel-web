@@ -111,8 +111,8 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
             <p className="text-muted-foreground">The school you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           </div>
           <Button onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Go Back
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
           </Button>
         </div>
       </div>
@@ -152,15 +152,15 @@ export default function SchoolProfile({ schoolAbbreviation }: SchoolProfileProps
       >
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[url('/img/cclex-banner.webp')] bg-cover bg-center bg-no-repeat"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent"></div>
         </div>
 
         {/* Back Button */}
         <div className="absolute top-6 left-6 z-10">
           <Button variant="ghost" size="sm" onClick={() => router.back()} className="backdrop-blur-sm bg-black/20 hover:bg-black/40 text-white border-white/20">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Go Back
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
           </Button>
         </div>
 

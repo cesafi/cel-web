@@ -25,7 +25,7 @@ function cn(...classes: (string | undefined | null | false)[]) {
 type GameType = 'mlbb' | 'valorant' | 'all';
 type FilterOption = { id: number | string; label: string; value: string };
 
-export default function PlayersGrid( { availableRichSports }: { availableRichSports: RichSportCategory[]; }) {
+export default function PlayersGrid({ availableRichSports }: { availableRichSports: RichSportCategory[]; }) {
   const [game, setGame] = useState<GameType | string>('mlbb');
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
 
   const uniqueEsports = useMemo(() => {
     if (!availableRichSports || availableRichSports.length === 0) return [];
-    
+
     const map = new Map();
     availableRichSports.forEach(cat => {
       if (cat.esport && !map.has(cat.esport.id)) {
@@ -57,25 +57,25 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
   }, [availableRichSports]);
 
   const gameOptions: GameOption[] = useMemo(() => {
-      const options: GameOption[] = [];
-      
-      const sortedEsports = [...uniqueEsports].sort((a, b) => {
-        if (a.name.toLowerCase().includes('mobile legends')) return -1;
-        if (b.name.toLowerCase().includes('mobile legends')) return 1;
-        return 0;
-      });
+    const options: GameOption[] = [];
 
-      sortedEsports.forEach(esport => {
-        const gameId = esport.name.toLowerCase().includes('valorant') ? 'valorant' : 'mlbb';
-        options.push({
-          id: gameId,
-          name: esport.name,
-          shortName: esport.abbreviation || gameId.toUpperCase(),
-          logoUrl: esport.logo_url
-        });
+    const sortedEsports = [...uniqueEsports].sort((a, b) => {
+      if (a.name.toLowerCase().includes('mobile legends')) return -1;
+      if (b.name.toLowerCase().includes('mobile legends')) return 1;
+      return 0;
+    });
+
+    sortedEsports.forEach(esport => {
+      const gameId = esport.name.toLowerCase().includes('valorant') ? 'valorant' : 'mlbb';
+      options.push({
+        id: gameId,
+        name: esport.name,
+        shortName: esport.abbreviation || gameId.toUpperCase(),
+        logoUrl: esport.logo_url
       });
-      return options;
-    }, [uniqueEsports]);
+    });
+    return options;
+  }, [uniqueEsports]);
 
   // Fetch seasons and supporting data on mount
   useEffect(() => {
@@ -91,16 +91,16 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
           originalData: s
         }));
         setSeasons(mapped);
-        
+
         // Auto-select the latest season by start_at date if not already set
         if (mapped.length > 0) {
-           const latestSeason = [...mapped].sort((a, b) => {
-             const dateA = new Date(a.originalData?.start_at || 0).getTime();
-             const dateB = new Date(b.originalData?.start_at || 0).getTime();
-             return dateB - dateA; // Descending order
-           })[0];
-           
-           setSelectedSeason((prev) => prev !== null ? prev : Number(latestSeason.value));
+          const latestSeason = [...mapped].sort((a, b) => {
+            const dateA = new Date(a.originalData?.start_at || 0).getTime();
+            const dateB = new Date(b.originalData?.start_at || 0).getTime();
+            return dateB - dateA; // Descending order
+          })[0];
+
+          setSelectedSeason((prev) => prev !== null ? prev : Number(latestSeason.value));
         }
       }
 
@@ -110,7 +110,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
           getAllSchoolsTeams(),
           getAllSchools()
         ]);
-        
+
         if (teamsResult.success && teamsResult.data) {
           setAllTeams(teamsResult.data);
         }
@@ -120,7 +120,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
       } catch (err) {
         console.error("Failed to fetch teams/schools for mapping", err);
       }
-      
+
       setFiltersLoading(false);
     }
     fetchInitialData();
@@ -133,7 +133,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
         setTeams([]);
         return;
       }
-      
+
       const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
       const isVAL = game === 'all' || game === 'valorant' || game === '1';
 
@@ -207,12 +207,12 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
 
       // 2. Game Filter
       // We need to determine the game. In the players table, we might need to look at the team assigned in that season.
-      const targetSeasonEntry = selectedSeason 
+      const targetSeasonEntry = selectedSeason
         ? playerSeasons.find((ps: any) => ps.team?.season_id === selectedSeason)
         : playerSeasons[0]; // Default to latest/first if no season selected
 
       const teamGame = targetSeasonEntry?.team?.esports_categories?.esports?.name?.toLowerCase() || '';
-      
+
       const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
       const isVAL = game === 'all' || game === 'valorant' || game === '1';
 
@@ -242,7 +242,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
 
     filteredPlayers.forEach(player => {
       const playerSeasons = player.player_seasons || [];
-      const targetSeasonEntry = selectedSeason 
+      const targetSeasonEntry = selectedSeason
         ? playerSeasons.find((ps: any) => ps.team?.season_id === selectedSeason)
         : playerSeasons[0];
 
@@ -297,7 +297,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 sm:p-4">
           {/* Left: Game Selector Desktop */}
           <div className="hidden sm:flex items-center gap-2">
-            <CompactGameSelector 
+            <CompactGameSelector
               options={gameOptions}
               value={game}
               onChange={(val) => handleGameChange(val)}
@@ -336,7 +336,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
 
           {/* Mobile Game Selector */}
           <div className="sm:hidden col-span-2">
-            <CompactGameSelector 
+            <CompactGameSelector
               options={gameOptions}
               value={game}
               onChange={(val) => handleGameChange(val)}
@@ -438,7 +438,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                   {group.players.map((player: any, index: number) => {
                     const playerHref = `/players/${toPlayerSlug(player.ign || '')}`;
-                    
+
                     // Prioritize primary photo, fallback to secondary
                     const playerPhoto = player.photo_url || player.photo_url_secondary || null;
                     const firstNameSpliced = `${player.first_name}`.trim().split(' ').slice(0, 2).join(' ')
@@ -453,7 +453,7 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
                       >
                         <Link href={playerHref} className="group block h-full">
                           <div className="relative flex flex-col h-[320px] sm:h-[360px] w-full rounded-2xl border border-border/30 bg-gradient-to-b from-card/80 to-background overflow-hidden hover:border-primary/50 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                            
+
                             {/* Background School Logo Watermark */}
                             {group.logo && (
                               <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.05] dark:opacity-10 mix-blend-multiply dark:mix-blend-plus-lighter pointer-events-none p-6">
@@ -481,13 +481,13 @@ export default function PlayersGrid( { availableRichSports }: { availableRichSpo
 
                             {/* Text Information Sidebar (Left Side) */}
                             <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background via-background/80 to-transparent z-20 flex flex-col justify-end p-6">
-                              
+
                               <div className="w-full pr-2">
                                 {/* IGN */}
                                 <h3 className="text-3xl sm:text-xl font-mango-grotesque font-bold text-foreground group-hover:text-primary transition-colors tracking-widest uppercase drop-shadow-2xl break-words leading-[0.9] mb-4">
                                   {player.ign || 'Unknown'}
                                 </h3>
-                                
+
                                 {/* Divider */}
                                 <div className="w-12 h-0.5 bg-primary/60 mb-5 group-hover:w-full transition-all duration-700"></div>
 

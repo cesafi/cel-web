@@ -18,7 +18,7 @@ export default function Footer() {
               <span className={`${moderniz.className} text-lg font-bold`}>CESAFI</span>
             </div>
             <p className={`${roboto.className} text-muted-foreground text-sm leading-relaxed`}>
-              Cebu Schools Athletic Foundation is the central hub for showcasing athletic excellence, academic-driven
+              Cebu Schools Athletic Foundation, Inc. is the central hub for showcasing athletic excellence, academic-driven
               sports, and esports-inspired energy within Cebu&apos;s schools.
             </p>
           </div>
@@ -177,7 +177,7 @@ export default function Footer() {
           <div className="flex flex-col items-center justify-between space-y-3 text-center sm:flex-row sm:space-y-0">
             <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <p className={`${roboto.className} text-muted-foreground text-xs sm:text-sm`}>
-                © {currentYear} Cebu Schools Athletic Foundation. All rights reserved.
+                © {currentYear} Cebu Schools Athletic Foundation, Inc. All rights reserved.
               </p>
               <div className="hidden sm:block w-px h-4 bg-border" />
               <RealTimeClock className="text-muted-foreground" showIcon={true} showTimezone={false} size="sm" />
