@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "broadcast": "next dev -H 0.0.0.0 --port 0221"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

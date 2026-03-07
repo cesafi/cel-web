@@ -300,6 +300,10 @@ export async function GET(
         const bRoles = pad5(Array.from({ length: 5 }, (_, i) => roster[blueId]?.[i]?.role || N));
         const rRoles = pad5(Array.from({ length: 5 }, (_, i) => roster[redId]?.[i]?.role || N));
 
+        const esportAbbrev = isValorant ? 'VALORANT' : 'MLBB';
+        const bPaths = pad5(Array.from({ length: 5 }, (_, i) => `C:\\Users\\CESAFI\\Desktop\\CEL S4\\IMAGES\\Players\\${blueAbbr}\\${esportAbbrev}\\${bIgns[i]}_Formal.png`));
+        const rPaths = pad5(Array.from({ length: 5 }, (_, i) => `C:\\Users\\CESAFI\\Desktop\\CEL S4\\IMAGES\\Players\\${redAbbr}\\${esportAbbrev}\\${rIgns[i]}_Formal.png`));
+
         // Red side is REVERSED in the template (5,4,3,2,1)
         const rev = <T,>(a: T[]) => [...a].reverse();
 
@@ -327,8 +331,8 @@ export async function GET(
         // Row 6: BAN RATE
         csv += row(['BAN RATE', ...bBanIds.map(fmtBanRate), '', '', '', ...rev(rBanIds).map(fmtBanRate), 'BAN RATE']);
 
-        // Row 7: empty
-        csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+        // Row 7: player paths
+        csv += row(['', ...bPaths, '', '', '', ...rev(rPaths), '']);
 
         // Row 8: PLAYERS
         csv += row(['PLAYERS', ...bIgns, '', '', '', ...rev(rIgns), 'PLAYERS']);
