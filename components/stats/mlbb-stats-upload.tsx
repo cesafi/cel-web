@@ -304,7 +304,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
               newPlayers[i] = { ...newPlayers[i], heroName: char.name };
             }
           } else if (pick?.hero_name) {
-            const char = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
+            const normalizedPickHero = pick.hero_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const char = gameCharacters?.find(c => c.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedPickHero);
             if (char) {
               newHeroMapping[i.toString()] = char.id.toString();
               newPlayers[i] = { ...newPlayers[i], heroName: char.name };
@@ -339,21 +340,25 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
 
         // Auto-map players by IGN
         const allPlayers = [...team1.players, ...team2.players];
-        const newMapping: Record<string, string> = {};
+        const newMapping: Record<string, string> = { ...playerMapping };
         const newHeroMapping: Record<string, string> = {};
 
         convertedData.players.forEach((stat, index) => {
-          const matchedPlayer = allPlayers.find(p =>
-            stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) ||
-            p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
-          );
+          if (!stat.playerName) return;
+          const statNameLower = stat.playerName.toLowerCase();
+          const matchedPlayer = allPlayers.find(p => {
+            if (!p.ign) return false;
+            const ignLower = p.ign.toLowerCase();
+            return statNameLower.includes(ignLower) || ignLower.includes(statNameLower);
+          });
 
           if (matchedPlayer) {
             newMapping[index.toString()] = matchedPlayer.id;
           }
 
           if (stat.heroName && gameCharacters) {
-            const matchedChar = gameCharacters.find((c: any) => c.name.toLowerCase() === stat.heroName.toLowerCase());
+            const normalizedStatHero = stat.heroName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const matchedChar = gameCharacters.find((c: any) => c.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedStatHero);
             if (matchedChar) {
               newHeroMapping[index.toString()] = matchedChar.id.toString();
               stat.heroName = matchedChar.name; // ensure matched casing
@@ -367,8 +372,15 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
             const pId = newMapping[index.toString()];
             if (pId) {
               const pick = findPickForPlayer(pId, gameDraftActions);
-              if (pick?.hero_name) {
-                const matchedChar = gameCharacters?.find((c: any) => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
+              if (pick?.hero_id) {
+                const matchedChar = gameCharacters?.find((c: any) => c.id === pick.hero_id);
+                if (matchedChar) {
+                  newHeroMapping[index.toString()] = matchedChar.id.toString();
+                  stat.heroName = matchedChar.name;
+                }
+              } else if (pick?.hero_name) {
+                const normalizedPickHero = pick.hero_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const matchedChar = gameCharacters?.find((c: any) => c.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedPickHero);
                 if (matchedChar) {
                   newHeroMapping[index.toString()] = matchedChar.id.toString();
                   stat.heroName = matchedChar.name;
@@ -439,7 +451,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
               newPlayers[i] = { ...newPlayers[i], heroName: matchingChar.name };
             }
           } else if (pick?.hero_name) {
-            const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
+            const normalizedPickHero = pick.hero_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const matchingChar = gameCharacters?.find(c => c.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedPickHero);
             if (matchingChar) {
               newHeroMapping[i.toString()] = matchingChar.id.toString();
               newPlayers[i] = { ...newPlayers[i], heroName: matchingChar.name };

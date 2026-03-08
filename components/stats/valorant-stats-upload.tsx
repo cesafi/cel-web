@@ -140,7 +140,8 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     if (typeof idOrName === 'number' || !isNaN(Number(idOrName))) {
       return gameCharacters.find(c => c.id === Number(idOrName));
     }
-    return gameCharacters.find(c => c.name.toLowerCase() === idOrName.toLowerCase());
+    const normalized = String(idOrName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return gameCharacters.find(c => c.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalized);
   };
 
   // Helper: find the draft pick for a given player using roster-based correlation
@@ -344,14 +345,17 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
         });
 
         // Auto-map players by IGN
-        const newMapping: Record<string, string> = {};
+        const newMapping: Record<string, string> = { ...playerMapping };
         const allPlayers = [...team1.players, ...team2.players];
 
         convertedData.players.forEach((stat, index) => {
-          const matchedPlayer = allPlayers.find(p =>
-            stat.playerName.toLowerCase().includes(p.ign.toLowerCase()) ||
-            p.ign.toLowerCase().includes(stat.playerName.toLowerCase())
-          );
+          if (!stat.playerName) return;
+          const statNameLower = stat.playerName.toLowerCase();
+          const matchedPlayer = allPlayers.find(p => {
+            if (!p.ign) return false;
+            const ignLower = p.ign.toLowerCase();
+            return statNameLower.includes(ignLower) || ignLower.includes(statNameLower);
+          });
           if (matchedPlayer) {
             newMapping[index.toString()] = matchedPlayer.id;
           }
