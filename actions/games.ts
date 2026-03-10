@@ -30,7 +30,7 @@ export async function getPaginatedGamesByMatch(matchId: number, options: Paginat
 export async function createGame(data: unknown): Promise<ServiceResponse<Game>> {
   // Validate the input data
   const validationResult = createGameSchema.safeParse(data);
-  
+
   if (!validationResult.success) {
     return {
       success: false,
@@ -51,7 +51,7 @@ export async function createGame(data: unknown): Promise<ServiceResponse<Game>> 
 export async function updateGameById(data: unknown): Promise<ServiceResponse<Game>> {
   // Validate the input data
   const validationResult = updateGameSchema.safeParse(data);
-  
+
   if (!validationResult.success) {
     return {
       success: false,
@@ -100,30 +100,36 @@ export async function calculateMatchDuration(matchId: number) {
 /**
  * Perform a dynamic coin toss for a single game (e.g. MLBB Side Selection).
  */
-export async function performGameCoinToss(gameId: number, matchId: number, team1Id: string, team2Id: string) {
+export async function performGameCoinToss(gameId: number, matchId: number, team1Id: string, team2Id: string, headsTeamId?: string) {
   try {
-    const isTeam1 = Math.random() > 0.5;
-    // For MLBB, "heads/tails" doesn't matter as much, but we could determine First Pick or side
-    // Often it just means the winner gets to choose. We will set the winner.
-    
-    const winnerId = isTeam1 ? team1Id : team2Id;
-    
+    let winnerId = '';
+    if (headsTeamId) {
+      const isHeads = Math.random() > 0.5;
+      const tailsTeamId = headsTeamId === team1Id ? team2Id : team1Id;
+      winnerId = isHeads ? headsTeamId : tailsTeamId;
+    } else {
+      const isTeam1 = Math.random() > 0.5;
+      // For MLBB, "heads/tails" doesn't matter as much, but we could determine First Pick or side
+      // Often it just means the winner gets to choose. We will set the winner.
+      winnerId = isTeam1 ? team1Id : team2Id;
+    }
+
     const update = await GameService.updateById({
       id: gameId,
       coin_toss_winner: winnerId,
     });
-    
+
     if (update.success) {
       if (matchId) {
         // We revalidate matches index because calculating match duration might require it,
         // and we specifically invalidate the match route here if needed, or rely on a custom helper:
-        RevalidationHelper.revalidateMatches(); 
+        RevalidationHelper.revalidateMatches();
         // Also revalidate the broadcast/draft paths since they rely on game data
         revalidatePath(`/broadcast/mlbb/draft/${matchId}`);
       }
       RevalidationHelper.revalidateGames();
     }
-    
+
     return update;
   } catch (error) {
     console.error('Game coin toss failed:', error);

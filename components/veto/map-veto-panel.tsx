@@ -100,6 +100,9 @@ export function MapVetoPanel({
     mapName: string;
   } | null>(null);
 
+  // Coin Toss Heads Selection
+  const [headsTeamId, setHeadsTeamId] = useState<string>(team1.id);
+
   // Modal State
   const [isResetVetoModalOpen, setIsResetVetoModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -303,7 +306,7 @@ export function MapVetoPanel({
       setIsTossing(true);
       // Brief artificial delay for visual flair
       await new Promise(resolve => setTimeout(resolve, 1500));
-      const result = await performMatchCoinToss(matchId, team1.id, team2.id);
+      const result = await performMatchCoinToss(matchId, team1.id, team2.id, headsTeamId);
       if (!result.success) throw new Error(result.error);
       return result.data;
     },
@@ -592,14 +595,39 @@ export function MapVetoPanel({
               </p>
 
               {isAdmin ? (
-                <Button
-                  size="lg"
-                  className="w-full text-lg shadow-lg hover:shadow-xl transition-all"
-                  onClick={() => coinTossMutation.mutate()}
-                  disabled={isTossing || coinTossMutation.isPending}
-                >
-                  {isTossing ? 'Flipping Coin...' : 'Toss Coin'}
-                </Button>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2 p-3 bg-muted/30 rounded-lg border border-muted">
+                    <p className="text-sm font-medium">Which team gets Heads?</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={headsTeamId === team1.id ? 'default' : 'outline'}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setHeadsTeamId(team1.id)}
+                        disabled={isTossing}
+                      >
+                        {team1.abbreviation}
+                      </Button>
+                      <Button
+                        variant={headsTeamId === team2.id ? 'default' : 'outline'}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setHeadsTeamId(team2.id)}
+                        disabled={isTossing}
+                      >
+                        {team2.abbreviation}
+                      </Button>
+                    </div>
+                  </div>
+                  <Button
+                    size="lg"
+                    className="w-full text-lg shadow-lg hover:shadow-xl transition-all"
+                    onClick={() => coinTossMutation.mutate()}
+                    disabled={isTossing || coinTossMutation.isPending}
+                  >
+                    {isTossing ? 'Flipping Coin...' : 'Toss Coin'}
+                  </Button>
+                </div>
               ) : (
                 <Badge variant="outline" className="text-base px-4 py-2 bg-muted/50 border-dashed">
                   Waiting for Admin to toss...

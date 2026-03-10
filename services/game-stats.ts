@@ -186,7 +186,32 @@ export class PostGameStatsService extends BaseService {
       for (const game of games) {
         if (game.status !== 'completed') continue;
 
-        // Try MLBB stats first
+        // Try to determine winner from game_scores first
+        const { data: scores } = await supabase
+          .from('game_scores')
+          .select('match_participant_id, score')
+          .eq('game_id', game.id);
+
+        if (scores && scores.length >= 2) {
+          const validScores = scores.filter(s => s.score !== null && s.score !== undefined);
+          if (validScores.length >= 2) {
+            // Sort by score descending to find the highest score
+            validScores.sort((a, b) => b.score - a.score);
+            const highest = validScores[0];
+            const secondHighest = validScores[1];
+
+            // If there's a clear winner (no tie for first)
+            if (highest.score > secondHighest.score) {
+              const p = participants.find(p => p.id === highest.match_participant_id);
+              if (p?.team_id) {
+                teamWins[p.team_id] = (teamWins[p.team_id] || 0) + 1;
+                continue;
+              }
+            }
+          }
+        }
+
+        // Fallback to MLBB stats MVP
         const { data: mlbbMvp } = await supabase
           .from('stats_mlbb_game_player')
           .select('team_id')
@@ -199,7 +224,7 @@ export class PostGameStatsService extends BaseService {
           continue;
         }
 
-        // Try Valorant stats
+        // Fallback to Valorant stats MVP
         const { data: valoMvp } = await supabase
           .from('stats_valorant_game_player')
           .select('team_id')
