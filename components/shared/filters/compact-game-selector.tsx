@@ -33,25 +33,10 @@ export function CompactGameSelector({
   const showButtons = variant === 'all' || variant === 'buttons';
 
   const getActiveColors = (id: string) => {
-    if (id === 'mlbb') {
-      return {
-        borderBg: "border-blue-500 bg-blue-500/10 shadow-sm shadow-blue-500/20",
-        circle: "bg-blue-500 text-white",
-        text: "text-blue-500 group-hover:text-blue-400"
-      };
-    }
-    if (id === 'valorant') {
-      return {
-        borderBg: "border-red-500 bg-red-500/10 shadow-sm shadow-red-500/20",
-        circle: "bg-red-500 text-white",
-        text: "text-red-500 group-hover:text-red-400"
-      };
-    }
-    // all or defaults
     return {
-      borderBg: "border-amber-500 bg-amber-500/10 shadow-sm shadow-amber-500/20",
-      circle: "bg-amber-500 text-white",
-      text: "text-amber-500 group-hover:text-amber-400"
+      borderBg: "border-primary bg-primary/10 shadow-sm shadow-primary/20",
+      circle: "bg-primary text-primary-foreground",
+      text: "text-primary group-hover:text-primary/80"
     };
   };
 

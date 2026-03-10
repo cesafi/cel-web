@@ -53,6 +53,9 @@ interface DateNavigationProps {
   readonly availableStages?: EsportsSeasonStageWithDetails[];
   readonly selectedStage?: string;
   readonly onStageChange?: (stageId: string) => void;
+  readonly availableSchools?: any[];
+  readonly selectedSchool?: string;
+  readonly onSchoolChange?: (schoolId: string) => void;
 }
 
 export default function DateNavigation({
@@ -75,7 +78,10 @@ export default function DateNavigation({
   onSeasonChange,
   availableStages = [],
   selectedStage = 'all',
-  onStageChange
+  onStageChange,
+  availableSchools = [],
+  selectedSchool = 'all',
+  onSchoolChange
 }: DateNavigationProps) {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -86,8 +92,9 @@ export default function DateNavigation({
     if (selectedEsportId !== 'all') count++;
     if (selectedDivision !== 'all') count++;
     if (selectedStage !== 'all') count++;
+    if (selectedSchool !== 'all') count++;
     return count;
-  }, [selectedSeason, selectedEsportId, selectedDivision, selectedStage]);
+  }, [selectedSeason, selectedEsportId, selectedDivision, selectedStage, selectedSchool]);
   const goToPreviousDay = () => {
     if (onPreviousDay) {
       onPreviousDay();
@@ -327,6 +334,29 @@ export default function DateNavigation({
                 </SelectContent>
               </Select>
             )}
+            
+            {/* School Selector */}
+            {availableSchools && availableSchools.length > 0 && (
+              <Select value={selectedSchool} onValueChange={(val) => onSchoolChange?.(val)}>
+                <SelectTrigger className="h-9 w-[150px] bg-background shadow-sm font-medium text-xs truncate">
+                  <SelectValue placeholder="All Schools" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Schools</SelectItem>
+                  {availableSchools.map(s => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        {s.logo_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.logo_url} alt={s.abbreviation || s.name} className="w-5 h-5 object-contain" />
+                        )}
+                        <span>{s.abbreviation || s.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Select value={selectedDivision} onValueChange={(val) => onDivisionChange?.(val)}>
               <SelectTrigger className="h-9 w-[150px] bg-background shadow-sm font-medium text-xs">
@@ -395,6 +425,31 @@ export default function DateNavigation({
                   className="w-full"
                 />
               </div>
+              
+              {/* School Selector (mobile) */}
+              {availableSchools && availableSchools.length > 0 && (
+                <div className="col-span-2">
+                  <Select value={selectedSchool} onValueChange={(val) => onSchoolChange?.(val)}>
+                    <SelectTrigger className="h-9 w-full bg-background shadow-sm font-medium text-xs truncate">
+                      <SelectValue placeholder="All Schools" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Schools</SelectItem>
+                      {availableSchools.map(s => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            {s.logo_url && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={s.logo_url} alt={s.abbreviation || s.name} className="w-5 h-5 object-contain" />
+                            )}
+                            <span>{s.abbreviation || s.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Category */}
               <Select value={selectedDivision} onValueChange={(val) => onDivisionChange?.(val)}>

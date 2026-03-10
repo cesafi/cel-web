@@ -55,7 +55,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
   const { data: mlbbStats } = useQuery({
     queryKey: ['team-stats-mlbb', teamId, seasonId],
     queryFn: async () => {
-      const result = await getMlbbStats({ team_id: teamId, season_id: seasonId });
+      const result = await getMlbbStats({ school_id: school?.id, season_id: seasonId });
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },
@@ -65,7 +65,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
   const { data: valorantStats } = useQuery({
     queryKey: ['team-stats-valorant', teamId, seasonId],
     queryFn: async () => {
-      const result = await getValorantStats({ team_id: teamId, season_id: seasonId });
+      const result = await getValorantStats({ school_id: school?.id, season_id: seasonId });
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },

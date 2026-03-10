@@ -7,6 +7,12 @@ import { Faq } from '@/lib/types/faq';
 import { moderniz, roboto } from '@/lib/fonts';
 import Image from 'next/image';
 import { Suspense } from 'react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About Us | CESAFI Esports League',
+  description: 'Learn about the CESAFI Esports League - the official esports league of the Cebu Schools Athletic Foundation, Inc.',
+};
 
 export default async function AboutUsPage() {
   // Fetch About Us FAQs server-side

@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
     const game = searchParams.get('game') || 'mlbb';
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
-    const categoryId = searchParams.get('categoryId') ? parseInt(searchParams.get('categoryId')!) : undefined;
+    const division = searchParams.get('division') || undefined;
     const format = getFormatParam(request);
 
     const result = game === 'mlbb'
-      ? await StatisticsService.getHeroStats(seasonId, stageId, categoryId)
-      : await StatisticsService.getAgentStats(seasonId, stageId, categoryId);
+      ? await StatisticsService.getHeroStats(seasonId, stageId, division)
+      : await StatisticsService.getAgentStats(seasonId, stageId, division);
 
     if (!result.success) {
       return NextResponse.json(

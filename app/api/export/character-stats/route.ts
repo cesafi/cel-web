@@ -12,13 +12,13 @@ const N = 'None';
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const { game, seasonId, stageId, categoryId } = parseFilters(searchParams);
+        const { game, seasonId, stageId, division } = parseFilters(searchParams);
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : MAX_ROWS;
 
         const isMlbb = game === 'mlbb';
         const result = isMlbb
-            ? await StatisticsService.getHeroStats(seasonId, stageId, categoryId)
-            : await StatisticsService.getAgentStats(seasonId, stageId, categoryId);
+            ? await StatisticsService.getHeroStats(seasonId, stageId, division)
+            : await StatisticsService.getAgentStats(seasonId, stageId, division);
 
         if (!result.success || !result.data) {
             return NextResponse.json({ error: 'Failed to fetch character stats' }, { status: 500 });

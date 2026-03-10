@@ -435,6 +435,26 @@ export class MatchesService extends BaseService {
         }
       }
 
+      // Handle school filter
+      let schoolMatchIdsToFilter: number[] | null = null;
+      if (filters.school_id) {
+        const { data: teams } = await supabase.from('schools_teams').select('id').eq('school_id', filters.school_id);
+        const teamIds = (teams || []).map(t => t.id);
+        
+        if (teamIds.length === 0) {
+          const response: ScheduleResponse = { matches: [], nextCursor: null, prevCursor: cursor || null, hasMore: false, totalCount: 0 };
+          return { success: true as const, data: response };
+        }
+        
+        const { data: participants } = await supabase.from('match_participants').select('match_id').in('team_id', teamIds);
+        schoolMatchIdsToFilter = [...new Set((participants || []).map(p => p.match_id))];
+        
+        if (schoolMatchIdsToFilter.length === 0) {
+          const response: ScheduleResponse = { matches: [], nextCursor: null, prevCursor: cursor || null, hasMore: false, totalCount: 0 };
+          return { success: true as const, data: response };
+        }
+      }
+
       let query = supabase
         .from('matches')
         .select(this.MATCH_SELECT, { count: 'exact' });
@@ -453,6 +473,11 @@ export class MatchesService extends BaseService {
         query = query.in('stage_id', stageIdsToFilter);
       } else if (filters.stage_id) {
         query = query.eq('stage_id', filters.stage_id);
+      }
+
+      // Apply school filter
+      if (schoolMatchIdsToFilter) {
+        query = query.in('id', schoolMatchIdsToFilter);
       }
 
       // Apply other direct filters
@@ -580,6 +605,30 @@ export class MatchesService extends BaseService {
         }
       }
 
+      // Handle school filter
+      let schoolMatchIdsToFilter: number[] | null = null;
+      if (filters.school_id) {
+        const { data: teams } = await supabase.from('schools_teams').select('id').eq('school_id', filters.school_id);
+        const teamIds = (teams || []).map(t => t.id);
+        
+        if (teamIds.length === 0) {
+          return {
+            success: true as const,
+            data: { matches: [] as ScheduleMatch[], pastCursor: null, futureCursor: null, hasMorePast: false, hasMoreFuture: false, totalCount: 0 }
+          };
+        }
+        
+        const { data: participants } = await supabase.from('match_participants').select('match_id').in('team_id', teamIds);
+        schoolMatchIdsToFilter = [...new Set((participants || []).map(p => p.match_id))];
+        
+        if (schoolMatchIdsToFilter.length === 0) {
+          return {
+            success: true as const,
+            data: { matches: [] as ScheduleMatch[], pastCursor: null, futureCursor: null, hasMorePast: false, hasMoreFuture: false, totalCount: 0 }
+          };
+        }
+      }
+
       // Calculate initial split - try to get half from each direction
       const halfLimit = Math.ceil(totalLimit / 2);
 
@@ -603,6 +652,11 @@ export class MatchesService extends BaseService {
           query = query.in('stage_id', stageIdsToFilter);
         } else if (filters.stage_id) {
           query = query.eq('stage_id', filters.stage_id);
+        }
+
+        // Apply school filter
+        if (schoolMatchIdsToFilter) {
+          query = query.in('id', schoolMatchIdsToFilter);
         }
 
         // Apply other direct filters

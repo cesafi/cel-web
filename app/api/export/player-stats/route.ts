@@ -12,7 +12,7 @@ const N = 'None';
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const { game, seasonId, stageId, categoryId } = parseFilters(searchParams);
+        const { game, seasonId, stageId, division } = parseFilters(searchParams);
         const teamId = searchParams.get('teamId') || undefined;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : MAX_ROWS;
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
             game,
             season_id: seasonId,
             stage_id: stageId,
-            category_id: categoryId,
+            division,
             team_id: teamId,
             limit,
         };

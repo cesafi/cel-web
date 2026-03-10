@@ -54,6 +54,6 @@ export function parseFilters(searchParams: URLSearchParams) {
         game: (searchParams.get('game') || 'mlbb') as 'mlbb' | 'valorant',
         seasonId: searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined,
         stageId: searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined,
-        categoryId: searchParams.get('categoryId') ? parseInt(searchParams.get('categoryId')!) : undefined,
+        division: searchParams.get('division') || undefined,
     };
 }

@@ -2,6 +2,12 @@ import { moderniz } from '@/lib/fonts';
 import SchoolsGrid from '@/components/schools/schools-grid';
 import { getPublicActiveSchools } from '@/actions/schools';
 import { School } from '@/lib/types/schools';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Member Schools | CESAFI Esports League',
+  description: 'Discover the member schools of the Cebu Schools Athletic Foundation, Inc. that compete in the CESAFI Esports League.',
+};
 
 export default async function SchoolsPage() {
   // Fetch active schools server-side

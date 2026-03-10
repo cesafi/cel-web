@@ -2,6 +2,12 @@ import { moderniz, roboto } from '@/lib/fonts';
 import { getAllFaq } from '@/actions/faq';
 import { Faq } from '@/lib/types/faq';
 import FaqContent from '@/components/faq/faq-content';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'FAQ | CESAFI Esports League',
+  description: 'Find answers to frequently asked questions about the CESAFI Esports League, our sports programs, and member schools.',
+};
 
 export default async function FaqPage() {
   // Fetch FAQ items server-side

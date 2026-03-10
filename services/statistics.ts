@@ -44,10 +44,10 @@ export interface ValorantPlayerStats extends PlayerStatsSummary {
 
 export interface StatisticsFilters {
   game: 'mlbb' | 'valorant';
-  team_id?: string;
   season_id?: number;
   stage_id?: number;
-  category_id?: number;
+  school_id?: string;
+  division?: string;
   search_query?: string;
   page?: number;
   limit?: number;
@@ -120,14 +120,40 @@ export class StatisticsService extends BaseService {
       if (filters?.stage_id) {
         query = query.eq('stage_id', filters.stage_id);
       }
-      if (filters?.team_id) {
-        query = query.eq('team_id', filters.team_id);
+      // Filter by School
+      let schoolTeamIds: string[] | null = null;
+      if (filters?.school_id) {
+        // Find all team IDs belonging to this school
+        const { data: teamsData } = await supabase
+          .from('schools_teams')
+          .select('id')
+          .eq('school_id', filters.school_id);
+          
+        if (!teamsData || teamsData.length === 0) {
+           return { success: true as const, data: [], count: 0 };
+        }
+        schoolTeamIds = teamsData.map(t => t.id);
+        query = query.in('team_id', schoolTeamIds);
       }
-      if (filters?.category_id) {
+
+      // Filter by Division
+      if (filters?.division) {
+        // Find categories matching the division, then stages under those categories
+        const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', filters.division);
+
+        if (!categoriesData || categoriesData.length === 0) {
+          return { success: true as const, data: [], count: 0 };
+        }
+        
+        const categoryIds = categoriesData.map(c => c.id);
+
         const { data: stages } = await supabase
           .from('esports_seasons_stages')
           .select('id')
-          .eq('esport_category_id', filters.category_id);
+          .in('esport_category_id', categoryIds);
 
         if (stages && stages.length > 0) {
           query = query.in('stage_id', stages.map(s => s.id));
@@ -249,8 +275,44 @@ export class StatisticsService extends BaseService {
       if (filters?.stage_id) {
         query = query.eq('stage_id', filters.stage_id);
       }
-      if (filters?.team_id) {
-        query = query.eq('team_id', filters.team_id);
+      
+      // Filter by School
+      if (filters?.school_id) {
+        const { data: teamsData } = await supabase
+          .from('schools_teams')
+          .select('id')
+          .eq('school_id', filters.school_id);
+          
+        if (!teamsData || teamsData.length === 0) {
+           return { success: true as const, data: [], count: 0 };
+        }
+        const schoolTeamIds = teamsData.map(t => t.id);
+        query = query.in('team_id', schoolTeamIds);
+      }
+
+      // Filter by Division
+      if (filters?.division) {
+        const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', filters.division);
+
+        if (!categoriesData || categoriesData.length === 0) {
+          return { success: true as const, data: [], count: 0 };
+        }
+        
+        const categoryIds = categoriesData.map(c => c.id);
+
+        const { data: stages } = await supabase
+          .from('esports_seasons_stages')
+          .select('id')
+          .in('esport_category_id', categoryIds);
+
+        if (stages && stages.length > 0) {
+          query = query.in('stage_id', stages.map(s => s.id));
+        } else {
+          return { success: true as const, data: [], count: 0 };
+        }
       }
 
       // No DB pagination, fetch all then aggregate
@@ -417,8 +479,8 @@ export class StatisticsService extends BaseService {
   static async getHeroStats(
     seasonId?: number,
     stageId?: number,
-    categoryId?: number,
-    teamId?: string
+    division?: string,
+    schoolId?: string
   ) {
     try {
       const supabase = await this.getClient();
@@ -429,7 +491,21 @@ export class StatisticsService extends BaseService {
 
       if (seasonId) query = query.eq('season_id', seasonId);
       if (stageId) query = query.eq('stage_id', stageId);
-      if (categoryId) query = query.eq('category_id', categoryId);
+      
+      // Division filter handling
+      if (division) {
+         const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', division);
+          
+         if (categoriesData && categoriesData.length > 0) {
+            query = query.in('category_id', categoriesData.map(c => c.id));
+         } else {
+            // Force empty results safely if missing matching division 
+            query = query.in('category_id', []); 
+         }
+      }
 
       const { data, error } = await query;
 
@@ -439,15 +515,34 @@ export class StatisticsService extends BaseService {
       let banCountMap: Map<string, number> | null = null;
       let totalGames = 0;
 
-      if (teamId) {
+      if (schoolId) {
+        // Resolve schoolId -> teamIds
+        const { data: teamsData } = await supabase
+          .from('schools_teams')
+          .select('id')
+          .eq('school_id', schoolId);
+          
+        const teamIds = (teamsData || []).map(t => t.id);
+        
+        if (teamIds.length === 0) {
+           return { success: true as const, data: [] };
+        }
+
         // Team-specific: query game_draft_actions at request time
         let stageIds: number[] = [];
         if (stageId) {
           stageIds = [stageId];
-        } else if (seasonId || categoryId) {
+        } else if (seasonId || division) {
           let stagesQuery = supabase.from('esports_seasons_stages').select('id');
           if (seasonId) stagesQuery = stagesQuery.eq('season_id', seasonId);
-          if (categoryId) stagesQuery = stagesQuery.eq('esport_category_id', categoryId);
+          
+          if (division) {
+             const { data: catData } = await supabase.from('esports_categories').select('id').eq('division', division);
+             if (catData && catData.length > 0) {
+               stagesQuery = stagesQuery.in('esport_category_id', catData.map(c => c.id));
+             }
+          }
+          
           const { data: stagesData } = await stagesQuery;
           stageIds = (stagesData || []).map((s: any) => s.id);
         }
@@ -463,12 +558,12 @@ export class StatisticsService extends BaseService {
         const { data: gamesData } = await totalGamesQuery;
         totalGames = (gamesData || []).length;
 
-        // Query bans for this specific team
+        // Query bans for this specific school
         let banQuery = supabase
           .from('game_draft_actions')
           .select('hero_name, game_id, games!inner(match_id, matches!inner(stage_id))')
           .eq('action_type', 'ban')
-          .eq('team_id', teamId);
+          .in('team_id', teamIds);
 
         if (stageIds.length > 0) {
           banQuery = banQuery.in('games.matches.stage_id', stageIds);
@@ -511,7 +606,7 @@ export class StatisticsService extends BaseService {
       }
 
       // For global mode: compute totalGames from aggregated MV data
-      if (!teamId) {
+      if (!schoolId) {
         // Sum of total_picks across all heroes = total character picks
         // But a better denominator is total unique games played
         // total_picks per hero = number of games that hero was picked in
@@ -611,7 +706,7 @@ export class StatisticsService extends BaseService {
   static async getAgentStats(
     seasonId?: number,
     stageId?: number,
-    categoryId?: number
+    division?: string
   ) {
     try {
       const supabase = await this.getClient();
@@ -622,7 +717,19 @@ export class StatisticsService extends BaseService {
 
       if (seasonId) query = query.eq('season_id', seasonId);
       if (stageId) query = query.eq('stage_id', stageId);
-      if (categoryId) query = query.eq('category_id', categoryId);
+      
+      if (division) {
+         const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', division);
+          
+         if (categoriesData && categoriesData.length > 0) {
+            query = query.in('category_id', categoriesData.map(c => c.id));
+         } else {
+            query = query.in('category_id', []); 
+         }
+      }
 
       const { data, error } = await query;
 
@@ -792,7 +899,7 @@ export class StatisticsService extends BaseService {
     game: 'mlbb' | 'valorant',
     seasonId?: number,
     stageId?: number,
-    categoryId?: number
+    division?: string
   ) {
     try {
       const supabase = await this.getClient();
@@ -810,8 +917,18 @@ export class StatisticsService extends BaseService {
       if (stageId) {
         query = query.eq('stage_id', stageId);
       }
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
+      
+      if (division) {
+         const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', division);
+          
+         if (categoriesData && categoriesData.length > 0) {
+            query = query.in('category_id', categoriesData.map(c => c.id));
+         } else {
+            query = query.in('category_id', []); 
+         }
       }
 
       const { data, error } = await query;
@@ -1048,7 +1165,7 @@ export class StatisticsService extends BaseService {
   /**
    * Get available stages for a season, optionally filtered by category
    */
-  static async getStagesBySeason(seasonId: number, categoryId?: number) {
+  static async getStagesBySeason(seasonId: number, division?: string) {
     try {
       const supabase = await this.getClient();
 
@@ -1057,22 +1174,34 @@ export class StatisticsService extends BaseService {
         .select(`
           id,
           competition_stage,
+          start_date,
+          end_date,
           esport_category_id,
-          esports_categories(
+          esports_categories (
             id,
             division,
             levels,
+            esport_id,
             esports(id, name)
           )
         `)
         .eq('season_id', seasonId);
 
-      if (categoryId) {
-        query = query.eq('esport_category_id', categoryId);
+      if (division) {
+        // Resolve division back to categories
+        const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', division);
+          
+        if (categoriesData && categoriesData.length > 0) {
+           query = query.in('esport_category_id', categoriesData.map(c => c.id));
+        } else {
+           return { success: true as const, data: [] };
+        }
       }
 
-      const { data, error } = await query;
-
+      const { data, error } = await query.order('start_date', { ascending: true });
       if (error) throw error;
 
       const options = (data || []).map((stage: any) => ({

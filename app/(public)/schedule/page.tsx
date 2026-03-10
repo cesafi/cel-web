@@ -1,18 +1,26 @@
 import { SeasonProvider } from '@/components/contexts/season-provider';
 import { ScheduleContent } from '@/components/schedule';
 import { getScheduleMatchesAroundDate, getAvailableSportCategories, getAvailableSeasons, getAvailableStages } from '@/actions/matches';
+import { getPublicActiveSchools } from '@/actions/schools';
 import { moderniz, roboto } from '@/lib/fonts';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Match Schedule | CESAFI Esports League',
+  description: 'View the full match schedule for the CESAFI Esports League. Follow upcoming and past matches across MLBB and Valorant competitions.',
+};
 
 export default async function SchedulePage() {
   // Fetch initial data server-side using bidirectional loading
-  const [matchesResult, categoriesResult, seasonsResult, stagesResult] = await Promise.all([
+  const [matchesResult, categoriesResult, seasonsResult, stagesResult, schoolsResult] = await Promise.all([
     getScheduleMatchesAroundDate({
       totalLimit: 40,
       filters: {}
     }),
     getAvailableSportCategories(),
     getAvailableSeasons(),
-    getAvailableStages()
+    getAvailableStages(),
+    getPublicActiveSchools()
   ]);
 
   const matches = matchesResult.success && matchesResult.data ? matchesResult.data.matches : [];
@@ -23,6 +31,7 @@ export default async function SchedulePage() {
   const categories = categoriesResult.success && categoriesResult.data ? categoriesResult.data : [];
   const seasons = seasonsResult.success && seasonsResult.data ? seasonsResult.data : [];
   const stages = stagesResult.success && stagesResult.data ? stagesResult.data : [];
+  const schools = schoolsResult.success && schoolsResult.data ? schoolsResult.data : [];
 
 
   return (
@@ -66,6 +75,7 @@ export default async function SchedulePage() {
             availableCategories={categories}
             availableSeasons={seasons}
             availableStages={stages}
+            availableSchools={schools}
           />
         </div>
       </div>

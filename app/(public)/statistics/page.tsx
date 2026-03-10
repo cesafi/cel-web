@@ -2,13 +2,16 @@ import { Suspense } from 'react';
 import { StatisticsContent } from '@/components/statistics/statistics-content';
 import { StatisticsLoading } from '@/components/statistics/statistics-loading';
 import { moderniz, roboto } from '@/lib/fonts';
+import { getAvailableStages } from '@/actions/matches';
 
 export const metadata = {
   title: 'Statistics | CESAFI Esports League',
   description: 'Comprehensive player, team, and game statistics for MLBB and Valorant esports competitions'
 };
 
-export default function StatisticsPage() {
+export default async function StatisticsPage() {
+  const stagesResult = await getAvailableStages();
+  const availableStages = stagesResult.success && stagesResult.data ? stagesResult.data : [];
   return (
     <>
       {/* Hero Section */}
@@ -32,7 +35,7 @@ export default function StatisticsPage() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-4 sm:py-8">
         <Suspense fallback={<StatisticsLoading />}>
-          <StatisticsContent />
+          <StatisticsContent availableStages={availableStages} />
         </Suspense>
       </div>
     </>

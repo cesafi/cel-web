@@ -11,10 +11,10 @@ const N = 'None';
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const { game, seasonId, stageId, categoryId } = parseFilters(searchParams);
+        const { game, seasonId, stageId, division } = parseFilters(searchParams);
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : MAX_ROWS;
 
-        const result = await StatisticsService.getTeamStats(game, seasonId, stageId, categoryId);
+        const result = await StatisticsService.getTeamStats(game, seasonId, stageId, division);
 
         if (!result.success || !result.data) {
             return NextResponse.json({ error: 'Failed to fetch team stats' }, { status: 500 });

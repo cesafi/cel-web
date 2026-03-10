@@ -7,6 +7,12 @@ import { Volunteer } from '@/lib/types/volunteers';
 import { Department } from '@/lib/types/departments';
 import { moderniz, roboto } from '@/lib/fonts';
 import { Users, Briefcase, Calendar } from 'lucide-react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Volunteers | CESAFI Esports League',
+  description: 'Meet the dedicated volunteers who make the CESAFI Esports League possible through their passion and commitment to student esports.',
+};
 
 export default async function VolunteersPage() {
   // Fetch initial data server-side

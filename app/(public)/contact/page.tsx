@@ -3,8 +3,8 @@ import ContactForm from '@/components/contact/contact-form';
 import { moderniz, roboto } from '@/lib/fonts';
 
 export const metadata: Metadata = {
-  title: 'Contact Us | CESAFI Sports',
-  description: 'Get in touch with CESAFI Sports. Send us your questions, feedback, or inquiries.',
+  title: 'Contact Us | CESAFI Esports League',
+  description: 'Get in touch with the CESAFI Esports League. Send us your questions, feedback, or inquiries.',
 };
 
 export default function ContactPage() {

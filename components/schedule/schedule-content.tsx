@@ -34,6 +34,7 @@ interface ScheduleContentProps {
   availableCategories: RichSportCategory[];
   availableSeasons: Season[];
   availableStages: EsportsSeasonStageWithDetails[];
+  availableSchools?: any[];
 }
 
 export default function ScheduleContent({ 
@@ -44,12 +45,14 @@ export default function ScheduleContent({
   initialFutureCursor = null,
   availableCategories,
   availableSeasons,
-  availableStages
+  availableStages,
+  availableSchools = []
 }: ScheduleContentProps) {
   const [selectedEsport, setSelectedEsport] = useState<string>('all');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedSeason, setSelectedSeason] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
+  const [selectedSchool, setSelectedSchool] = useState<string>('all');
 
   // Derive IDs for API
   const esportIdFilter = useMemo(() => {
@@ -67,6 +70,10 @@ export default function ScheduleContent({
   const stageNameFilter = useMemo(() => {
     return selectedStage === 'all' ? undefined : selectedStage;
   }, [selectedStage]);
+
+  const schoolIdFilter = useMemo(() => {
+    return selectedSchool === 'all' ? undefined : selectedSchool;
+  }, [selectedSchool]);
 
   // Use the infinite schedule hook for client-side data fetching
   const {
@@ -86,7 +93,8 @@ export default function ScheduleContent({
       sport_id: esportIdFilter,
       division: divisionFilter,
       season_id: seasonIdFilter,
-      stage_name: stageNameFilter
+      stage_name: stageNameFilter,
+      school_id: schoolIdFilter
     }
   });
 
@@ -109,16 +117,17 @@ export default function ScheduleContent({
 
   const handleEsportChange = useCallback((esportId: string) => {
     setSelectedEsport(esportId);
-    // Optional: Reset division if needed, or keep it if valid
-    // For now, let's keep it simple.
+    setSelectedDivision('all');
+    setSelectedStage('all');
   }, []);
 
   const handleDivisionChange = useCallback((division: string) => {
     setSelectedDivision(division);
+    setSelectedStage('all');
   }, []);
 
   // Check if any filters are applied
-  const isFiltersApplied = selectedEsport !== 'all' || selectedDivision !== 'all' || selectedSeason !== 'all' || selectedStage !== 'all';
+  const isFiltersApplied = selectedEsport !== 'all' || selectedDivision !== 'all' || selectedSeason !== 'all' || selectedStage !== 'all' || selectedSchool !== 'all';
 
   // Use server-side initial data if client-side data is not ready yet
   // BUT: Don't fall back to initialMatches if filters are applied (they would be unfiltered)
@@ -164,13 +173,24 @@ export default function ScheduleContent({
           }
         }
         
+        // School filter
+        if (selectedSchool !== 'all') {
+          const matchHasSchool = match.match_participants?.some(p => 
+            p.schools_teams?.school?.id.toString() === selectedSchool ||
+            p.schools_teams?.school?.abbreviation === selectedSchool
+          );
+          if (!matchHasSchool) {
+            return false;
+          }
+        }
+        
         return true;
       });
     }
     
     // No filters applied, use initial matches
     return initialMatches;
-  }, [matches, initialMatches, isFiltersApplied, selectedSeason, selectedEsport, selectedDivision, selectedStage]);
+  }, [matches, initialMatches, isFiltersApplied, selectedSeason, selectedEsport, selectedDivision, selectedStage, selectedSchool]);
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col">
@@ -195,6 +215,9 @@ export default function ScheduleContent({
           availableStages={availableStages}
           selectedStage={selectedStage}
           onStageChange={setSelectedStage}
+          availableSchools={availableSchools}
+          selectedSchool={selectedSchool}
+          onSchoolChange={setSelectedSchool}
         />
       </div>
     </div>

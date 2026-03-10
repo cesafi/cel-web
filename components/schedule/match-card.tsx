@@ -34,7 +34,9 @@ export default function MatchCard({ match }: MatchCardProps) {
   const hasScore = team1.score !== null && team2.score !== null;
   
   // Calculate games needed to win (for best-of display)
-  const gamesToWin = Math.ceil(match.best_of / 2);
+  // For BO2, a team can win up to 2 games, so we show 2 dots per team.
+  // For other formats (BO3, BO5, etc.), we show the number of wins required to win the match.
+  const gamesToWin = match.best_of === 2 ? 2 : Math.ceil(match.best_of / 2);
   
   // Get accent color based on status
   const getAccentColor = () => {
@@ -55,9 +57,11 @@ export default function MatchCard({ match }: MatchCardProps) {
     const team1Score = team1.score ?? 0;
     const team2Score = team2.score ?? 0;
     
-    for (let i = 0; i < gamesToWin; i++) {
-      // Team 1's dots (left side - filled based on wins)
-      const team1Won = i < team1Score;
+    const dotsPerTeam = gamesToWin;
+    
+    for (let i = 0; i < dotsPerTeam; i++) {
+      // Team 1's dots (left side - filled from right to left, towards center)
+      const team1Won = i >= dotsPerTeam - team1Score;
       dots.push(
         <div
           key={`t1-${i}`}
@@ -75,7 +79,7 @@ export default function MatchCard({ match }: MatchCardProps) {
       <div key="sep" className="w-px h-3 bg-border/50 mx-1" />
     );
     
-    for (let i = 0; i < gamesToWin; i++) {
+    for (let i = 0; i < dotsPerTeam; i++) {
       // Team 2's dots (right side - filled based on wins)
       const team2Won = i < team2Score;
       dots.push(

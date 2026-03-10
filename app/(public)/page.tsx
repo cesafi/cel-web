@@ -15,6 +15,12 @@ import { MatchWithFullDetails } from '@/lib/types/matches';
 import { Faq } from '@/lib/types/faq';
 import { School } from '@/lib/types/schools';
 import LeaderboardPreview from '@/components/landing/leaderboard-preview';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Home | CESAFI Esports League',
+  description: 'Welcome to the CESAFI Esports League (CEL). Follow the latest tournaments, matches, and standings of collegiate student-gamers.',
+};
 
 export default async function LandingPage() {
   // Fetch data server-side

@@ -2,6 +2,12 @@ import { moderniz, roboto } from '@/lib/fonts';
 import { getPaginatedArticles } from '@/actions/articles';
 import { Article } from '@/lib/types/articles';
 import NewsContent from '@/components/news/news-content';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'News | CESAFI Esports League',
+  description: 'Stay updated with the latest news, updates, and highlights from CESAFI esports events.',
+};
 
 export default async function NewsPage() {
   // Fetch initial articles server-side

@@ -70,6 +70,7 @@ export interface ScheduleFilters {
   search?: string;
   date_from?: string;
   date_to?: string;
+  school_id?: string;
 }
 
 export interface MatchScoreUpdate {

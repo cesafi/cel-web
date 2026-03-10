@@ -41,6 +41,9 @@ interface InfiniteScheduleProps {
   readonly availableStages?: EsportsSeasonStageWithDetails[];
   readonly selectedStage?: string;
   readonly onStageChange?: (stageId: string) => void;
+  readonly availableSchools?: any[];
+  readonly selectedSchool?: string;
+  readonly onSchoolChange?: (schoolId: string) => void;
   readonly availableSports?: string[]; // Deprecated but kept for type compat if needed temporarily
 }
 
@@ -63,7 +66,10 @@ export default function InfiniteSchedule({
   onSeasonChange,
   availableStages = [],
   selectedStage,
-  onStageChange
+  onStageChange,
+  availableSchools = [],
+  selectedSchool,
+  onSchoolChange
 }: InfiniteScheduleProps) {
   // Helper to ensure we always have a valid Date
   const getValidDate = (date: Date | string | null | undefined): Date => {
@@ -103,9 +109,18 @@ export default function InfiniteSchedule({
         matchDivision = match.esports_seasons_stages?.esports_categories?.division === selectedDivision;
       }
 
-      return matchEsport && matchDivision;
+      // Filter by School
+      let matchSchool = true;
+      if (selectedSchool && selectedSchool !== 'all') {
+        matchSchool = !!match.match_participants?.some((p: any) => 
+          p.schools_teams?.school?.id.toString() === selectedSchool ||
+          p.schools_teams?.school?.abbreviation === selectedSchool
+        );
+      }
+
+      return matchEsport && matchDivision && matchSchool;
     });
-  }, [matches, selectedEsportId, selectedDivision]);
+  }, [matches, selectedEsportId, selectedDivision, selectedSchool]);
 
   // Group filtered matches by date
   useEffect(() => {
@@ -387,6 +402,9 @@ export default function InfiniteSchedule({
         availableStages={availableStages}
         selectedStage={selectedStage}
         onStageChange={onStageChange}
+        availableSchools={availableSchools}
+        selectedSchool={selectedSchool}
+        onSchoolChange={onSchoolChange}
       />
 
       {/* Load More Future Trigger (Top) */}

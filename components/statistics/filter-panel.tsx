@@ -13,16 +13,15 @@ import type { EsportGame } from '@/actions/statistics';
 interface FilterPanelProps {
   seasons: FilterOption[];
   stages: FilterOption[];
-  categories: FilterOption[];
-  teams: FilterOption[];
+  availableSchools: any[];
   selectedSeason: number | null;
   selectedStage: number | null;
-  selectedCategory: number | null;
-  selectedTeam: string | null;
+  selectedDivision: string;
+  selectedSchool: string | null;
   onSeasonChange: (seasonId: number | null) => void;
   onStageChange: (stageId: number | null) => void;
-  onCategoryChange: (categoryId: number | null) => void;
-  onTeamChange: (teamId: string | null) => void;
+  onDivisionChange: (division: string) => void;
+  onSchoolChange: (schoolId: string | null) => void;
   onClearFilters: () => void;
   searchQuery?: string;
   onSearchChange?: (term: string) => void;
@@ -42,16 +41,15 @@ const gameOptions: GameOption[] = [
 export function FilterPanel({
   seasons,
   stages,
-  categories = [],
-  teams = [],
+  availableSchools = [],
   selectedSeason,
   selectedStage,
-  selectedCategory,
-  selectedTeam,
+  selectedDivision,
+  selectedSchool,
   onSeasonChange,
   onStageChange,
-  onCategoryChange,
-  onTeamChange,
+  onDivisionChange,
+  onSchoolChange,
   onClearFilters,
   searchQuery = '',
   onSearchChange,
@@ -61,7 +59,7 @@ export function FilterPanel({
   onGameChange,
   esportsData = []
 }: FilterPanelProps) {
-  const hasActiveFilters = selectedSeason !== null || selectedStage !== null || selectedTeam !== null || selectedCategory !== null;
+  const hasActiveFilters = selectedSeason !== null || selectedStage !== null || selectedSchool !== null || selectedDivision !== "Men's";
 
   const dynamicGameOptions: GameOption[] = esportsData.length > 0
     ? esportsData.map(e => {
@@ -145,19 +143,19 @@ export function FilterPanel({
           </Select>
         </div>
 
-        {/* Category */}
-        <Select value={selectedCategory?.toString() || 'all'} onValueChange={(val) => onCategoryChange(val === 'all' ? null : Number(val))}>
+        {/* Division (Hardcoded to Men's and Women's) */}
+        <Select value={selectedDivision} onValueChange={onDivisionChange}>
           <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder="Division" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.label}</SelectItem>)}
+            <SelectItem value="Men's">Men's</SelectItem>
+            <SelectItem value="Women's">Women's</SelectItem>
           </SelectContent>
         </Select>
 
         {/* Stage */}
-        <Select value={selectedStage?.toString() || 'all'} onValueChange={(val) => onStageChange(val === 'all' ? null : Number(val))} disabled={!selectedSeason || !selectedCategory}>
+        <Select value={selectedStage?.toString() || 'all'} onValueChange={(val) => onStageChange(val === 'all' ? null : Number(val))} disabled={!selectedSeason}>
           <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
             <SelectValue placeholder="All Stages" />
           </SelectTrigger>
@@ -167,14 +165,27 @@ export function FilterPanel({
           </SelectContent>
         </Select>
 
-        {/* Team */}
-        <Select value={selectedTeam || 'all'} onValueChange={(val) => onTeamChange(val === 'all' ? null : val)} disabled={!selectedSeason}>
-          <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
-            <SelectValue placeholder="All Teams" />
+        {/* School Filter */}
+        <Select value={selectedSchool || 'all'} onValueChange={(val) => onSchoolChange(val === 'all' ? null : val)}>
+          <SelectTrigger className="h-9 w-full sm:w-[180px] bg-background shadow-sm font-medium text-xs">
+            <SelectValue placeholder="All Schools" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Teams</SelectItem>
-            {teams.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.label}</SelectItem>)}
+            <SelectItem value="all">All Schools</SelectItem>
+            {availableSchools.map(school => (
+              <SelectItem key={school.id} value={school.id}>
+                <div className="flex items-center gap-2">
+                  {school.logo_url && (
+                    <img 
+                      src={school.logo_url} 
+                      alt={school.abbreviation || school.name} 
+                      className="w-4 h-4 object-contain"
+                    />
+                  )}
+                  <span>{school.abbreviation || school.name}</span>
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
