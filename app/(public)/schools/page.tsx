@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: 'Discover the member schools of the Cebu Schools Athletic Foundation, Inc. that compete in the CESAFI Esports League.',
 };
 
+export const revalidate = 600; // Revalidate every 10 minutes
+
 export default async function SchoolsPage() {
   // Fetch active schools server-side
   const schoolsResult = await getPublicActiveSchools();

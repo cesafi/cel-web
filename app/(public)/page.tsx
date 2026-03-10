@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   description: 'Welcome to the CESAFI Esports League (CEL). Follow the latest tournaments, matches, and standings of collegiate student-gamers.',
 };
 
+export const revalidate = 300; // Revalidate every 5 minutes
+
 export default async function LandingPage() {
   // Fetch data server-side
   const [articlesResult, matchesResult, faqResult, schoolsResult, heroResult] = await Promise.all([

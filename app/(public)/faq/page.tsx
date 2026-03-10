@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: 'Find answers to frequently asked questions about the CESAFI Esports League, our sports programs, and member schools.',
 };
 
+export const revalidate = 600; // Revalidate every 10 minutes
+
 export default async function FaqPage() {
   // Fetch FAQ items server-side
   let faqItems: Faq[] = [];

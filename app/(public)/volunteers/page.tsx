@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   description: 'Meet the dedicated volunteers who make the CESAFI Esports League possible through their passion and commitment to student esports.',
 };
 
+export const revalidate = 600; // Revalidate every 10 minutes
+
 export default async function VolunteersPage() {
   // Fetch initial data server-side
   const [seasonsResult, volunteersResult, departmentsResult] = await Promise.all([

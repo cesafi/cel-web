@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true, // Bypass Vercel's image optimizer — Cloudinary handles optimization
+    minimumCacheTTL: 86400, // 24 hours cache for any remaining optimized images
     remotePatterns: [
       {
         protocol: 'https',

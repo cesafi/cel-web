@@ -9,6 +9,8 @@ export const metadata = {
   description: 'Comprehensive player, team, and game statistics for MLBB and Valorant esports competitions'
 };
 
+export const revalidate = 300; // Revalidate every 5 minutes
+
 export default async function StatisticsPage() {
   const stagesResult = await getAvailableStages();
   const availableStages = stagesResult.success && stagesResult.data ? stagesResult.data : [];

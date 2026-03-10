@@ -8,6 +8,8 @@ export const metadata = {
   description: 'Browse all CESAFI esports competitors across MLBB and Valorant teams and seasons.'
 };
 
+export const revalidate = 300; // Revalidate every 5 minutes
+
 export default async function PlayersPage() {
   const categoriesResult = await getAvailableSportCategories();
   const availableRichSports = categoriesResult.success && categoriesResult.data ? categoriesResult.data : [];
