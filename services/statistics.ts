@@ -48,6 +48,7 @@ export interface StatisticsFilters {
   stage_id?: number;
   school_id?: string;
   division?: string;
+  team_id?: string;
   search_query?: string;
   page?: number;
   limit?: number;
@@ -120,9 +121,11 @@ export class StatisticsService extends BaseService {
       if (filters?.stage_id) {
         query = query.eq('stage_id', filters.stage_id);
       }
-      // Filter by School
+      // Filter by Team OR School
       let schoolTeamIds: string[] | null = null;
-      if (filters?.school_id) {
+      if (filters?.team_id) {
+         query = query.eq('team_id', filters.team_id);
+      } else if (filters?.school_id) {
         // Find all team IDs belonging to this school
         const { data: teamsData } = await supabase
           .from('schools_teams')
@@ -276,8 +279,10 @@ export class StatisticsService extends BaseService {
         query = query.eq('stage_id', filters.stage_id);
       }
       
-      // Filter by School
-      if (filters?.school_id) {
+      // Filter by Team OR School
+      if (filters?.team_id) {
+         query = query.eq('team_id', filters.team_id);
+      } else if (filters?.school_id) {
         const { data: teamsData } = await supabase
           .from('schools_teams')
           .select('id')
@@ -480,7 +485,8 @@ export class StatisticsService extends BaseService {
     seasonId?: number,
     stageId?: number,
     division?: string,
-    schoolId?: string
+    schoolId?: string,
+    teamId?: string
   ) {
     try {
       const supabase = await this.getClient();
@@ -507,15 +513,10 @@ export class StatisticsService extends BaseService {
          }
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // ── Ban counts: MV vs query-time ──
-      let banCountMap: Map<string, number> | null = null;
-      let totalGames = 0;
-
-      if (schoolId) {
+      // Apply team filters BEFORE executing the query
+      if (teamId) {
+        query = query.eq('team_id', teamId);
+      } else if (schoolId) {
         // Resolve schoolId -> teamIds
         const { data: teamsData } = await supabase
           .from('schools_teams')
@@ -527,56 +528,12 @@ export class StatisticsService extends BaseService {
         if (teamIds.length === 0) {
            return { success: true as const, data: [] };
         }
-
-        // Team-specific: query game_draft_actions at request time
-        let stageIds: number[] = [];
-        if (stageId) {
-          stageIds = [stageId];
-        } else if (seasonId || division) {
-          let stagesQuery = supabase.from('esports_seasons_stages').select('id');
-          if (seasonId) stagesQuery = stagesQuery.eq('season_id', seasonId);
-          
-          if (division) {
-             const { data: catData } = await supabase.from('esports_categories').select('id').eq('division', division);
-             if (catData && catData.length > 0) {
-               stagesQuery = stagesQuery.in('esport_category_id', catData.map(c => c.id));
-             }
-          }
-          
-          const { data: stagesData } = await stagesQuery;
-          stageIds = (stagesData || []).map((s: any) => s.id);
-        }
-
-        // Count total games for rate denominators
-        let totalGamesQuery = supabase
-          .from('games')
-          .select('id, matches!inner(stage_id)')
-          .not('winner_team_id', 'is', null);
-        if (stageIds.length > 0) {
-          totalGamesQuery = totalGamesQuery.in('matches.stage_id', stageIds);
-        }
-        const { data: gamesData } = await totalGamesQuery;
-        totalGames = (gamesData || []).length;
-
-        // Query bans for this specific school
-        let banQuery = supabase
-          .from('game_draft_actions')
-          .select('hero_name, game_id, games!inner(match_id, matches!inner(stage_id))')
-          .eq('action_type', 'ban')
-          .in('team_id', teamIds);
-
-        if (stageIds.length > 0) {
-          banQuery = banQuery.in('games.matches.stage_id', stageIds);
-        }
-
-        const { data: banData } = await banQuery;
-
-        banCountMap = new Map<string, number>();
-        for (const b of (banData || []) as any[]) {
-          const name = b.hero_name;
-          banCountMap.set(name, (banCountMap.get(name) || 0) + 1);
-        }
+        query = query.in('team_id', teamIds);
       }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
 
       // Aggregation Map
       const heroMap = new Map<string, any>();
@@ -605,33 +562,30 @@ export class StatisticsService extends BaseService {
         }
       }
 
-      // For global mode: compute totalGames from aggregated MV data
-      if (!schoolId) {
-        // Sum of total_picks across all heroes = total character picks
-        // But a better denominator is total unique games played
-        // total_picks per hero = number of games that hero was picked in
-        // totalGames ≈ max(total_picks across heroes) if every game has picks
-        // Better: count from the MV rows total_picks sum / avg_picks_per_game
-        // Simplest: sum all picks / 5 (5 heroes per team, 10 per game)
-        let totalPicks = 0;
-        for (const hero of heroMap.values()) {
-          totalPicks += hero.total_picks;
-        }
-        totalGames = Math.round(totalPicks / 10); // 10 picks per game (5 per team)
-        if (totalGames < 1) totalGames = 1;
+      // Compute totalGames for calculating perfectly accurate pick/ban rates
+      let totalPicks = 0;
+      for (const hero of heroMap.values()) {
+        totalPicks += hero.total_picks;
       }
+      
+      let totalGames = 1;
+      if (teamId || schoolId) {
+        // If filtered to a specific team (or school teams), they pick 5 heroes per game
+        totalGames = Math.round(totalPicks / 5);
+      } else {
+        // Globally, there are 10 picks per game
+        totalGames = Math.round(totalPicks / 10); 
+      }
+      if (totalGames < 1) totalGames = 1;
 
       const results = Array.from(heroMap.values()).map(row => {
         const picks = row.total_picks;
+        const total_bans = row.total_bans;
+        
         const avg_kills = picks > 0 ? row.total_kills / picks : 0;
         const avg_deaths = picks > 0 ? row.total_deaths / picks : 0;
         const avg_assists = picks > 0 ? row.total_assists / picks : 0;
         const avg_kda = row.total_deaths > 0 ? (row.total_kills + row.total_assists) / row.total_deaths : (row.total_kills + row.total_assists);
-
-        // Use team-specific bans if teamId, otherwise MV bans
-        const total_bans = banCountMap
-          ? (banCountMap.get(row.hero_name) || 0)
-          : (row.total_bans || 0);
 
         return {
           hero_id: row.hero_id,
@@ -660,36 +614,7 @@ export class StatisticsService extends BaseService {
         };
       });
 
-      // For team-specific mode: also add heroes that were only banned but never picked
-      if (banCountMap) {
-        for (const [heroName, banCount] of banCountMap.entries()) {
-          const alreadyExists = results.some(r => r.hero_name === heroName);
-          if (!alreadyExists) {
-            results.push({
-              hero_id: null as any,
-              hero_name: heroName,
-              icon_url: null,
-              season_id: seasonId || null,
-              total_picks: 0,
-              total_bans: banCount,
-              total_wins: 0,
-              total_kills: 0,
-              total_deaths: 0,
-              total_assists: 0,
-              games_played: 0,
-              pick_rate: 0,
-              ban_rate: totalGames > 0 ? (banCount / totalGames) * 100 : 0,
-              win_rate: 0,
-              avg_gold: 0,
-              avg_damage_dealt: 0,
-              avg_kills: 0,
-              avg_deaths: 0,
-              avg_assists: 0,
-              avg_kda: 0,
-            });
-          }
-        }
-      }
+
 
       // Sort by picks (desc)
       results.sort((a, b) => b.total_picks - a.total_picks);
@@ -706,7 +631,9 @@ export class StatisticsService extends BaseService {
   static async getAgentStats(
     seasonId?: number,
     stageId?: number,
-    division?: string
+    division?: string,
+    schoolId?: string,
+    teamId?: string
   ) {
     try {
       const supabase = await this.getClient();
@@ -729,6 +656,22 @@ export class StatisticsService extends BaseService {
          } else {
             query = query.in('category_id', []); 
          }
+      }
+
+      // If teamId is passed, apply specific team filter
+      if (teamId) {
+         query = query.eq('team_id', teamId);
+      } else if (schoolId) {
+        const { data: teamsData } = await supabase
+          .from('schools_teams')
+          .select('id')
+          .eq('school_id', schoolId);
+        const teamIds = (teamsData || []).map(t => t.id);
+        if (teamIds.length > 0) {
+          query = query.in('team_id', teamIds);
+        } else {
+          return { success: true as const, data: [] };
+        }
       }
 
       const { data, error } = await query;
@@ -805,7 +748,9 @@ export class StatisticsService extends BaseService {
    */
   static async getMapStats(
     seasonId?: number,
-    stageId?: number
+    stageId?: number,
+    schoolId?: string,
+    teamId?: string
   ) {
     try {
       const supabase = await this.getClient();
@@ -817,6 +762,22 @@ export class StatisticsService extends BaseService {
       }
       if (seasonId) {
         query = query.eq('season_id', seasonId);
+      }
+
+      // If teamId is passed, apply specific team filter
+      if (teamId) {
+         query = query.eq('team_id', teamId);
+      } else if (schoolId) {
+        const { data: teamsData } = await supabase
+          .from('schools_teams')
+          .select('id')
+          .eq('school_id', schoolId);
+        const teamIds = (teamsData || []).map(t => t.id);
+        if (teamIds.length > 0) {
+          query = query.in('team_id', teamIds);
+        } else {
+          return { success: true as const, data: [] };
+        }
       }
 
       const { data, error } = await query;

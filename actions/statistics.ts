@@ -22,16 +22,16 @@ export async function getLeaderboard(
 
 // Hero/Agent/Map/Team Statistics Actions
 
-export async function getHeroStats(seasonId?: number, stageId?: number, division?: string, schoolId?: string) {
-  return StatisticsService.getHeroStats(seasonId, stageId, division, schoolId);
+export async function getHeroStats(seasonId?: number, stageId?: number, division?: string, schoolId?: string, teamId?: string) {
+  return StatisticsService.getHeroStats(seasonId, stageId, division, schoolId, teamId);
 }
 
-export async function getAgentStats(seasonId?: number, stageId?: number, division?: string) {
-  return StatisticsService.getAgentStats(seasonId, stageId, division);
+export async function getAgentStats(seasonId?: number, stageId?: number, division?: string, schoolId?: string, teamId?: string) {
+  return StatisticsService.getAgentStats(seasonId, stageId, division, schoolId, teamId);
 }
 
-export async function getMapStats(seasonId?: number, stageId?: number) {
-  return StatisticsService.getMapStats(seasonId, stageId);
+export async function getMapStats(seasonId?: number, stageId?: number, schoolId?: string, teamId?: string) {
+  return StatisticsService.getMapStats(seasonId, stageId, schoolId, teamId);
 }
 
 export async function getTeamStats(

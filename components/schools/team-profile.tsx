@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -24,10 +24,15 @@ import {
   Target,
   Crosshair,
   Shield,
+  Map,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getMlbbStats, getValorantStats, getHeroStats, getAgentStats, getMapStats } from '@/actions/statistics';
 import { toPlayerSlug } from '@/lib/utils/player-slug';
+import { CharacterStatsTable } from '@/components/statistics/character-stats-table';
+import { MapStatsDisplay } from '@/components/statistics/map-stats-display';
+import { PlayerLeaderboard } from '@/components/statistics/player-leaderboard';
+import { HeroStats, AgentStats, MapStats } from '@/lib/types/stats-enhanced';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -55,7 +60,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
   const { data: mlbbStats } = useQuery({
     queryKey: ['team-stats-mlbb', teamId, seasonId],
     queryFn: async () => {
-      const result = await getMlbbStats({ school_id: school?.id, season_id: seasonId });
+      const result = await getMlbbStats({ team_id: teamId, season_id: seasonId });
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },
@@ -65,7 +70,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
   const { data: valorantStats } = useQuery({
     queryKey: ['team-stats-valorant', teamId, seasonId],
     queryFn: async () => {
-      const result = await getValorantStats({ school_id: school?.id, season_id: seasonId });
+      const result = await getValorantStats({ team_id: teamId, season_id: seasonId });
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },
@@ -74,35 +79,35 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
 
   // Hero stats for MLBB
   const { data: heroStats } = useQuery({
-    queryKey: ['team-hero-stats', teamId, seasonId],
+    queryKey: ['team-hero-stats', teamId, seasonId, school?.id],
     queryFn: async () => {
-      const result = await getHeroStats(seasonId);
+      const result = await getHeroStats(seasonId, undefined, undefined, undefined, teamId);
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },
-    enabled: isMlbb && !!seasonId,
+    enabled: isMlbb && !!seasonId && !!school?.id,
   });
 
   // Agent stats for Valorant
   const { data: agentStats } = useQuery({
-    queryKey: ['team-agent-stats', teamId, seasonId],
+    queryKey: ['team-agent-stats', teamId, seasonId, school?.id],
     queryFn: async () => {
-      const result = await getAgentStats(seasonId);
+      const result = await getAgentStats(seasonId, undefined, undefined, undefined, teamId);
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },
-    enabled: isValorant && !!seasonId,
+    enabled: isValorant && !!seasonId && !!school?.id,
   });
 
   // Map stats for Valorant
   const { data: mapStats } = useQuery({
-    queryKey: ['team-map-stats', seasonId],
+    queryKey: ['team-map-stats', seasonId, school?.id],
     queryFn: async () => {
-      const result = await getMapStats(seasonId);
+      const result = await getMapStats(seasonId, undefined, undefined, teamId);
       if (!result.success) throw new Error(result.error);
       return result.data || [];
     },
-    enabled: isValorant && !!seasonId,
+    enabled: isValorant && !!seasonId && !!school?.id,
   });
 
   // Recent matches
@@ -113,6 +118,40 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
   });
 
   const playerStats = isMlbb ? mlbbStats : valorantStats;
+
+  // Tab state
+  type TeamTab = 'players' | 'heroes' | 'agents' | 'maps';
+  const [activeTab, setActiveTab] = useState<TeamTab>('players');
+
+  // Sort state for character/map stats tables
+  const [sortColumn, setSortColumn] = useState<string>('games_played');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortOrder('desc');
+    }
+  };
+
+  // Sort data helper
+  const sortData = <T extends Record<string, any>>(data: T[]): T[] => {
+    return [...data].sort((a, b) => {
+      const aVal = Number(a[sortColumn]) || 0;
+      const bVal = Number(b[sortColumn]) || 0;
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+  };
+
+  // Available tabs based on game
+  const availableTabs: { key: TeamTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'players', label: 'Players', icon: <Users className="w-4 h-4" /> },
+    ...(isMlbb ? [{ key: 'heroes' as TeamTab, label: 'Heroes', icon: <Shield className="w-4 h-4" /> }] : []),
+    ...(isValorant ? [{ key: 'agents' as TeamTab, label: 'Agents', icon: <Crosshair className="w-4 h-4" /> }] : []),
+    ...(isValorant ? [{ key: 'maps' as TeamTab, label: 'Maps', icon: <Map className="w-4 h-4" /> }] : []),
+  ];
 
   // Compute team summary from player stats
   const teamSummary = React.useMemo(() => {
@@ -126,7 +165,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
     return { totalGames, totalKills, totalDeaths, totalAssists, totalWins, kda };
   }, [playerStats]);
 
-  // Heatmap helper
+  // Heatmap helper (kept for team summary if needed)
   const getHeatmap = (value: number, allValues: number[], invertColors = false) => {
     const max = Math.max(...allValues);
     if (max === 0 || value === 0) return {};
@@ -258,7 +297,7 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
           </motion.div>
         )}
 
-        {/* Roster */}
+        {/* Roster (always visible, outside tabs) */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -328,341 +367,87 @@ export default function TeamProfile({ schoolAbbreviation, teamSlug }: TeamProfil
           </div>
         </motion.section>
 
-        {/* Player Stats Table */}
-        {sortedPlayerStats.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-          >
-            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
-              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Target className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Player Statistics</h3>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">{sortedPlayerStats.length} players</p>
-                </div>
-              </div>
+        {/* Tab Navigation */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+        >
+          <div className="w-full bg-card/40 backdrop-blur-md border border-border/50 shadow-sm rounded-xl p-2 sm:p-3 overflow-x-auto scrollbar-hide">
+            <nav className="flex gap-2" aria-label="Team statistics navigation">
+              {availableTabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={cn(
+                      'flex min-w-0 flex-1 sm:flex-none items-center justify-center sm:justify-start gap-2 px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium',
+                      'whitespace-nowrap transition-all duration-200 border',
+                      isActive
+                        ? cn(
+                            isMlbb
+                              ? 'border-blue-500 bg-blue-500/10 shadow-sm shadow-blue-500/20 text-blue-500'
+                              : 'border-red-500 bg-red-500/10 shadow-sm shadow-red-500/20 text-red-500'
+                          )
+                        : 'border-border/50 bg-background text-muted-foreground hover:bg-muted/50 hover:border-border hover:text-foreground'
+                    )}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </motion.div>
 
-              <div className="overflow-x-auto">
-                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-muted/30 border-b border-border/50 text-left">
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[140px]">Player</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">GP</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">K</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">D</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">A</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">KDA</th>
-                      {isMlbb && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[70px]">Gold</th>}
-                      {isValorant && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">ACS</th>}
-                      {isValorant && <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">FB</th>}
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">MVP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedPlayerStats.map((stat: any, i: number) => {
-                      const kda = stat.total_deaths > 0 ? ((stat.total_kills + stat.total_assists) / stat.total_deaths).toFixed(2) : 'Perfect';
-                      const kdaNum = stat.total_deaths > 0 ? (stat.total_kills + stat.total_assists) / stat.total_deaths : 99;
-                      return (
-                        <tr key={stat.player_id} className={cn('group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]', i === 0 && 'bg-primary/5')}>
-                          <td className="px-4 py-2">
-                            <Link href={`/players/${toPlayerSlug(stat.player_ign || '')}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                              <span className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{stat.player_ign || 'Unknown'}</span>
-                            </Link>
-                          </td>
-                          <td className="text-center px-3 py-2">
-                            <span className="text-xs font-medium text-muted-foreground tabular-nums">{stat.games_played}</span>
-                          </td>
-                          <td className="p-0 h-full border-l border-border/10">
-                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                              style={getHeatmap(stat.total_kills || 0, sortedPlayerStats.map((s: any) => s.total_kills || 0))}
-                            >
-                              <span className="text-xs font-medium text-green-400 tabular-nums">{stat.total_kills}</span>
-                            </div>
-                          </td>
-                          <td className="p-0 h-full border-l border-border/10">
-                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                              style={getHeatmap(stat.total_deaths || 0, sortedPlayerStats.map((s: any) => s.total_deaths || 0), true)}
-                            >
-                              <span className="text-xs font-medium text-red-400 tabular-nums">{stat.total_deaths}</span>
-                            </div>
-                          </td>
-                          <td className="p-0 h-full border-l border-border/10">
-                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                              style={getHeatmap(stat.total_assists || 0, sortedPlayerStats.map((s: any) => s.total_assists || 0))}
-                            >
-                              <span className="text-xs font-medium text-blue-400 tabular-nums">{stat.total_assists}</span>
-                            </div>
-                          </td>
-                          <td className="p-0 h-full border-l border-border/10">
-                            <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                              style={getHeatmap(kdaNum, sortedPlayerStats.map((s: any) => s.total_deaths > 0 ? (s.total_kills + s.total_assists) / s.total_deaths : 99))}
-                            >
-                              <span className="text-xs font-bold tabular-nums text-foreground">{kda}</span>
-                            </div>
-                          </td>
-                          {isMlbb && (
-                            <td className="p-0 h-full border-l border-border/10">
-                              <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                                style={getHeatmap(stat.total_gold || 0, sortedPlayerStats.map((s: any) => s.total_gold || 0))}
-                              >
-                                <span className="text-xs font-medium text-yellow-400 tabular-nums">{Math.round(stat.total_gold || 0).toLocaleString()}</span>
-                              </div>
-                            </td>
-                          )}
-                          {isValorant && (
-                            <td className="p-0 h-full border-l border-border/10">
-                              <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                                style={getHeatmap(stat.avg_acs || 0, sortedPlayerStats.map((s: any) => s.avg_acs || 0))}
-                              >
-                                <span className="text-xs font-medium text-foreground tabular-nums">{Math.round(stat.avg_acs || 0)}</span>
-                              </div>
-                            </td>
-                          )}
-                          {isValorant && (
-                            <td className="text-center px-3 py-2">
-                              <span className="text-xs font-medium text-orange-400 tabular-nums">{stat.total_first_bloods || 0}</span>
-                            </td>
-                          )}
-                          <td className="text-center px-3 py-2">
-                            {stat.mvp_count > 0 && (
-                              <Badge variant="outline" className="border-yellow-500/30 text-yellow-500 text-[10px]">
-                                <Trophy className="h-2.5 w-2.5 mr-1" />{stat.mvp_count}
-                              </Badge>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.section>
-        )}
+        {/* Tab Content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="space-y-6"
+        >
+          {/* Players Tab */}
+          {activeTab === 'players' && sortedPlayerStats.length > 0 && (
+            <PlayerLeaderboard
+              game={isMlbb ? 'mlbb' : 'valorant'}
+              data={sortedPlayerStats}
+              sortColumn={sortColumn}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
+          )}
 
-        {/* Hero Stats (MLBB) */}
-        {isMlbb && heroStats && heroStats.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.35 }}
-          >
-            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
-              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
-                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                  <Shield className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Hero Statistics</h3>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Top {Math.min(15, (heroStats as any[]).length)} heroes</p>
-                </div>
-              </div>
+          {/* Heroes Tab (MLBB) */}
+          {activeTab === 'heroes' && isMlbb && heroStats && heroStats.length > 0 && (
+            <CharacterStatsTable
+              game="mlbb"
+              data={sortData(heroStats as unknown as HeroStats[])}
+              sortColumn={sortColumn}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
+          )}
 
-              <div className="overflow-x-auto">
-                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-muted/30 border-b border-border/50 text-left">
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[140px]">Hero</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">Picks</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">Win%</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">K</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">D</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[55px]">A</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">KDA</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(heroStats as any[]).slice(0, 15).map((hero: any, i: number) => (
-                      <tr key={hero.hero_name || i} className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]">
-                        <td className="px-4 py-2">
-                          <span className="font-bold text-sm text-foreground">{hero.hero_name}</span>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-muted-foreground tabular-nums">{hero.total_picks}</span>
-                        </td>
-                        <td className="p-0 h-full border-l border-border/10">
-                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                            style={getHeatmap(hero.win_rate || 0, (heroStats as any[]).slice(0, 15).map((h: any) => h.win_rate || 0))}
-                          >
-                            <span className={cn('text-xs font-bold tabular-nums', hero.win_rate >= 50 ? 'text-green-400' : 'text-red-400')}>
-                              {hero.win_rate?.toFixed(1)}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-green-400 tabular-nums">{hero.avg_kills?.toFixed(1)}</span>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-red-400 tabular-nums">{hero.avg_deaths?.toFixed(1)}</span>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-blue-400 tabular-nums">{hero.avg_assists?.toFixed(1)}</span>
-                        </td>
-                        <td className="p-0 h-full border-l border-border/10">
-                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                            style={getHeatmap(hero.avg_kda || 0, (heroStats as any[]).slice(0, 15).map((h: any) => h.avg_kda || 0))}
-                          >
-                            <span className="text-xs font-bold tabular-nums text-foreground">{hero.avg_kda?.toFixed(2)}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.section>
-        )}
+          {/* Agents Tab (Valorant) */}
+          {activeTab === 'agents' && isValorant && agentStats && agentStats.length > 0 && (
+            <CharacterStatsTable
+              game="valorant"
+              data={sortData(agentStats as unknown as AgentStats[])}
+              sortColumn={sortColumn}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
+          )}
 
-        {/* Agent Stats (Valorant) */}
-        {isValorant && agentStats && agentStats.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.35 }}
-          >
-            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
-              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
-                <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
-                  <Crosshair className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Agent Statistics</h3>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Top {Math.min(15, (agentStats as any[]).length)} agents</p>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-max min-w-full caption-bottom text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-muted/30 border-b border-border/50 text-left">
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 px-4 h-10 text-left min-w-[140px]">Agent</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">Picks</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">Win%</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[60px]">ACS</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[100px]">K/D/A</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[65px]">KDA</th>
-                      <th className="text-xs uppercase font-bold tracking-wider text-muted-foreground/80 text-center px-3 h-10 min-w-[50px]">FB</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(agentStats as any[]).slice(0, 15).map((agent: any, i: number) => (
-                      <tr key={agent.agent_name || i} className="group hover:bg-muted/20 border-b border-border/30 transition-colors h-[52px]">
-                        <td className="px-4 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-foreground">{agent.agent_name}</span>
-                            {agent.agent_role && (
-                              <span className="text-[10px] text-muted-foreground/40 uppercase">{agent.agent_role}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-muted-foreground tabular-nums">{agent.total_picks}</span>
-                        </td>
-                        <td className="p-0 h-full border-l border-border/10">
-                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                            style={getHeatmap(agent.win_rate || 0, (agentStats as any[]).slice(0, 15).map((a: any) => a.win_rate || 0))}
-                          >
-                            <span className={cn('text-xs font-bold tabular-nums', agent.win_rate >= 50 ? 'text-green-400' : 'text-red-400')}>
-                              {agent.win_rate?.toFixed(1)}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-0 h-full border-l border-border/10">
-                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                            style={getHeatmap(agent.avg_acs || 0, (agentStats as any[]).slice(0, 15).map((a: any) => a.avg_acs || 0))}
-                          >
-                            <span className="text-xs font-medium text-foreground tabular-nums">{Math.round(agent.avg_acs || 0)}</span>
-                          </div>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                            {agent.avg_kills?.toFixed(1)}/{agent.avg_deaths?.toFixed(1)}/{agent.avg_assists?.toFixed(1)}
-                          </span>
-                        </td>
-                        <td className="p-0 h-full border-l border-border/10">
-                          <div className="w-full h-full flex items-center justify-center min-h-[52px] px-3"
-                            style={getHeatmap(agent.avg_kda || 0, (agentStats as any[]).slice(0, 15).map((a: any) => a.avg_kda || 0))}
-                          >
-                            <span className="text-xs font-bold tabular-nums text-foreground">{agent.avg_kda?.toFixed(2)}</span>
-                          </div>
-                        </td>
-                        <td className="text-center px-3 py-2">
-                          <span className="text-xs font-medium text-orange-400 tabular-nums">{agent.avg_first_bloods?.toFixed(1)}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.section>
-        )}
-
-        {/* Map Stats (Valorant) */}
-        {isValorant && mapStats && mapStats.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-          >
-            <div className="rounded-2xl border border-border/50 bg-card/30 backdrop-blur-xl shadow-2xl overflow-hidden">
-              <div className="p-4 border-b border-border/30 flex items-center gap-3 bg-muted/5">
-                <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
-                  <Swords className="h-4 w-4" />
-                </div>
-                <h3 className="font-mango-grotesque text-lg sm:text-xl font-bold tracking-wide">Map Statistics</h3>
-              </div>
-
-              <div className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(mapStats as any[]).map((map: any, i: number) => (
-                    <motion.div
-                      key={map.map_name || i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.05 }}
-                      className="rounded-xl border border-border/30 bg-background/40 overflow-hidden"
-                    >
-                      {map.splash_image_url && (
-                        <div className="relative h-24 w-full">
-                          <Image src={map.splash_image_url} alt={map.map_name} fill className="object-cover opacity-40" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
-                          <div className="absolute bottom-2 left-3">
-                            <h4 className="font-mango-grotesque text-lg font-bold text-white">{map.map_name}</h4>
-                          </div>
-                        </div>
-                      )}
-                      {!map.splash_image_url && (
-                        <div className="px-4 pt-4">
-                          <h4 className="font-mango-grotesque text-lg font-bold text-foreground">{map.map_name}</h4>
-                        </div>
-                      )}
-                      <div className="p-4 space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground/60">Games</span>
-                          <span className="font-medium tabular-nums">{map.total_games}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground/60">Pick Rate</span>
-                          <span className="font-medium text-green-400 tabular-nums">{map.pick_rate?.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground/60">Ban Rate</span>
-                          <span className="font-medium text-red-400 tabular-nums">{map.ban_rate?.toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.section>
-        )}
+          {/* Maps Tab (Valorant) */}
+          {activeTab === 'maps' && isValorant && mapStats && mapStats.length > 0 && (
+            <MapStatsDisplay data={mapStats as unknown as MapStats[]} />
+          )}
+        </motion.div>
 
         {/* Recent Matches */}
         <motion.section

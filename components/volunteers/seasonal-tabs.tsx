@@ -23,18 +23,13 @@ export default function SeasonalTabs({
   initialVolunteers,
   initialDepartments
 }: SeasonalTabsProps) {
-  const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const seasons = initialSeasons;
   const volunteers = initialVolunteers;
   const departments = initialDepartments;
-
-  // Set the first season as default when seasons load
-  if (!selectedSeasonId && seasons && seasons.length > 0) {
-    setSelectedSeasonId(seasons[0].id);
-  }
 
   // Handle Debounce for Search Term
   useEffect(() => {
@@ -47,7 +42,8 @@ export default function SeasonalTabs({
   // Filter volunteers by selected season and search term
   const filteredVolunteers = volunteers?.filter(volunteer => {
       // 1. Filter by season and active status
-      if (volunteer.season_id !== selectedSeasonId || volunteer.is_active === false) return false;
+      if (volunteer.is_active === false) return false;
+      if (selectedSeasonId !== 'all' && volunteer.season_id?.toString() !== selectedSeasonId) return false;
       
       // 2. Filter by search term
       if (!debouncedSearchTerm.trim()) return true;
@@ -95,7 +91,9 @@ export default function SeasonalTabs({
     );
   }
 
-  const selectedSeason = seasons.find(season => season.id === selectedSeasonId);
+  const selectedSeason = selectedSeasonId === 'all' 
+    ? undefined 
+    : seasons.find(season => season.id.toString() === selectedSeasonId);
 
   return (
     <section className="py-16 bg-background">
@@ -107,14 +105,15 @@ export default function SeasonalTabs({
             {/* Left: Season Select Dropdown */}
             <div className="w-full sm:w-auto min-w-[200px]">
               <Select
-                value={selectedSeasonId?.toString() || ""}
-                onValueChange={(val) => setSelectedSeasonId(Number(val))}
+                value={selectedSeasonId}
+                onValueChange={setSelectedSeasonId}
               >
-                <SelectTrigger className="h-10 w-full bg-background shadow-sm font-medium text-sm border-border/50">
-                  <SelectValue placeholder="Select Season" />
+                <SelectTrigger className="h-9 w-full sm:w-[200px] bg-background shadow-sm font-medium text-xs">
+                  <SelectValue placeholder="All Seasons" />
                 </SelectTrigger>
                 <SelectContent>
                   <ScrollArea className="h-[200px]">
+                    <SelectItem value="all">All Seasons</SelectItem>
                     {seasons.map((season) => (
                       <SelectItem key={season.id} value={season.id.toString()}>
                         {season.name || `Season ${season.id}`}

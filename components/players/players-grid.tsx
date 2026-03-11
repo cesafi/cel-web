@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { roboto } from '@/lib/fonts';
 import { Search, X, Loader2 } from 'lucide-react';
-import { getMlbbStats, getValorantStats, getAvailableSeasons, getTeamStats } from '@/actions/statistics';
+import { getMlbbStats, getValorantStats, getAvailableSeasons } from '@/actions/statistics';
 import { CompactGameSelector, GameOption } from '@/components/shared/filters/compact-game-selector';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,13 +27,12 @@ type FilterOption = { id: number | string; label: string; value: string };
 
 export default function PlayersGrid({ availableRichSports }: { availableRichSports: RichSportCategory[]; }) {
   const [game, setGame] = useState<GameType | string>('mlbb');
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<string>('all');
+  const [selectedSchool, setSelectedSchool] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [seasons, setSeasons] = useState<FilterOption[]>([]);
-  const [teams, setTeams] = useState<FilterOption[]>([]);
 
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,16 +91,7 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
         }));
         setSeasons(mapped);
 
-        // Auto-select the latest season by start_at date if not already set
-        if (mapped.length > 0) {
-          const latestSeason = [...mapped].sort((a, b) => {
-            const dateA = new Date(a.originalData?.start_at || 0).getTime();
-            const dateB = new Date(b.originalData?.start_at || 0).getTime();
-            return dateB - dateA; // Descending order
-          })[0];
-
-          setSelectedSeason((prev) => prev !== null ? prev : Number(latestSeason.value));
-        }
+        // We leave the selectedSeason default to "All Seasons" by not overriding states here
       }
 
       // Fetch all teams and schools to properly map missing relationships
@@ -126,48 +116,7 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
     fetchInitialData();
   }, []);
 
-  // Fetch teams when season or game changes (cascading)
-  useEffect(() => {
-    async function fetchTeams() {
-      if (!selectedSeason) {
-        setTeams([]);
-        return;
-      }
 
-      const isMLBB = game === 'all' || game === 'mlbb' || game === '2';
-      const isVAL = game === 'all' || game === 'valorant' || game === '1';
-
-      let allTeams: FilterOption[] = [];
-
-      if (isMLBB) {
-        const result = await getTeamStats('mlbb', selectedSeason);
-        if (result.success && result.data) {
-          const mapped = (result.data as any[]).map((t: any) => ({
-            id: `mlbb-${t.team_id}`,
-            label: t.team_name,
-            value: t.team_id
-          }));
-          allTeams = [...allTeams, ...mapped];
-        }
-      }
-
-      if (isVAL) {
-        const result = await getTeamStats('valorant', selectedSeason);
-        if (result.success && result.data) {
-          const mapped = (result.data as any[]).map((t: any) => ({
-            id: `val-${t.team_id}`,
-            label: t.team_name,
-            value: t.team_id
-          }));
-          allTeams = [...allTeams, ...mapped];
-        }
-      }
-
-      const unique = Array.from(new Map(allTeams.map((t: any) => [t.value, t])).values());
-      setTeams(unique as FilterOption[]);
-    }
-    fetchTeams();
-  }, [selectedSeason, game]);
 
   // Debounce search
   useEffect(() => {
@@ -202,13 +151,13 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
     return allPlayers.filter(player => {
       // 1. Season Filter - Check if player has an entry in player_seasons for this season
       const playerSeasons = player.player_seasons || [];
-      const hasSeasonMatch = !selectedSeason || playerSeasons.some((ps: any) => ps.team?.season_id === selectedSeason);
+      const hasSeasonMatch = selectedSeason === 'all' || playerSeasons.some((ps: any) => ps.team?.season_id?.toString() === selectedSeason);
       if (!hasSeasonMatch) return false;
 
       // 2. Game Filter
       // We need to determine the game. In the players table, we might need to look at the team assigned in that season.
-      const targetSeasonEntry = selectedSeason
-        ? playerSeasons.find((ps: any) => ps.team?.season_id === selectedSeason)
+      const targetSeasonEntry = selectedSeason !== 'all'
+        ? playerSeasons.find((ps: any) => ps.team?.season_id?.toString() === selectedSeason)
         : playerSeasons[0]; // Default to latest/first if no season selected
 
       const teamGame = targetSeasonEntry?.team?.esports_categories?.esports?.name?.toLowerCase() || '';
@@ -219,8 +168,12 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
       if (isMLBB && !isVAL && !teamGame.includes('mobile legends')) return false;
       if (isVAL && !isMLBB && !teamGame.includes('valorant')) return false;
 
-      // 3. Team Filter
-      if (selectedTeam && targetSeasonEntry?.team_id !== selectedTeam) return false;
+      // 3. School Filter
+      if (selectedSchool !== 'all') {
+        const schoolId = targetSeasonEntry?.team?.schools?.id?.toString();
+        const schoolAbbrev = targetSeasonEntry?.team?.schools?.abbreviation;
+        if (schoolId !== selectedSchool && schoolAbbrev !== selectedSchool) return false;
+      }
 
       // 4. Search Filter
       if (debouncedSearch) {
@@ -235,15 +188,15 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
 
       return true;
     }).sort((a, b) => (a.ign || '').localeCompare(b.ign || ''));
-  }, [allPlayers, game, selectedSeason, selectedTeam, debouncedSearch]);
+  }, [allPlayers, game, selectedSeason, selectedSchool, debouncedSearch]);
 
   const groupedPlayers = useMemo(() => {
     const groups: Record<string, { name: string; abbrev: string; logo: string | null; players: any[] }> = {};
 
     filteredPlayers.forEach(player => {
       const playerSeasons = player.player_seasons || [];
-      const targetSeasonEntry = selectedSeason
-        ? playerSeasons.find((ps: any) => ps.team?.season_id === selectedSeason)
+      const targetSeasonEntry = selectedSeason !== 'all'
+        ? playerSeasons.find((ps: any) => ps.team?.season_id?.toString() === selectedSeason)
         : playerSeasons[0];
 
       const school = targetSeasonEntry?.team?.schools;
@@ -271,24 +224,24 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
 
   const handleGameChange = (newGame: string) => {
     setGame(newGame);
-    setSelectedTeam(null);
+    setSelectedSchool('all');
     setSearchQuery('');
     setDebouncedSearch('');
   };
 
-  const handleSeasonChange = (seasonId: number) => {
+  const handleSeasonChange = (seasonId: string) => {
     setSelectedSeason(seasonId);
-    setSelectedTeam(null);
+    setSelectedSchool('all');
   };
 
   const handleClearFilters = () => {
     setSearchQuery('');
     setDebouncedSearch('');
-    setSelectedTeam(null);
-    // Don't clear selectedSeason since "All Seasons" is removed
+    setSelectedSchool('all');
+    setSelectedSeason('all');
   };
 
-  const hasActiveFilters = selectedTeam || searchQuery;
+  const hasActiveFilters = selectedSchool !== 'all' || selectedSeason !== 'all' || searchQuery;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
@@ -348,15 +301,16 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
           {/* Season */}
           <div className="col-span-2 sm:col-span-auto w-full sm:w-auto">
             <Select
-              value={selectedSeason?.toString() || ""}
-              onValueChange={(val) => handleSeasonChange(Number(val))}
+              value={selectedSeason}
+              onValueChange={handleSeasonChange}
               disabled={filtersLoading || seasons.length === 0}
             >
               <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
-                <SelectValue placeholder="Select Season" />
+                <SelectValue placeholder="All Seasons" />
               </SelectTrigger>
               <SelectContent>
                 <ScrollArea className="h-[200px]">
+                  <SelectItem value="all">All Seasons</SelectItem>
                   {seasons.map((s: FilterOption) => (
                     <SelectItem key={s.id} value={s.value}>{s.label}</SelectItem>
                   ))}
@@ -365,21 +319,29 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
             </Select>
           </div>
 
-          {/* Team */}
+          {/* School */}
           <div className="col-span-2 sm:col-span-auto w-full sm:w-auto">
             <Select
-              value={selectedTeam || "all"}
-              onValueChange={(val) => setSelectedTeam(val === "all" ? null : val)}
-              disabled={!selectedSeason || teams.length === 0}
+              value={selectedSchool}
+              onValueChange={setSelectedSchool}
+              disabled={allSchools.length === 0}
             >
-              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs">
-                <SelectValue placeholder="All Teams" />
+              <SelectTrigger className="h-9 w-full sm:w-[150px] bg-background shadow-sm font-medium text-xs truncate">
+                <SelectValue placeholder="All Schools" />
               </SelectTrigger>
               <SelectContent>
                 <ScrollArea className="h-[200px]">
-                  <SelectItem value="all">All Teams</SelectItem>
-                  {teams.map((t: FilterOption) => (
-                    <SelectItem key={t.id} value={t.value.toString()}>{t.label}</SelectItem>
+                  <SelectItem value="all">All Schools</SelectItem>
+                  {allSchools.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        {s.logo_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.logo_url} alt={s.abbreviation || s.name} className="w-5 h-5 object-contain" />
+                        )}
+                        <span>{s.abbreviation || s.name}</span>
+                      </div>
+                    </SelectItem>
                   ))}
                 </ScrollArea>
               </SelectContent>

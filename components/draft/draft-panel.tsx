@@ -106,9 +106,8 @@ const roleTextColors: Record<string, string> = {
     'Sentinel': 'text-yellow-500',
 };
 
-// Standard MLBB role mapping for auto-fill
-const MLBB_SLOT_ROLES = ['Fighter', 'Marksman', 'Mage', 'Assassin', 'Tank'];
-const MLBB_SLOT_LABELS = ['EXP', 'Gold', 'Mid', 'Jungle', 'Roam'];
+const MLBB_SLOT_ROLES = ['Fighter', 'Assassin', 'Mage', 'Marksman', 'Tank'];
+const MLBB_SLOT_LABELS = ['EXP', 'Jungle', 'Mid', 'Gold', 'Roam'];
 
 export function DraftPanel({
     gameId,
