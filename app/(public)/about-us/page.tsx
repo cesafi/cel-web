@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: 'Learn about the CESAFI Esports League - the official esports league of the Cebu Schools Athletic Foundation, Inc.',
 };
 
-export const revalidate = 600; // Revalidate every 10 minutes
+export const revalidate = 3600; // Revalidate every 1 hour
 
 export default async function AboutUsPage() {
   // Fetch About Us FAQs server-side

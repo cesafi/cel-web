@@ -113,7 +113,7 @@ export async function GET(
         const mapName = game.mlbb_map?.name || game.valorant_map?.name || N;
         const gameNumber = game.game_number || 1;
         const bestOf = (game.match as any)?.best_of || 3;
-        
+
         const seasonId = (game.match as any)?.esports_seasons_stages?.season_id;
         const scheduledAt = (game.match as any)?.scheduled_at || null;
         let matchWeekAndDay = 'None';
@@ -366,7 +366,7 @@ export async function GET(
             headers: {
                 'Content-Type': 'text/csv; charset=utf-8',
                 'Content-Disposition': `attachment; filename="game-results-${gameId}.csv"`,
-                'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5',
+                'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
             },
         });
 

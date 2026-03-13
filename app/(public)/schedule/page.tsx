@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'View the full match schedule for the CESAFI Esports League. Follow upcoming and past matches across MLBB and Valorant competitions.',
 };
 
-export const revalidate = 120; // Revalidate every 2 minutes
+export const revalidate = 300; // Revalidate every 5 minutes
 
 export default async function SchedulePage() {
   // Fetch initial data server-side using bidirectional loading
@@ -68,8 +68,8 @@ export default async function SchedulePage() {
 
         {/* Main Content */}
         <div className="container mx-auto max-w-[1000px] px-4 py-6 sm:py-8">
-          <ScheduleContent 
-            initialMatches={matches} 
+          <ScheduleContent
+            initialMatches={matches}
             initialHasMorePast={hasMorePast}
             initialHasMoreFuture={hasMoreFuture}
             initialPastCursor={pastCursor}

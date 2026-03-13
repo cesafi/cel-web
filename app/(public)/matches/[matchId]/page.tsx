@@ -8,6 +8,8 @@ import { PublicMatchStats } from '@/components/matches/public-match-stats';
 import { PublicMapVetoTable } from '@/components/veto/public-map-veto';
 import { LocalTime } from '@/components/shared/local-time';
 
+export const revalidate = 300; // Revalidate every 5 minutes
+
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
 }

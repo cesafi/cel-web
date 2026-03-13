@@ -214,7 +214,7 @@ export type VmixFormat = 'json' | 'json-flat' | 'xml' | 'csv';
 
 const CORS_HEADERS: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'no-store, max-age=0',
+    'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
 };
 
 /**

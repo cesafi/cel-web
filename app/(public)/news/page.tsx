@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: 'Stay updated with the latest news, updates, and highlights from CESAFI esports events.',
 };
 
-export const revalidate = 300; // Revalidate every 5 minutes
+export const revalidate = 900; // Revalidate every 15 minutes
 
 export default async function NewsPage() {
   // Fetch initial articles server-side
@@ -45,12 +45,12 @@ export default async function NewsPage() {
               Stay updated with the latest news, updates, and highlights from CESAFI sports events
               and member schools.
             </p>
-            </div>
+          </div>
         </div>
       </section>
 
       {/* News Content with initial data */}
-      <NewsContent 
+      <NewsContent
         initialArticles={articles}
         initialPagination={articlesData}
       />

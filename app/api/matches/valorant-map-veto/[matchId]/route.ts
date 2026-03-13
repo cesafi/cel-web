@@ -309,7 +309,7 @@ export async function GET(
             headers: {
                 'Content-Type': 'text/csv; charset=utf-8',
                 'Content-Disposition': `attachment; filename="valorant-map-veto-${matchId}.csv"`,
-                'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5',
+                'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
             },
         });
 

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: 'Meet the dedicated volunteers who make the CESAFI Esports League possible through their passion and commitment to student esports.',
 };
 
-export const revalidate = 600; // Revalidate every 10 minutes
+export const revalidate = 1800; // Revalidate every 30 minutes
 
 export default async function VolunteersPage() {
   // Fetch initial data server-side
@@ -46,14 +46,14 @@ export default async function VolunteersPage() {
 
             {/* Subtitle */}
             <p className={`${roboto.className} text-base text-muted-foreground max-w-3xl mx-auto mb-8 leading-relaxed sm:text-lg sm:mb-12 md:text-xl`}>
-              Dedicated individuals who make CESAFI possible through their passion, 
+              Dedicated individuals who make CESAFI possible through their passion,
               commitment, and unwavering support for student athletics across all seasons.
             </p>
           </div>
         </div>
       </section>
 
-      <SeasonalTabs 
+      <SeasonalTabs
         initialSeasons={seasons}
         initialVolunteers={volunteers}
         initialDepartments={departments}

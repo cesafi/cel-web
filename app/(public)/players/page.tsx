@@ -8,7 +8,7 @@ export const metadata = {
   description: 'Browse all CESAFI esports competitors across MLBB and Valorant teams and seasons.'
 };
 
-export const revalidate = 300; // Revalidate every 5 minutes
+export const revalidate = 900; // Revalidate every 15 minutes
 
 export default async function PlayersPage() {
   const categoriesResult = await getAvailableSportCategories();
@@ -28,7 +28,7 @@ export default async function PlayersPage() {
               <span className="block text-primary">Players</span>
             </h1>
             <p className={`${roboto.className} text-base text-muted-foreground max-w-3xl mx-auto mb-8 leading-relaxed sm:text-lg sm:mb-12 md:text-xl`}>
-              Browse competitors across MLBB and Valorant. Select a game, season, and 
+              Browse competitors across MLBB and Valorant. Select a game, season, and
               team to explore individual player stats and profiles.
             </p>
           </div>

@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 import PlayerProfile from '@/components/players/player-profile';
 import { getPlayerBySlug } from '@/actions/players';
 
+export const revalidate = 600; // Revalidate every 10 minutes
+
 interface PlayerProfilePageProps {
   params: Promise<{
     playerSlug: string;
