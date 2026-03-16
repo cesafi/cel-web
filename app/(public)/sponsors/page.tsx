@@ -4,6 +4,8 @@ import { moderniz, roboto } from '@/lib/fonts';
 import { Handshake, MapPin, CalendarCheck } from 'lucide-react';
 import PartnersGrid from '@/components/sponsors/partners-grid';
 
+export const revalidate = 3600; // Revalidate every 1 hour
+
 export default async function SponsorsPage() {
   // Fetch active sponsors server-side
   const sponsorsResult = await getActiveSponsors();
