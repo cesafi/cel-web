@@ -49,21 +49,6 @@ function processQueue() {
     process();
 }
 
-// Rewrite external URLs that need proxying (Fandom CDN blocks browser requests)
-const PROXY_HOSTS = ['static.wikia.nocookie.net', 'vignette.wikia.nocookie.net'];
-
-function getProxiedUrl(src: string): string {
-    try {
-        const url = new URL(src);
-        if (PROXY_HOSTS.some(host => url.hostname === host)) {
-            return `/api/image-proxy?url=${encodeURIComponent(src)}`;
-        }
-    } catch {
-        // Not a valid URL, return as-is
-    }
-    return src;
-}
-
 function enqueueImage(src: string): Promise<boolean> {
     return new Promise((resolve) => {
         queue.push({ src, resolve });
@@ -87,17 +72,15 @@ export function LazyImage({ src, alt, className, fallback }: LazyImageProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const hasTriggered = useRef(false);
 
-    const proxiedSrc = src ? getProxiedUrl(src) : null;
-
     const startLoad = useCallback(() => {
-        if (hasTriggered.current || !proxiedSrc) return;
+        if (hasTriggered.current || !src) return;
         hasTriggered.current = true;
         setState('loading');
 
-        enqueueImage(proxiedSrc).then((loaded) => {
+        enqueueImage(src).then((loaded) => {
             setState(loaded ? 'loaded' : 'error');
         });
-    }, [proxiedSrc]);
+    }, [src]);
 
     useEffect(() => {
         if (!src) {
@@ -124,10 +107,10 @@ export function LazyImage({ src, alt, className, fallback }: LazyImageProps) {
 
     return (
         <div ref={containerRef} className={cn('relative overflow-hidden', className)}>
-            {state === 'loaded' && proxiedSrc ? (
+            {state === 'loaded' && src ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                    src={proxiedSrc}
+                    src={src}
                     alt={alt}
                     className="w-full h-full object-cover"
                 />
