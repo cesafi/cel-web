@@ -1142,6 +1142,7 @@ export type Database = {
           is_mvp: boolean | null
           kills: number | null
           lord_slain: number | null
+          order: number | null
           player_id: string
           rating: number | null
           team_id: string | null
@@ -1162,6 +1163,7 @@ export type Database = {
           is_mvp?: boolean | null
           kills?: number | null
           lord_slain?: number | null
+          order?: number | null
           player_id: string
           rating?: number | null
           team_id?: string | null
@@ -1182,6 +1184,7 @@ export type Database = {
           is_mvp?: boolean | null
           kills?: number | null
           lord_slain?: number | null
+          order?: number | null
           player_id?: string
           rating?: number | null
           team_id?: string | null

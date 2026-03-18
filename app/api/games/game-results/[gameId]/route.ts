@@ -123,15 +123,21 @@ export async function GET(
 
         // ── 6. Roster ──
         const roster: Record<string, Record<number, { ign: string; role: string }>> = {};
+        const rosterByPlayer: Record<string, { ign: string; role: string }> = {};
         for (const r of (rosterRes.data || []) as any[]) {
             if (!roster[r.team_id]) roster[r.team_id] = {};
             roster[r.team_id][r.sort_order] = { ign: r.player?.ign || N, role: r.player_role || N };
+            if (r.player_id) {
+                rosterByPlayer[r.player_id] = { ign: r.player?.ign || N, role: r.player_role || N };
+            }
         }
 
         // ── 7. Stats split by team, ordered by slot ──
         const allStats = (statsRes.data || []) as any[];
-        const blueStats = allStats.filter((s: any) => s.team_id === blueId);
-        const redStats = allStats.filter((s: any) => s.team_id === redId);
+        const blueStats = allStats.filter((s: any) => s.team_id === blueId)
+          .sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
+        const redStats = allStats.filter((s: any) => s.team_id === redId)
+          .sort((a: any, b: any) => (a.order ?? 999) - (b.order ?? 999));
 
         // ── 8. Draft picks (for hero/agent names per player slot) ──
         const draftActions = (draftRes.success ? draftRes.data || [] : []) as any[];
@@ -147,11 +153,11 @@ export async function GET(
         const rev = <T,>(a: T[]) => [...a].reverse();
         const v = (val: any, fallback: string | number = 0) => val ?? fallback;
 
-        // Padded arrays
-        const bIgns = pad5(Array.from({ length: 5 }, (_, i) => roster[blueId]?.[i]?.ign || N));
-        const rIgns = pad5(Array.from({ length: 5 }, (_, i) => roster[redId]?.[i]?.ign || N));
-        const bRoles = pad5(Array.from({ length: 5 }, (_, i) => roster[blueId]?.[i]?.role || N));
-        const rRoles = pad5(Array.from({ length: 5 }, (_, i) => roster[redId]?.[i]?.role || N));
+        // Padded arrays — derived from stats order, with roles from game_rosters by player_id
+        const bIgns = pad5(blueStats.map(s => rosterByPlayer[s.player_id]?.ign || s.players?.ign || N));
+        const rIgns = pad5(redStats.map(s => rosterByPlayer[s.player_id]?.ign || s.players?.ign || N));
+        const bRoles = pad5(blueStats.map(s => rosterByPlayer[s.player_id]?.role || N));
+        const rRoles = pad5(redStats.map(s => rosterByPlayer[s.player_id]?.role || N));
 
         // Hero/agent names from draft picks or stats
         const getPickName = (stats: any[], picks: any[], idx: number): string => {

@@ -43,7 +43,8 @@ export class StatsMlbbService extends BaseService {
             )
           )
         `)
-        .eq('game_id', gameId);
+        .eq('game_id', gameId)
+        .order('order', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
       return { success: true, data: data as unknown as StatsMlbbGamePlayerWithDetails[] };

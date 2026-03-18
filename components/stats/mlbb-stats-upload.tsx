@@ -11,10 +11,10 @@ import { Player } from '@/lib/types/players';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Upload, Save, RefreshCcw, Coins, FileImage, ShieldAlert, Swords, Percent } from 'lucide-react';
+import { Loader2, Upload, Save, RefreshCcw, Coins, FileImage, ShieldAlert, Swords, ArrowLeftRight, Star, Castle, Target, Users, Turtle, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
@@ -103,6 +103,12 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
   const [isSaving, setIsSaving] = useState(false);
   const [mvpIndex, setMvpIndex] = useState<number | null>(null);
   const [hasExistingStats, setHasExistingStats] = useState(false);
+  const [playerSwapSlot, setPlayerSwapSlot] = useState<number | null>(null);
+
+  const MLBB_DEFAULT_ROLES = ['EXP', 'Jungle', 'Mid', 'Gold', 'Roam'];
+  const [slotRoles, setSlotRoles] = useState<string[]>([
+    ...MLBB_DEFAULT_ROLES, ...MLBB_DEFAULT_ROLES
+  ]);
 
   const { data: gameDraftActions, isFetched: isDraftActionsFetched } = useGameDraftActions(gameId);
   const { data: gameCharacters, isFetched: isCharactersFetched } = useAllGameCharactersWithEsport();
@@ -224,9 +230,20 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
           let team1Index = 0;
           let team2Index = 5;
 
-          result.data.forEach((stat) => {
+          // Sort by order column if available for correct position placement
+          const sortedStats = [...result.data].sort((a, b) => {
+            if (a.order != null && b.order != null) return a.order - b.order;
+            if (a.order != null) return -1;
+            if (b.order != null) return 1;
+            return 0;
+          });
+
+          sortedStats.forEach((stat) => {
             let slot = -1;
-            if (team1PlayerIds.has(stat.player_id)) {
+            // Use order column if available (1-5 = Blue, 6-10 = Red)
+            if (stat.order != null) {
+              slot = stat.order <= 5 ? stat.order - 1 : stat.order - 1;
+            } else if (team1PlayerIds.has(stat.player_id)) {
               slot = team1Index++;
             } else if (team2PlayerIds.has(stat.player_id)) {
               slot = team2Index++;
@@ -268,6 +285,19 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
           setMvpIndex(mvpIdx);
           setPreviewData(prev => ({ ...prev, players: newPreviewDataPlayers }));
           setHasExistingStats(true);
+        }
+
+        // Initialize roles from roster data (always, not just when stats exist)
+        if (gameRosters?.length) {
+          const newSlotRoles = [...MLBB_DEFAULT_ROLES, ...MLBB_DEFAULT_ROLES];
+          for (const r of gameRosters) {
+            const isTeam1 = r.team_id === team1.id;
+            const slotIdx = isTeam1 ? r.sort_order : r.sort_order + 5;
+            if (r.player_role && slotIdx >= 0 && slotIdx < 10) {
+              newSlotRoles[slotIdx] = r.player_role;
+            }
+          }
+          setSlotRoles(newSlotRoles);
         }
       } catch (e) {
         console.error("Failed to fetch existing stats", e);
@@ -318,6 +348,24 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDraftActionsFetched, isCharactersFetched, isRostersFetched, hasExistingStats]);
+
+  // Effect 3: Sync slot roles from game_rosters whenever rosters or player mappings change
+  useEffect(() => {
+    if (!gameRosters?.length) return;
+
+    const newSlotRoles = [...MLBB_DEFAULT_ROLES, ...MLBB_DEFAULT_ROLES];
+    for (let i = 0; i < 10; i++) {
+      const pId = playerMapping[i.toString()];
+      if (pId && pId !== 'skip') {
+        const rosterEntry = gameRosters.find((r: any) => r.player_id === pId);
+        if (rosterEntry?.player_role) {
+          newSlotRoles[i] = rosterEntry.player_role;
+        }
+      }
+    }
+    setSlotRoles(newSlotRoles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameRosters, playerMapping]);
 
   // Handle file analysis once both are provided
   const handleAnalyze = async () => {
@@ -392,6 +440,21 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
 
         setPlayerMapping(newMapping);
         setHeroMapping(newHeroMapping);
+
+        // Update roles from game_rosters for all mapped players
+        if (gameRosters?.length) {
+          const newSlotRoles = [...slotRoles];
+          convertedData.players.forEach((_, index) => {
+            const pId = newMapping[index.toString()];
+            if (pId && pId !== 'skip') {
+              const rosterEntry = gameRosters.find((r: any) => r.player_id === pId);
+              if (rosterEntry?.player_role) {
+                newSlotRoles[index] = rosterEntry.player_role;
+              }
+            }
+          });
+          setSlotRoles(newSlotRoles);
+        }
 
         // When AI extracts stats, override the empty structure
         setPreviewData(convertedData);
@@ -535,7 +598,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
             teamfight: stat.teamfight,
             turtle_slain: stat.turtlesSlain,
             lord_slain: stat.lordsSlain,
-            is_mvp: index === mvpIndex
+            is_mvp: index === mvpIndex,
+            order: index < 5 ? index + 1 : index + 1 // 1-5 for Blue, 6-10 for Red
           };
         })
         .filter((stat): stat is NonNullable<typeof stat> => stat !== null);
@@ -595,6 +659,40 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
     if (team1.players.some(p => p.id === playerId)) return team1;
     if (team2.players.some(p => p.id === playerId)) return team2;
     return null;
+  };
+
+  // Handle swap of two player positions within the same team side
+  const handleSwapPlayers = (slotA: number, slotB: number) => {
+    // Swap previewData players
+    const newPlayers = [...previewData.players];
+    [newPlayers[slotA], newPlayers[slotB]] = [newPlayers[slotB], newPlayers[slotA]];
+    setPreviewData({ ...previewData, players: newPlayers });
+
+    // Swap playerMapping
+    const newMapping = { ...playerMapping };
+    const tempPlayer = newMapping[slotA.toString()];
+    newMapping[slotA.toString()] = newMapping[slotB.toString()];
+    newMapping[slotB.toString()] = tempPlayer;
+    setPlayerMapping(newMapping);
+
+    // Swap heroMapping
+    const newHeroMapping = { ...heroMapping };
+    const tempHero = newHeroMapping[slotA.toString()];
+    newHeroMapping[slotA.toString()] = newHeroMapping[slotB.toString()];
+    newHeroMapping[slotB.toString()] = tempHero;
+    setHeroMapping(newHeroMapping);
+
+    // Swap roles (roles follow the player, not the slot)
+    const newRoles = [...slotRoles];
+    [newRoles[slotA], newRoles[slotB]] = [newRoles[slotB], newRoles[slotA]];
+    setSlotRoles(newRoles);
+
+    // Update MVP index if affected
+    if (mvpIndex === slotA) setMvpIndex(slotB);
+    else if (mvpIndex === slotB) setMvpIndex(slotA);
+
+    setPlayerSwapSlot(null);
+    toast.success('Players swapped');
   };
 
   return (
@@ -789,246 +887,236 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
             </div>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">Player & Team</TableHead>
-                  <TableHead className="w-[120px]">Hero</TableHead>
-                  <TableHead className="w-[60px] text-center">MVP</TableHead>
-                  <TableHead className="w-[160px] text-center">K / D / A</TableHead>
-                  <TableHead className="w-[80px]">Gold</TableHead>
-                  <TableHead className="w-[80px]">Rating</TableHead>
-                  {/* Advanced Stats */}
-                  <TableHead className="w-[100px]">Damage</TableHead>
-                  <TableHead className="w-[100px]">Turret</TableHead>
-                  <TableHead className="w-[100px]">Taken</TableHead>
-                  <TableHead className="w-[80px]">TF %</TableHead>
-                  <TableHead className="w-[60px] text-center">Turtles</TableHead>
-                  <TableHead className="w-[60px] text-center">Lords</TableHead>
+          {/* Two-Column Layout: Blue (Left) vs Red (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Blue Side */}
+            {[
+              { side: 'Blue' as const, team: team1, startIdx: 0, themeColor: 'blue' },
+              { side: 'Red' as const, team: team2, startIdx: 5, themeColor: 'red' },
+            ].map(({ side, team, startIdx, themeColor }) => (
+              <div key={side} className="rounded-xl border bg-card overflow-hidden">
+                {/* Team Header */}
+                <div className={`p-3 border-b flex items-center gap-3 ${themeColor === 'blue' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                  <div className="w-8 h-8 rounded-full bg-background border overflow-hidden flex items-center justify-center shrink-0">
+                    {team.logoUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={team.logoUrl} alt={team.abbreviation} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className={`text-[10px] font-bold ${themeColor === 'blue' ? 'text-blue-500' : 'text-red-500'}`}>
+                        {team.abbreviation.substring(0, 2)}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">{team.abbreviation}</h3>
+                    <p className={`text-[10px] font-medium ${themeColor === 'blue' ? 'text-blue-500' : 'text-red-500'}`}>{side} Side</p>
+                  </div>
+                </div>
 
-                  <TableHead className="w-[200px]">Map to Player</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {previewData.players.map((stat, index) => {
-                  const mappedPlayerId = playerMapping[index.toString()];
-                  const team = mappedPlayerId && mappedPlayerId !== 'skip' ? getTeamForPlayer(mappedPlayerId) : null;
+                {/* Player Rows */}
+                <div className="divide-y">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const index = startIdx + i;
+                    const stat = previewData.players[index];
+                    const mappedPlayerId = playerMapping[index.toString()];
+                    const mappedTeam = mappedPlayerId && mappedPlayerId !== 'skip' ? getTeamForPlayer(mappedPlayerId) : null;
 
-                  return (
-                    <TableRow key={index} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">
+                    return (
+                      <div key={i} className="p-3 space-y-2 hover:bg-muted/30 transition-colors">
+                        {/* Row 1: Role, Player Mapping, Hero, MVP, Swap */}
                         <div className="flex items-center gap-2">
-                          {team?.logoUrl ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={team.logoUrl} alt={team.abbreviation} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold flex-shrink-0">
-                              {team ? team.abbreviation.substring(0, 2) : (stat.team === 'Blue' ? team1.abbreviation.substring(0, 2) : team2.abbreviation.substring(0, 2))}
-                            </div>
-                          )}
-                          <span>{stat.playerName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={heroMapping[index.toString()] || ''}
-                          onValueChange={(value) => {
-                            setHeroMapping(prev => ({ ...prev, [index.toString()]: value }));
-                            handleStatChange(index, 'heroName', value);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[120px]">
-                            <SelectValue placeholder="Hero" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {gameCharacters?.map(char => (
-                              <SelectItem key={char.id} value={char.id.toString()}>{char.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center">
-                          <Checkbox
-                            checked={mvpIndex === index}
-                            onCheckedChange={() => {
-                              setMvpIndex(index);
-                              // Auto-set game scores: MVP's team wins (1), other team loses (0)
-                              const mvpTeam = index < 5 ? 'Blue' : 'Red';
-                              setPreviewData(prev => ({
-                                ...prev,
-                                score: {
-                                  blue: mvpTeam === 'Blue' ? 1 : 0,
-                                  red: mvpTeam === 'Red' ? 1 : 0,
-                                },
-                              }));
-                            }}
-                            className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            value={stat.kda.kills}
-                            onChange={(e) => handleStatChange(index, 'k', e.target.value)}
-                            className="h-8 w-[50px] px-2 text-center"
-                            placeholder="K"
-                          />
-                          <span className="text-muted-foreground">/</span>
-                          <Input
-                            type="number"
-                            value={stat.kda.deaths}
-                            onChange={(e) => handleStatChange(index, 'd', e.target.value)}
-                            className="h-8 w-[50px] px-2 text-center"
-                            placeholder="D"
-                          />
-                          <span className="text-muted-foreground">/</span>
-                          <Input
-                            type="number"
-                            value={stat.kda.assists}
-                            onChange={(e) => handleStatChange(index, 'a', e.target.value)}
-                            className="h-8 w-[50px] px-2 text-center"
-                            placeholder="A"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Coins className="h-3 w-3 text-yellow-500" />
-                          <Input
-                            type="number"
-                            value={stat.gold}
-                            onChange={(e) => handleStatChange(index, 'gold', e.target.value)}
-                            className="h-8 w-[80px]"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={stat.rating}
-                          onChange={(e) => handleStatChange(index, 'rating', e.target.value)}
-                          className="h-8 w-[60px]"
-                          step="0.1"
-                        />
-                      </TableCell>
+                          {/* Role Badge */}
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${themeColor === 'blue' ? 'bg-blue-500/10 text-blue-500' : 'bg-red-500/10 text-red-500'
+                            }`}>
+                            {slotRoles[index]}
+                          </span>
 
-                      {/* Advanced Stats */}
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Swords className="h-3 w-3 text-red-500" />
-                          <Input
-                            type="number"
-                            value={stat.damageDealt}
-                            onChange={(e) => handleStatChange(index, 'damageDealt', e.target.value)}
-                            className="h-8 w-[80px]"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={stat.turretDamage}
-                          onChange={(e) => handleStatChange(index, 'turretDamage', e.target.value)}
-                          className="h-8 w-[80px]"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <ShieldAlert className="h-3 w-3 text-blue-500" />
-                          <Input
-                            type="number"
-                            value={stat.damageTaken}
-                            onChange={(e) => handleStatChange(index, 'damageTaken', e.target.value)}
-                            className="h-8 w-[80px]"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Input
-                            type="number"
-                            value={stat.teamfight}
-                            onChange={(e) => handleStatChange(index, 'teamfight', e.target.value)}
-                            className="h-8 w-[50px]"
-                          />
-                          <span className="text-xs text-muted-foreground ml-1">%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={stat.turtlesSlain ?? 0}
-                          onChange={(e) => handleStatChange(index, 'turtlesSlain', e.target.value)}
-                          className="h-8 w-[50px] px-2 text-center mx-auto"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={stat.lordsSlain ?? 0}
-                          onChange={(e) => handleStatChange(index, 'lordsSlain', e.target.value)}
-                          className="h-8 w-[50px] px-2 text-center mx-auto"
-                        />
-                      </TableCell>
-
-                      <TableCell>
-                        <Select
-                          value={mappedPlayerId || ''}
-                          onValueChange={(value) => {
-                            setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
-
-                            // Auto-fill hero if mapped from draft using roster-based correlation
-                            if (value !== 'skip' && gameDraftActions && gameRosters?.length) {
-                              const pick = findPickForPlayer(value, gameDraftActions);
-                              if (pick?.hero_name) {
-                                const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
-                                if (matchingChar) {
-                                  setHeroMapping(prev => ({ ...prev, [index.toString()]: matchingChar.id.toString() }));
+                          {/* Player Mapping */}
+                          <Select
+                            value={mappedPlayerId || ''}
+                            onValueChange={(value) => {
+                              setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
+                              if (value !== 'skip' && gameRosters?.length) {
+                                // Update role from game_rosters for the mapped player
+                                const rosterEntry = gameRosters.find((r: any) => r.player_id === value);
+                                if (rosterEntry?.player_role) {
+                                  setSlotRoles(prev => {
+                                    const updated = [...prev];
+                                    updated[index] = rosterEntry.player_role;
+                                    return updated;
+                                  });
                                 }
-                                setPreviewData(prevData => {
-                                  const newPlayers = [...prevData.players];
-                                  newPlayers[index] = { ...newPlayers[index], heroName: pick.hero_name! };
-                                  return { ...prevData, players: newPlayers };
-                                });
+
+                                // Update hero from draft
+                                if (gameDraftActions) {
+                                  const pick = findPickForPlayer(value, gameDraftActions);
+                                  if (pick?.hero_name) {
+                                    const matchingChar = gameCharacters?.find(c => c.name.toLowerCase() === pick.hero_name?.toLowerCase());
+                                    if (matchingChar) {
+                                      setHeroMapping(prev => ({ ...prev, [index.toString()]: matchingChar.id.toString() }));
+                                    }
+                                    setPreviewData(prevData => {
+                                      const newPlayers = [...prevData.players];
+                                      newPlayers[index] = { ...newPlayers[index], heroName: pick.hero_name! };
+                                      return { ...prevData, players: newPlayers };
+                                    });
+                                  }
+                                }
                               }
-                            }
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select player..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="skip">-- Skip --</SelectItem>
-                            {/* Group by Team */}
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                              {team1.abbreviation}
+                            }}
+                          >
+                            <SelectTrigger className="h-7 flex-1 text-xs">
+                              <SelectValue placeholder="Select player..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="skip">-- Skip --</SelectItem>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                {team1.abbreviation}
+                              </div>
+                              {team1.players.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
+                              ))}
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                {team2.abbreviation}
+                              </div>
+                              {team2.players.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {/* Hero Select */}
+                          <Select
+                            value={heroMapping[index.toString()] || ''}
+                            onValueChange={(value) => {
+                              setHeroMapping(prev => ({ ...prev, [index.toString()]: value }));
+                              const char = gameCharacters?.find(c => c.id.toString() === value);
+                              if (char) {
+                                handleStatChange(index, 'heroName', char.name);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-[110px] text-xs">
+                              <SelectValue placeholder="Hero" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {gameCharacters?.map(char => (
+                                <SelectItem key={char.id} value={char.id.toString()}>{char.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {/* MVP Checkbox */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Checkbox
+                              checked={mvpIndex === index}
+                              onCheckedChange={() => {
+                                setMvpIndex(index);
+                                const mvpTeam = index < 5 ? 'Blue' : 'Red';
+                                setPreviewData(prev => ({
+                                  ...prev,
+                                  score: {
+                                    blue: mvpTeam === 'Blue' ? 1 : 0,
+                                    red: mvpTeam === 'Red' ? 1 : 0,
+                                  },
+                                }));
+                              }}
+                              className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                            />
+                            <span className="text-[10px] text-muted-foreground">MVP</span>
+                          </div>
+
+                          {/* Swap Button */}
+                          {playerSwapSlot === null ? (
+                            <button
+                              onClick={() => setPlayerSwapSlot(index)}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 ${themeColor === 'blue' ? 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                }`}
+                              title="Swap position"
+                            >
+                              <ArrowLeftRight className="w-3 h-3" />
+                            </button>
+                          ) : playerSwapSlot === index ? (
+                            <button
+                              onClick={() => setPlayerSwapSlot(null)}
+                              className="text-[10px] font-semibold text-muted-foreground shrink-0 hover:text-foreground"
+                            >
+                              Cancel
+                            </button>
+                          ) : (
+                            // Only show "Swap Here" for slots on the same team side
+                            playerSwapSlot >= startIdx && playerSwapSlot < startIdx + 5 ? (
+                              <button
+                                onClick={() => handleSwapPlayers(playerSwapSlot, index)}
+                                className={`text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded transition-colors ${themeColor === 'blue' ? 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                  }`}
+                              >
+                                Swap Here
+                              </button>
+                            ) : (
+                              <div className="w-6 shrink-0" /> // Placeholder when swap is active on other side
+                            )
+                          )}
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div className="space-y-1.5">
+                          {/* KDA + Gold + Rating */}
+                          <div className="flex items-end gap-2">
+                            <div className="flex-shrink-0">
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">K / D / A</span>
+                              <div className="flex items-center gap-0.5 mt-0.5">
+                                <Input type="number" value={stat.kda.kills} onChange={(e) => handleStatChange(index, 'k', e.target.value)} className="h-7 w-[42px] px-1 text-center text-xs" placeholder="K" />
+                                <span className="text-muted-foreground text-xs">/</span>
+                                <Input type="number" value={stat.kda.deaths} onChange={(e) => handleStatChange(index, 'd', e.target.value)} className="h-7 w-[42px] px-1 text-center text-xs" placeholder="D" />
+                                <span className="text-muted-foreground text-xs">/</span>
+                                <Input type="number" value={stat.kda.assists} onChange={(e) => handleStatChange(index, 'a', e.target.value)} className="h-7 w-[42px] px-1 text-center text-xs" placeholder="A" />
+                              </div>
                             </div>
-                            {team1.players.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
-                            ))}
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                              {team2.abbreviation}
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Coins className="h-2.5 w-2.5 text-yellow-500" /> Gold</span>
+                              <Input type="number" value={stat.gold} onChange={(e) => handleStatChange(index, 'gold', e.target.value)} className="h-7 w-[72px] text-xs mt-0.5" />
                             </div>
-                            {team2.players.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {team ? (
-                          <div className="mt-1 text-[10px] text-muted-foreground font-medium">Mapped to • {team.abbreviation}</div>
-                        ) : mappedPlayerId === 'skip' ? (
-                          <div className="mt-1 text-[10px] text-muted-foreground font-medium text-amber-500">Row Skipped</div>
-                        ) : null}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Star className="h-2.5 w-2.5 text-amber-400" /> Rating</span>
+                              <Input type="number" value={stat.rating} onChange={(e) => handleStatChange(index, 'rating', e.target.value)} className="h-7 w-[55px] text-xs mt-0.5" step="0.1" />
+                            </div>
+                          </div>
+
+                          {/* Advanced Stats Row */}
+                          <div className="grid grid-cols-7 gap-1.5">
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Swords className="h-2.5 w-2.5 text-red-500" /> Dmg</span>
+                              <Input type="number" value={stat.damageDealt} onChange={(e) => handleStatChange(index, 'damageDealt', e.target.value)} className="h-7 w-full text-xs mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Castle className="h-2.5 w-2.5 text-orange-400" /> Turr</span>
+                              <Input type="number" value={stat.turretDamage} onChange={(e) => handleStatChange(index, 'turretDamage', e.target.value)} className="h-7 w-full text-xs mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><ShieldAlert className="h-2.5 w-2.5 text-blue-400" /> Taken</span>
+                              <Input type="number" value={stat.damageTaken} onChange={(e) => handleStatChange(index, 'damageTaken', e.target.value)} className="h-7 w-full text-xs mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Users className="h-2.5 w-2.5 text-purple-400" /> TF%</span>
+                              <Input type="number" value={stat.teamfight} onChange={(e) => handleStatChange(index, 'teamfight', e.target.value)} className="h-7 w-full text-xs mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Turtle className="h-2.5 w-2.5 text-teal-400" /> Turtle</span>
+                              <Input type="number" value={stat.turtlesSlain ?? 0} onChange={(e) => handleStatChange(index, 'turtlesSlain', e.target.value)} className="h-7 w-full text-xs mt-0.5" />
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-0.5"><Crown className="h-2.5 w-2.5 text-yellow-400" /> Lord</span>
+                              <Input type="number" value={stat.lordsSlain ?? 0} onChange={(e) => handleStatChange(index, 'lordsSlain', e.target.value)} className="h-7 w-full text-xs mt-0.5" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="flex justify-end gap-2">
