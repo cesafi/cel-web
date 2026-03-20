@@ -28,19 +28,24 @@ export function ScheduleMatchCard({ match, onClick, className }: ScheduleMatchCa
   const winner = getMatchWinner(match);
   const isLive = isMatchLive(match);
   const hasMultiple = hasMultipleParticipants(match);
+  const isFinished = match.status === 'finished' || match.status === 'completed';
+  const isClickable = isLive || isFinished;
 
   const handleClick = () => {
-    onClick?.(match);
+    if (isClickable) {
+      onClick?.(match);
+    }
   };
 
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md',
+        'transition-all duration-200',
+        isClickable && 'cursor-pointer hover:scale-[1.02] hover:shadow-md',
         isLive && 'ring-opacity-50 ring-2 ring-blue-500',
         className
       )}
-      onClick={handleClick}
+      onClick={isClickable ? handleClick : undefined}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
