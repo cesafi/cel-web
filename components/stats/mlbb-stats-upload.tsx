@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { extractMlbbStatsFromImage } from '@/actions/mlbb-ocr';
 import { createMultipleMlbbStats, getMlbbStatsByGameId, deleteMlbbStatsByGameId, recalculateMatchScoresAction } from '@/actions/stats-mlbb';
 import { upsertGameScoresForGame, getGameScoresByGameId } from '@/actions/game-scores';
@@ -38,27 +38,77 @@ interface MlbbStatsUploadProps {
     matchParticipantId: number;
     players: Player[];
   };
+  coinTossWinnerId?: string;
+  sideSelection?: string;
   onStatsSaved?: () => void;
 }
 
-export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }: MlbbStatsUploadProps) {
+export function MlbbStatsUpload({ gameId, matchId, team1, team2, coinTossWinnerId, sideSelection, onStatsSaved }: MlbbStatsUploadProps) {
+  // Compute Blue/Red side teams based on coin toss and side selection (same logic as draft-panel.tsx)
+  const { blueTeam, redTeam } = useMemo(() => {
+    let blue = team1;
+    let red = team2;
+
+    if (sideSelection === 'blue' && coinTossWinnerId) {
+      blue = coinTossWinnerId === team1.id ? team1 : team2;
+      red = coinTossWinnerId === team1.id ? team2 : team1;
+    } else if (sideSelection === 'red' && coinTossWinnerId) {
+      red = coinTossWinnerId === team1.id ? team1 : team2;
+      blue = coinTossWinnerId === team1.id ? team2 : team1;
+    } else if (coinTossWinnerId) {
+      // Default: Coin toss winner gets blue side if no explicit side chosen
+      blue = coinTossWinnerId === team1.id ? team1 : team2;
+      red = coinTossWinnerId === team1.id ? team2 : team1;
+    }
+
+    return { blueTeam: blue, redTeam: red };
+  }, [team1, team2, coinTossWinnerId, sideSelection]);
+
   const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(() => {
+    // Compute sides inline for initializer (same logic as useMemo above)
+    let initBlue = team1;
+    let initRed = team2;
+    if (sideSelection === 'blue' && coinTossWinnerId) {
+      initBlue = coinTossWinnerId === team1.id ? team1 : team2;
+      initRed = coinTossWinnerId === team1.id ? team2 : team1;
+    } else if (sideSelection === 'red' && coinTossWinnerId) {
+      initRed = coinTossWinnerId === team1.id ? team1 : team2;
+      initBlue = coinTossWinnerId === team1.id ? team2 : team1;
+    } else if (coinTossWinnerId) {
+      initBlue = coinTossWinnerId === team1.id ? team1 : team2;
+      initRed = coinTossWinnerId === team1.id ? team2 : team1;
+    }
+
     const initialMapping: Record<string, string> = {};
-    const team1Picks = team1.players.slice(0, 5);
-    const team2Picks = team2.players.slice(0, 5);
+    const bluePicks = initBlue.players.slice(0, 5);
+    const redPicks = initRed.players.slice(0, 5);
 
     for (let i = 0; i < 5; i++) {
-      if (team1Picks[i]) initialMapping[i.toString()] = team1Picks[i].id;
-      if (team2Picks[i]) initialMapping[(i + 5).toString()] = team2Picks[i].id;
+      if (bluePicks[i]) initialMapping[i.toString()] = bluePicks[i].id;
+      if (redPicks[i]) initialMapping[(i + 5).toString()] = redPicks[i].id;
     }
     return initialMapping;
   });
 
   const [previewData, setPreviewData] = useState<MlbbScreenshotData>(() => {
+    // Compute sides inline for initializer
+    let initBlue = team1;
+    let initRed = team2;
+    if (sideSelection === 'blue' && coinTossWinnerId) {
+      initBlue = coinTossWinnerId === team1.id ? team1 : team2;
+      initRed = coinTossWinnerId === team1.id ? team2 : team1;
+    } else if (sideSelection === 'red' && coinTossWinnerId) {
+      initRed = coinTossWinnerId === team1.id ? team1 : team2;
+      initBlue = coinTossWinnerId === team1.id ? team2 : team1;
+    } else if (coinTossWinnerId) {
+      initBlue = coinTossWinnerId === team1.id ? team1 : team2;
+      initRed = coinTossWinnerId === team1.id ? team2 : team1;
+    }
+
     const emptyPlayers = [];
     for (let i = 0; i < 5; i++) {
       emptyPlayers.push({
-        playerName: team1.players[i]?.ign || `Player ${i + 1}`,
+        playerName: initBlue.players[i]?.ign || `Player ${i + 1}`,
         team: 'Blue' as const,
         heroName: '',
         kda: { kills: 0, deaths: 0, assists: 0 },
@@ -75,7 +125,7 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
     }
     for (let i = 0; i < 5; i++) {
       emptyPlayers.push({
-        playerName: team2.players[i]?.ign || `Player ${i + 6}`,
+        playerName: initRed.players[i]?.ign || `Player ${i + 6}`,
         team: 'Red' as const,
         heroName: '',
         kda: { kills: 0, deaths: 0, assists: 0 },
@@ -181,14 +231,14 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
 
         // Load existing game_scores
         if (scoresResult?.success && scoresResult.data && scoresResult.data.length >= 2) {
-          const s1 = scoresResult.data.find((s: any) => s.match_participant_id === team1.matchParticipantId);
-          const s2 = scoresResult.data.find((s: any) => s.match_participant_id === team2.matchParticipantId);
-          if (s1 !== undefined || s2 !== undefined) {
+          const sBlue = scoresResult.data.find((s: any) => s.match_participant_id === blueTeam.matchParticipantId);
+          const sRed = scoresResult.data.find((s: any) => s.match_participant_id === redTeam.matchParticipantId);
+          if (sBlue !== undefined || sRed !== undefined) {
             setPreviewData(prev => ({
               ...prev,
               score: {
-                blue: s1?.score ?? 0,
-                red: s2?.score ?? 0,
+                blue: sBlue?.score ?? 0,
+                red: sRed?.score ?? 0,
               },
             }));
           }
@@ -201,13 +251,13 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
           const newHeroMapping: Record<string, string> = {};
           let mvpIdx: number | null = null;
 
-          const team1PlayerIds = new Set(team1.players.map(p => p.id));
-          const team2PlayerIds = new Set(team2.players.map(p => p.id));
+          const bluePlayerIds = new Set(blueTeam.players.map(p => p.id));
+          const redPlayerIds = new Set(redTeam.players.map(p => p.id));
 
           // Fill default empty slots
           for (let i = 0; i < 10; i++) {
             const isBlue = i < 5;
-            const pList = isBlue ? team1.players : team2.players;
+            const pList = isBlue ? blueTeam.players : redTeam.players;
             const defaultP = pList[i % 5];
 
             newPreviewDataPlayers.push({
@@ -227,8 +277,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
             });
           }
 
-          let team1Index = 0;
-          let team2Index = 5;
+          let blueIndex = 0;
+          let redIndex = 5;
 
           // Sort by order column if available for correct position placement
           const sortedStats = [...result.data].sort((a, b) => {
@@ -243,10 +293,10 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
             // Use order column if available (1-5 = Blue, 6-10 = Red)
             if (stat.order != null) {
               slot = stat.order <= 5 ? stat.order - 1 : stat.order - 1;
-            } else if (team1PlayerIds.has(stat.player_id)) {
-              slot = team1Index++;
-            } else if (team2PlayerIds.has(stat.player_id)) {
-              slot = team2Index++;
+            } else if (bluePlayerIds.has(stat.player_id)) {
+              slot = blueIndex++;
+            } else if (redPlayerIds.has(stat.player_id)) {
+              slot = redIndex++;
             }
 
             if (slot !== -1 && slot < 10) {
@@ -291,8 +341,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
         if (gameRosters?.length) {
           const newSlotRoles = [...MLBB_DEFAULT_ROLES, ...MLBB_DEFAULT_ROLES];
           for (const r of gameRosters) {
-            const isTeam1 = r.team_id === team1.id;
-            const slotIdx = isTeam1 ? r.sort_order : r.sort_order + 5;
+            const isBlueTeam = r.team_id === blueTeam.id;
+            const slotIdx = isBlueTeam ? r.sort_order : r.sort_order + 5;
             if (r.player_role && slotIdx >= 0 && slotIdx < 10) {
               newSlotRoles[slotIdx] = r.player_role;
             }
@@ -628,8 +678,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
       // Save game scores (Blue/Red) which determine match winner
       if (previewData.score.blue > 0 || previewData.score.red > 0) {
         await upsertGameScoresForGame(gameId, [
-          { game_id: gameId, match_participant_id: team1.matchParticipantId, score: previewData.score.blue },
-          { game_id: gameId, match_participant_id: team2.matchParticipantId, score: previewData.score.red },
+          { game_id: gameId, match_participant_id: blueTeam.matchParticipantId, score: previewData.score.blue },
+          { game_id: gameId, match_participant_id: redTeam.matchParticipantId, score: previewData.score.red },
         ]);
       }
 
@@ -828,16 +878,16 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
                   onCheckedChange={() => setPreviewData(prev => ({ ...prev, score: { blue: 1, red: 0 } }))}
                   className="border-muted-foreground data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
                 />
-                {team1.logoUrl ? (
+                {blueTeam.logoUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={team1.logoUrl} alt={team1.abbreviation} className="w-8 h-8 rounded-full object-cover" />
+                  <img src={blueTeam.logoUrl} alt={blueTeam.abbreviation} className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-[10px] font-bold text-blue-600">
-                    {team1.abbreviation.substring(0, 2)}
+                    {blueTeam.abbreviation.substring(0, 2)}
                   </div>
                 )}
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold">{team1.abbreviation}</span>
+                  <span className="text-sm font-semibold">{blueTeam.abbreviation}</span>
                   <span className="text-[10px] text-blue-500 font-medium">Blue Side</span>
                 </div>
                 {previewData.score.blue > previewData.score.red && (
@@ -867,15 +917,15 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
                   <span className="text-xs font-bold text-green-500 uppercase">Winner</span>
                 )}
                 <div className="flex flex-col items-end">
-                  <span className="text-sm font-semibold">{team2.abbreviation}</span>
+                  <span className="text-sm font-semibold">{redTeam.abbreviation}</span>
                   <span className="text-[10px] text-red-500 font-medium">Red Side</span>
                 </div>
-                {team2.logoUrl ? (
+                {redTeam.logoUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={team2.logoUrl} alt={team2.abbreviation} className="w-8 h-8 rounded-full object-cover" />
+                  <img src={redTeam.logoUrl} alt={redTeam.abbreviation} className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-[10px] font-bold text-red-600">
-                    {team2.abbreviation.substring(0, 2)}
+                    {redTeam.abbreviation.substring(0, 2)}
                   </div>
                 )}
                 <Checkbox
@@ -891,8 +941,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Blue Side */}
             {[
-              { side: 'Blue' as const, team: team1, startIdx: 0, themeColor: 'blue' },
-              { side: 'Red' as const, team: team2, startIdx: 5, themeColor: 'red' },
+              { side: 'Blue' as const, team: blueTeam, startIdx: 0, themeColor: 'blue' },
+              { side: 'Red' as const, team: redTeam, startIdx: 5, themeColor: 'red' },
             ].map(({ side, team, startIdx, themeColor }) => (
               <div key={side} className="rounded-xl border bg-card overflow-hidden">
                 {/* Team Header */}
@@ -971,15 +1021,15 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }:
                             <SelectContent>
                               <SelectItem value="skip">-- Skip --</SelectItem>
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                {team1.abbreviation}
+                                {blueTeam.abbreviation}
                               </div>
-                              {team1.players.map(p => (
+                              {blueTeam.players.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
                               ))}
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                {team2.abbreviation}
+                                {redTeam.abbreviation}
                               </div>
-                              {team2.players.map(p => (
+                              {redTeam.players.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
                               ))}
                             </SelectContent>

@@ -548,6 +548,8 @@ export default function GameDetailPage() {
                                 matchParticipantId: team2.id,
                                 players: team2Players,
                             }}
+                            coinTossWinnerId={game.coin_toss_winner || match.coin_toss_winner_id || undefined}
+                            sideSelection={game.side_selection || undefined}
                             onStatsSaved={() => queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) })}
                         />
                     )}
