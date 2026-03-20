@@ -14,16 +14,27 @@ export default function MatchCard({ match }: MatchCardProps) {
   // Transform match_participants to the format expected by determineWinner
   const participants = match.match_participants.map((p) => ({
     id: p.id,
-    teamName: p.schools_teams?.name ?? 'Unknown Team',
-    schoolName: p.schools_teams?.school?.name ?? 'Unknown School',
-    schoolAbbreviation: p.schools_teams?.school?.abbreviation ?? 'UNK',
+    teamName: p.schools_teams?.name ?? 'TBD',
+    schoolName: p.schools_teams?.school?.name ?? 'TBD',
+    schoolAbbreviation: p.schools_teams?.school?.abbreviation ?? 'TBD',
     schoolLogo: p.schools_teams?.school?.logo_url ?? null,
     score: p.match_score,
     isWinner: false
   }));
 
+  const tbdParticipant = {
+    id: 0,
+    teamName: 'TBD',
+    schoolName: 'TBD',
+    schoolAbbreviation: 'TBD',
+    schoolLogo: null,
+    score: null as number | null,
+    isWinner: false
+  };
+
   const participantsWithWinners = determineWinner(participants);
-  const [team1, team2] = participantsWithWinners;
+  const team1 = participantsWithWinners[0] ?? tbdParticipant;
+  const team2 = participantsWithWinners[1] ?? tbdParticipant;
 
   const esport = match.esports_seasons_stages?.esports_categories?.esports;
   const category = match.esports_seasons_stages?.esports_categories;

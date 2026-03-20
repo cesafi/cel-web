@@ -19,6 +19,9 @@ export const createMatchSchema = z
       .positive({ message: 'Best of must be positive.' })
       .default(1),
     stage_id: z.number({ message: 'Stage ID is required.' }),
+    group_name: z.string().nullable().optional(),
+    round: z.number().int().positive().nullable().optional(),
+    match_order: z.number().int().positive().nullable().optional(),
     status: z.enum(['upcoming', 'live', 'finished', 'cancelled'], {
       message: 'Status must be one of: upcoming, ongoing, finished, cancelled.'
     }).default('upcoming'),
@@ -103,6 +106,9 @@ export const updateMatchSchema = z
       .number().int().positive().optional(),
     coin_toss_winner_id: z.string().nullable().optional(),
     coin_toss_result: z.enum(['heads', 'tails']).nullable().optional(),
+    group_name: z.string().nullable().optional(),
+    round: z.number().int().positive().nullable().optional(),
+    match_order: z.number().int().positive().nullable().optional(),
     status: z.enum(['upcoming', 'live', 'completed', 'finished', 'cancelled', 'postponed'], {
       message: 'Status must be one of: upcoming, live, completed, finished, cancelled, postponed.'
     }).optional(),

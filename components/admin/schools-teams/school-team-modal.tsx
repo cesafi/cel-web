@@ -1,39 +1,29 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { ModalLayout } from '@/components/ui/modal-layout';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
-import {
-  SchoolsTeamWithSportDetails,
-  SchoolsTeamInsert,
-  SchoolsTeamUpdate
-} from '@/lib/types/schools-teams';
-import { ZodError } from 'zod';
-import { useSeason } from '@/components/contexts/season-provider';
-import { useAllEsports, useAllEsportCategories } from '@/hooks/use-esports';
-import { useAllSchools } from '@/hooks/use-schools';
-import { formatCategoryName } from '@/lib/utils/esports';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ModalLayout } from '@/components/ui/modal-layout'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { toast } from 'sonner'
+import { SchoolsTeamWithSportDetails, SchoolsTeamInsert, SchoolsTeamUpdate } from '@/lib/types/schools-teams'
+import { ZodError } from 'zod'
+import { useSeason } from '@/components/contexts/season-provider'
+import { useAllEsports, useAllEsportCategories } from '@/hooks/use-esports'
+import { useAllSchools } from '@/hooks/use-schools'
+import { formatCategoryName } from '@/lib/utils/esports'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface SchoolTeamModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mode: 'add' | 'edit';
-  team?: SchoolsTeamWithSportDetails;
-  selectedSchoolId: string | null;
-  onSubmit: (data: SchoolsTeamInsert | SchoolsTeamUpdate) => Promise<void>;
-  isSubmitting: boolean;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  mode: 'add' | 'edit'
+  team?: SchoolsTeamWithSportDetails
+  selectedSchoolId: string | null
+  onSubmit: (data: SchoolsTeamInsert | SchoolsTeamUpdate) => Promise<void>
+  isSubmitting: boolean
 }
 
 export function SchoolTeamModal({
@@ -43,12 +33,12 @@ export function SchoolTeamModal({
   team,
   selectedSchoolId,
   onSubmit,
-  isSubmitting
+  isSubmitting,
 }: SchoolTeamModalProps) {
-  const { currentSeason, availableSeasons } = useSeason();
-  const { data: sports } = useAllEsports();
-  const { data: sportCategories } = useAllEsportCategories();
-  const { data: schools } = useAllSchools();
+  const { currentSeason, availableSeasons } = useSeason()
+  const { data: sports } = useAllEsports()
+  const { data: sportCategories } = useAllEsportCategories()
+  const { data: schools } = useAllSchools()
 
   const [formData, setFormData] = useState<SchoolsTeamInsert | SchoolsTeamUpdate>(() => {
     if (mode === 'edit' && team) {
@@ -58,34 +48,32 @@ export function SchoolTeamModal({
         school_id: team.school_id,
         season_id: team.season_id,
         esport_category_id: team.esport_category_id,
-        is_active: team.is_active
-      } as SchoolsTeamUpdate;
+        is_active: team.is_active,
+      } as SchoolsTeamUpdate
     } else {
       return {
         name: '',
         school_id: selectedSchoolId || '',
         season_id: currentSeason?.id || 0,
         esport_category_id: 0,
-        is_active: true
-      } as SchoolsTeamInsert;
+        is_active: true,
+      } as SchoolsTeamInsert
     }
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedSportId, setSelectedSportId] = useState<number | undefined>();
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [selectedSportId, setSelectedSportId] = useState<number | undefined>()
 
-  const hasStartedCreating = useRef(false);
-  const hasStartedUpdating = useRef(false);
+  const hasStartedCreating = useRef(false)
+  const hasStartedUpdating = useRef(false)
 
   // Filter sport categories by selected sport
   const filteredSportCategories =
-    sportCategories?.filter(
-      (category) => !selectedSportId || category.esport_id === selectedSportId
-    ) || [];
+    sportCategories?.filter((category) => !selectedSportId || category.esport_id === selectedSportId) || []
 
   const handleClose = useCallback(() => {
-    setErrors({});
-    onOpenChange(false);
-  }, [onOpenChange]);
+    setErrors({})
+    onOpenChange(false)
+  }, [onOpenChange])
 
   // Form reset on modal open/close
   useEffect(() => {
@@ -97,12 +85,12 @@ export function SchoolTeamModal({
           school_id: team.school_id,
           season_id: team.season_id,
           esport_category_id: team.esport_category_id,
-          is_active: team.is_active
-        });
+          is_active: team.is_active,
+        })
         // Set the selected sport ID based on the sport category
         if (team.esport_category_id && sportCategories) {
-          const category = sportCategories.find((cat) => cat.id === team.esport_category_id);
-          setSelectedSportId(category?.esport_id);
+          const category = sportCategories.find((cat) => cat.id === team.esport_category_id)
+          setSelectedSportId(category?.esport_id)
         }
       } else {
         setFormData({
@@ -110,93 +98,93 @@ export function SchoolTeamModal({
           school_id: selectedSchoolId || '',
           season_id: currentSeason?.id || 0,
           esport_category_id: 0,
-          is_active: true
-        } as SchoolsTeamInsert);
-        setSelectedSportId(undefined);
+          is_active: true,
+        } as SchoolsTeamInsert)
+        setSelectedSportId(undefined)
       }
-      setErrors({});
-      hasStartedCreating.current = false;
-      hasStartedUpdating.current = false;
+      setErrors({})
+      hasStartedCreating.current = false
+      hasStartedUpdating.current = false
     }
-  }, [open, mode, team, selectedSchoolId, currentSeason, sportCategories]);
+  }, [open, mode, team, selectedSchoolId, currentSeason, sportCategories])
 
   // Handle mutation completion
   useEffect(() => {
     if (hasStartedCreating.current && !isSubmitting && mode === 'add') {
-      handleClose();
+      handleClose()
     }
-  }, [isSubmitting, mode, handleClose]);
+  }, [isSubmitting, mode, handleClose])
 
   useEffect(() => {
     if (hasStartedUpdating.current && !isSubmitting && mode === 'edit') {
-      handleClose();
+      handleClose()
     }
-  }, [isSubmitting, mode, handleClose]);
+  }, [isSubmitting, mode, handleClose])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors({});
+    e.preventDefault()
+    setErrors({})
 
     try {
       // Basic validation
       if (!formData.name?.trim()) {
-        setErrors({ name: 'Team name is required' });
-        return;
+        setErrors({ name: 'Team name is required' })
+        return
       }
       if (!formData.school_id) {
-        setErrors({ school_id: 'School is required' });
-        return;
+        setErrors({ school_id: 'School is required' })
+        return
       }
       if (!formData.season_id) {
-        setErrors({ season_id: 'Season is required' });
-        return;
+        setErrors({ season_id: 'Season is required' })
+        return
       }
       if (!formData.esport_category_id) {
-        setErrors({ esport_category_id: 'Sport category is required' });
-        return;
+        setErrors({ esport_category_id: 'Sport category is required' })
+        return
       }
 
       if (mode === 'add') {
-        hasStartedCreating.current = true;
+        hasStartedCreating.current = true
       } else {
-        hasStartedUpdating.current = true;
+        hasStartedUpdating.current = true
       }
 
-      await onSubmit(formData);
+      await onSubmit(formData)
     } catch (error) {
       if (error instanceof ZodError) {
-        const newErrors: Record<string, string> = {};
+        const newErrors: Record<string, string> = {}
         error.issues.forEach((issue) => {
           if (issue.path) {
-            newErrors[issue.path[0] as string] = issue.message;
+            newErrors[issue.path[0] as string] = issue.message
           }
-        });
-        setErrors(newErrors);
+        })
+        setErrors(newErrors)
       } else if (error instanceof Error) {
-        toast.error(error.message);
+        toast.error(error.message)
       } else {
-        toast.error('An unexpected error occurred');
+        toast.error('An unexpected error occurred')
       }
     }
-  };
+  }
 
   const handleSportChange = (sportId: string) => {
-    const numSportId = parseInt(sportId);
-    setSelectedSportId(numSportId);
-    setFormData((prev) => ({ ...prev, esport_category_id: 0 }));
-  };
+    const numSportId = parseInt(sportId)
+    setSelectedSportId(numSportId)
+    setFormData((prev) => ({ ...prev, esport_category_id: 0 }))
+  }
 
   const handleSportCategoryChange = (categoryId: string) => {
-    setFormData((prev) => ({ ...prev, esport_category_id: parseInt(categoryId) }));
-  };
+    setFormData((prev) => ({ ...prev, esport_category_id: parseInt(categoryId) }))
+  }
 
   const handleSeasonChange = (seasonId: string) => {
-    setFormData((prev) => ({ ...prev, season_id: parseInt(seasonId) }));
-  };
+    setFormData((prev) => ({ ...prev, season_id: parseInt(seasonId) }))
+  }
 
   const handleActiveChange = (isActive: boolean) => {
-    setFormData((prev) => ({ ...prev, is_active: isActive }));
-  };
+    setFormData((prev) => ({ ...prev, is_active: isActive }))
+  }
 
   return (
     <ModalLayout
@@ -218,9 +206,7 @@ export function SchoolTeamModal({
         {/* Basic Information */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              Basic Information
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg">Basic Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Team Name */}
@@ -247,13 +233,11 @@ export function SchoolTeamModal({
                   <SelectValue placeholder="Select a school" />
                 </SelectTrigger>
                 <SelectContent>
-                  {schools
-                    ?.filter((school) => school.name !== 'To be decided')
-                    .map((school) => (
-                      <SelectItem key={school.id} value={school.id}>
-                        {school.name}
-                      </SelectItem>
-                    ))}
+                  {schools?.map((school) => (
+                    <SelectItem key={school.id} value={school.id}>
+                      {school.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {errors.school_id && <p className="text-sm text-red-500">{errors.school_id}</p>}
@@ -264,9 +248,7 @@ export function SchoolTeamModal({
         {/* Esport Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              Esport Configuration
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg">Esport Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Esport Selection */}
@@ -284,9 +266,7 @@ export function SchoolTeamModal({
                   ))}
                 </SelectContent>
               </Select>
-              {errors.esport_category_id && (
-                <p className="text-sm text-red-500">{errors.esport_category_id}</p>
-              )}
+              {errors.esport_category_id && <p className="text-sm text-red-500">{errors.esport_category_id}</p>}
             </div>
 
             {/* Esport Category Selection */}
@@ -298,9 +278,7 @@ export function SchoolTeamModal({
                 disabled={!selectedSportId}
               >
                 <SelectTrigger className={errors.esport_category_id ? 'border-red-500' : ''}>
-                  <SelectValue
-                    placeholder={selectedSportId ? 'Select a category' : 'Select an esport first'}
-                  />
+                  <SelectValue placeholder={selectedSportId ? 'Select a category' : 'Select an esport first'} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredSportCategories.map((category) => (
@@ -310,9 +288,7 @@ export function SchoolTeamModal({
                   ))}
                 </SelectContent>
               </Select>
-              {errors.esport_category_id && (
-                <p className="text-sm text-red-500">{errors.esport_category_id}</p>
-              )}
+              {errors.esport_category_id && <p className="text-sm text-red-500">{errors.esport_category_id}</p>}
             </div>
           </CardContent>
         </Card>
@@ -320,9 +296,7 @@ export function SchoolTeamModal({
         {/* Season & Status */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              Season & Status
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg">Season & Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Season Selection */}
@@ -340,9 +314,7 @@ export function SchoolTeamModal({
                   ))}
                 </SelectContent>
               </Select>
-              {errors.season_id && (
-                <p className="text-sm text-red-500">{errors.season_id}</p>
-              )}
+              {errors.season_id && <p className="text-sm text-red-500">{errors.season_id}</p>}
             </div>
 
             {/* Status */}
@@ -359,5 +331,5 @@ export function SchoolTeamModal({
         </Card>
       </form>
     </ModalLayout>
-  );
+  )
 }

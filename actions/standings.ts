@@ -19,6 +19,10 @@ export async function getBracketStandings(stageId: number) {
   return await StandingsService.getBracketStandings(stageId);
 }
 
+export async function getPlayinsStandings(stageId: number) {
+  return await StandingsService.getPlayinsStandings(stageId);
+}
+
 export async function getAvailableSeasons() {
   return await StandingsService.getAvailableSeasons();
 }

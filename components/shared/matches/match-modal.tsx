@@ -16,7 +16,7 @@ import { useStageTeams } from '@/hooks/use-stage-teams';
 import { generateMatchName, generateMatchDescription } from '@/lib/utils/match-naming';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DateTimeInput } from '@/components/ui/datetime-input';
-import { Power, X } from 'lucide-react';
+import { Power, X, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { utcToLocal } from '@/lib/utils/utc-time';
 
@@ -49,7 +49,10 @@ export function MatchModal({
     start_at: null,
     end_at: null,
     best_of: 1,
-    status: 'upcoming'
+    status: 'upcoming',
+    group_name: null,
+    round: null,
+    match_order: null
   });
 
   const { data: availableTeams = [], isLoading: teamsLoading } = useStageTeams(formData.stage_id || selectedStageId || 0);
@@ -57,6 +60,7 @@ export function MatchModal({
   const [filterEsportId, setFilterEsportId] = useState<string>('all');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [tbdCount, setTbdCount] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const hasStartedCreating = useRef(false);
@@ -86,46 +90,47 @@ export function MatchModal({
     onOpenChange(false);
   }, [onOpenChange]);
 
-  // Auto-generate match details when teams are selected
+  // Auto-generate match details when teams or TBD count changes
   useEffect(() => {
-    if (mode === 'add' && selectedTeamIds.length > 0 && availableTeams.length > 0) {
+    if (mode === 'add' && (selectedTeamIds.length > 0 || tbdCount > 0)) {
       const selectedTeams = availableTeams.filter(team => selectedTeamIds.includes(team.id));
+      // Filter out teams without schools data
+      const teamsWithSchools = selectedTeams.filter(team => team.schools != null);
 
-      if (selectedTeams.length > 0 && selectedStage) {
-        // Filter out teams without schools data
-        const teamsWithSchools = selectedTeams.filter(team => team.schools != null);
+      const matchParticipants = teamsWithSchools.map(team => ({
+        id: team.id,
+        name: team.name,
+        schools: {
+          name: team.schools!.name,
+          abbreviation: team.schools!.abbreviation
+        }
+      }));
 
-        const matchParticipants = teamsWithSchools.map(team => ({
-          id: team.id,
-          name: team.name,
-          schools: {
-            name: team.schools!.name,
-            abbreviation: team.schools!.abbreviation
-          }
-        }));
+      const generatedName = generateMatchName(matchParticipants, tbdCount);
 
-        // Use actual sport and category data from the selected stage
+      let generatedDescription = '';
+      if (selectedStage) {
         const sportName = selectedStage.esports_categories?.esports?.name || 'Unknown Sport';
         const division = selectedStage.esports_categories?.division || 'mixed';
         const level = selectedStage.esports_categories?.levels || 'college';
 
-        const generatedName = generateMatchName(matchParticipants);
-        const generatedDescription = generateMatchDescription(
+        generatedDescription = generateMatchDescription(
           matchParticipants,
           selectedStage.competition_stage,
           sportName,
           division,
-          level
+          level,
+          tbdCount
         );
-
-        setFormData(prev => ({
-          ...prev,
-          name: generatedName,
-          description: generatedDescription
-        }));
       }
+
+      setFormData(prev => ({
+        ...prev,
+        name: generatedName,
+        ...(generatedDescription ? { description: generatedDescription } : {})
+      }));
     }
-  }, [selectedTeamIds, availableTeams, selectedStage, mode]);
+  }, [selectedTeamIds, tbdCount, availableTeams, selectedStage, mode]);
 
   // Form reset on modal open/close
   useEffect(() => {
@@ -142,7 +147,10 @@ export function MatchModal({
           start_at: match.start_at || null,
           end_at: match.end_at || null,
           best_of: match.best_of,
-          status: match.status || 'upcoming'
+          status: match.status || 'upcoming',
+          group_name: match.group_name || null,
+          round: match.round || null,
+          match_order: match.match_order || null
         });
         setSelectedTeamIds(
           ((match.match_participants as any[]) || [])
@@ -160,9 +168,13 @@ export function MatchModal({
           start_at: null,
           end_at: null,
           best_of: 1,
-          status: 'upcoming'
+          status: 'upcoming',
+          group_name: null,
+          round: null,
+          match_order: null
         });
         setSelectedTeamIds([]);
+        setTbdCount(0);
       }
       setErrors({});
       hasStartedCreating.current = false;
@@ -208,8 +220,8 @@ export function MatchModal({
         setErrors({ stage_id: 'League stage is required' });
         return;
       }
-      if (selectedTeamIds.length < 2) {
-        setErrors({ participants: 'At least 2 teams must be selected for a match' });
+      if (selectedTeamIds.length + tbdCount < 2) {
+        setErrors({ participants: 'At least 2 participants (teams or TBD) must be selected for a match' });
         return;
       }
 
@@ -332,6 +344,7 @@ export function MatchModal({
                   onValueChange={(val) => {
                     setFormData(prev => ({ ...prev, stage_id: parseInt(val) }));
                     setSelectedTeamIds([]); // reset selected teams when stage changes
+                    setTbdCount(0); // reset TBD count when stage changes
                   }}
                 >
                   <SelectTrigger className={errors.stage_id ? 'border-red-500' : ''}>
@@ -373,7 +386,7 @@ export function MatchModal({
               </div>
             ) : (
               <div className="space-y-4">
-                {selectedTeamIds.length > 0 && (
+                {(selectedTeamIds.length > 0 || tbdCount > 0) && (
                   <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg min-h-[44px]">
                     {selectedTeamIds.map(id => {
                       const team = availableTeams.find(t => t.id === id);
@@ -392,10 +405,36 @@ export function MatchModal({
                         </Badge>
                       );
                     })}
+                    {Array.from({ length: tbdCount }).map((_, i) => (
+                      <Badge key={`tbd-${i}`} variant="outline" className="pl-3 pr-1 py-1 flex items-center gap-1.5 text-sm font-normal border-dashed border-muted-foreground/50">
+                        TBD
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full hover:bg-muted p-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setTbdCount(prev => Math.max(0, prev - 1))}
+                        >
+                          <X className="h-3 w-3" />
+                          <span className="sr-only">Remove TBD participant</span>
+                        </button>
+                      </Badge>
+                    ))}
                   </div>
                 )}
 
                 <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                  {/* Add TBD Participant button */}
+                  <button
+                    type="button"
+                    onClick={() => setTbdCount(prev => prev + 1)}
+                    className="flex items-center gap-2 w-full p-2 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <div className="text-left">
+                      <div className="font-medium text-sm">Add TBD Participant</div>
+                      <div className="text-xs text-muted-foreground">For opponents not yet determined</div>
+                    </div>
+                  </button>
+
                   {availableTeams.filter(team => team.schools != null && !selectedTeamIds.includes(team.id)).map((team) => (
                     <div key={team.id} className="flex items-center space-x-2">
                       <Checkbox
@@ -409,7 +448,7 @@ export function MatchModal({
                       </Label>
                     </div>
                   ))}
-                  {availableTeams.filter(team => team.schools != null && !selectedTeamIds.includes(team.id)).length === 0 && (
+                  {availableTeams.filter(team => team.schools != null && !selectedTeamIds.includes(team.id)).length === 0 && tbdCount === 0 && (
                     <div className="text-sm text-muted-foreground text-center py-2">
                       All available teams selected
                     </div>
@@ -521,6 +560,62 @@ export function MatchModal({
             />
 
 
+          </CardContent>
+        </Card>
+
+        {/* Bracket Positioning */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              Bracket Positioning
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              These fields control how the match appears in bracket/standings views. Leave empty for group stage matches.
+            </p>
+
+            {/* Group Name */}
+            <div className="space-y-2">
+              <Label htmlFor="groupName">Group / Bracket Name</Label>
+              <Input
+                id="groupName"
+                value={formData.group_name || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, group_name: e.target.value || null }))}
+                placeholder="e.g. Upper Bracket, Lower Bracket, Grand Finals, A, B"
+              />
+              <p className="text-xs text-muted-foreground">Used for bracket grouping (e.g. &quot;Upper Bracket&quot;, &quot;Lower Bracket&quot;) or group stage groups (e.g. &quot;A&quot;, &quot;B&quot;).</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Round */}
+              <div className="space-y-2">
+                <Label htmlFor="round">Round</Label>
+                <Input
+                  id="round"
+                  type="number"
+                  min={1}
+                  value={formData.round ?? ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, round: e.target.value ? parseInt(e.target.value) : null }))}
+                  placeholder="e.g. 1, 2, 3"
+                />
+                <p className="text-xs text-muted-foreground">Round number in the bracket (1 = first round).</p>
+              </div>
+
+              {/* Match Order */}
+              <div className="space-y-2">
+                <Label htmlFor="matchOrder">Match Order</Label>
+                <Input
+                  id="matchOrder"
+                  type="number"
+                  min={1}
+                  value={formData.match_order ?? ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, match_order: e.target.value ? parseInt(e.target.value) : null }))}
+                  placeholder="e.g. 1, 2, 3"
+                />
+                <p className="text-xs text-muted-foreground">Position within the round (top to bottom).</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

@@ -355,18 +355,38 @@ export class StandingsService extends BaseService {
            }
       };
 
+      // Format the default group name from the stage's competition_stage
+      const defaultGroupName = (() => {
+        const key = stage.competition_stage.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (key === 'groupstage') return 'Group Stage';
+        if (key === 'playins') return 'Play-ins';
+        if (key === 'playoffs') return 'Playoffs';
+        if (key === 'finals') return 'Finals';
+        return stage.competition_stage
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l: string) => l.toUpperCase());
+      })();
+
       // Process each match
       for (const match of matches || []) {
         const participants = match.match_participants || [];
-        if (participants.length < 2) continue;
+        const groupName = match.group_name || defaultGroupName;
 
-        const groupName = match.group_name || 'Group Stage';
+        // Register ALL real participants (even from matches with <2 teams, i.e. TBD matches)
+        for (const p of participants) {
+          if ((p as any).team_id) {
+            initStats(groupName, p);
+          }
+        }
+
+        // Only process scoring for matches with 2+ participants
+        if (participants.length < 2) continue;
         
         // Get both participants
         const p1 = participants[0] as any;
         const p2 = participants[1] as any;
 
-        // Init stats
+        // Init stats (already done above, but harmless to ensure)
         initStats(groupName, p1);
         initStats(groupName, p2);
 
@@ -606,10 +626,10 @@ export class StandingsService extends BaseService {
           };
       });
       
-      // If we have no groups (no matches), return one empty group
+      // If we have no groups (no matches or no participants), return one empty group
       if (standingGroups.length === 0) {
         standingGroups.push({
-          group_name: 'Group Stage',
+          group_name: defaultGroupName,
           teams: []
         });
       }
@@ -761,6 +781,72 @@ export class StandingsService extends BaseService {
   }
 
   /**
+   * Get play-ins standings using the same group stage table format.
+   * Delegates to getGroupStageStandings and adds TBD placeholder teams
+   * when matches are scheduled but teams haven't been assigned yet.
+   */
+  static async getPlayinsStandings(stageId: number): Promise<ServiceResponse<GroupStageStandings>> {
+    try {
+      // Reuse group stage logic — it already calculates W-D-L standings from matches
+      const result = await this.getGroupStageStandings(stageId);
+      if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to get play-ins standings' };
+      }
+
+      const standings = result.data;
+
+      // Count how many matches are scheduled for this stage to determine expected team count
+      const supabase = await this.getClient();
+      const { count: matchCount } = await supabase
+        .from('matches')
+        .select('id', { count: 'exact', head: true })
+        .eq('stage_id', stageId);
+
+      const totalMatches = matchCount || 0;
+
+      // Check if any group has real teams
+      const hasRealTeams = standings.groups.some(g => g.teams.length > 0);
+
+      if (!hasRealTeams && totalMatches > 0) {
+        // Calculate expected number of teams from round-robin formula: T*(T-1)/2 = N
+        // Solve for T: T = (1 + sqrt(1 + 8N)) / 2
+        const expectedTeams = Math.round((1 + Math.sqrt(1 + 8 * totalMatches)) / 2);
+
+        // Create TBD placeholder teams
+        const tbdTeams = Array.from({ length: expectedTeams }, (_, i) => ({
+          team_id: `tbd-${i + 1}`,
+          team_name: 'TBD',
+          school_name: 'To Be Determined',
+          school_abbreviation: 'TBD',
+          school_logo_url: null,
+          matches_played: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          goals_for: 0,
+          goals_against: 0,
+          goal_difference: 0,
+          points: 0,
+          position: i + 1,
+          round_difference: 0,
+          rounds_won: 0,
+          rounds_lost: 0,
+          avg_win_duration: '-'
+        }));
+
+        standings.groups = [{
+          group_name: standings.stage_name,
+          teams: tbdTeams
+        }];
+      }
+
+      return { success: true, data: standings };
+    } catch (err) {
+      return this.formatError(err, 'Failed to fetch play-ins standings');
+    }
+  }
+
+  /**
    * Get full standings response
    */
   static async getStandings(filters: StandingsFilters): Promise<ServiceResponse<StandingsResponse>> {
@@ -792,13 +878,22 @@ export class StandingsService extends BaseService {
       }
 
       // Get the stage type from the passed navigation or re-fetch if needed
-      // Actually, navigation.stages should include stage_type now.
       const currentStage = navigation.stages.find(s => s.id === stageId);
       const stageType = currentStage?.stage_type || 'round_robin';
 
+      // Detect play-ins by competition_stage name
+      const competitionStageKey = (currentStage?.competition_stage || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isPlayins = competitionStageKey === 'playins';
+
       let standings: StandingsData;
 
-      if (stageType === 'single_elimination' || stageType === 'double_elimination') {
+      if (isPlayins) {
+        const result = await this.getPlayinsStandings(stageId);
+        if (!result.success || !result.data) {
+          return { success: false, error: result.error || 'Failed to get play-ins standings' };
+        }
+        standings = result.data;
+      } else if (stageType === 'single_elimination' || stageType === 'double_elimination') {
         const result = await this.getBracketStandings(stageId);
         if (!result.success || !result.data) {
           return { success: false, error: result.error || 'Failed to get bracket standings' };

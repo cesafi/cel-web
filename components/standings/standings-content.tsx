@@ -258,6 +258,10 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
     const isDataStale = selectedStage !== filters.stage_id && filters.stage_id !== undefined;
     const isLoadingState = isPending || isFetching || isDataStale;
 
+    // Detect play-ins by competition_stage
+    const currentStageData = standingsData.standings;
+    const isPlayins = currentStageData.competition_stage === 'playins';
+
     return (
         <div className="flex-1 pt-6 overflow-hidden relative">
              {/* Loading Overlay for Transitions */}
@@ -269,7 +273,7 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
                 </div>
              )}
 
-            {isGroupStage ? (
+            {(isPlayins || isGroupStage) ? (
                <GroupStageTable
                   standings={standingsData.standings as GroupStageStandings}
                   loading={isLoadingState}
