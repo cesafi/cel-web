@@ -244,8 +244,8 @@ export function DraftPanel({
     });
 
     const swapPlayersMutation = useMutation({
-        mutationFn: async (data: { teamId: string, sortOrderA: number, sortOrderB: number }) => {
-            const result = await GameRosterService.swapSlots(gameId, data.teamId, data.sortOrderA, data.sortOrderB);
+        mutationFn: async (data: { teamId: string, sortOrderA: number, sortOrderB: number, slotRoleA?: string, slotRoleB?: string }) => {
+            const result = await GameRosterService.swapSlots(gameId, data.teamId, data.sortOrderA, data.sortOrderB, data.slotRoleA, data.slotRoleB);
             if (!result.success) throw new Error(result.error);
             return result;
         },
@@ -741,7 +741,7 @@ export function DraftPanel({
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: leftTeam.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(leftTeam.id, leftTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
-                        onSwapPlayers={(a, b) => swapPlayersMutation.mutate({ teamId: leftTeam.id, sortOrderA: a, sortOrderB: b })}
+                        onSwapPlayers={(a, b) => swapPlayersMutation.mutate({ teamId: leftTeam.id, sortOrderA: a, sortOrderB: b, slotRoleA: MLBB_SLOT_LABELS[a], slotRoleB: MLBB_SLOT_LABELS[b] })}
                     />
                 </div>
 
@@ -820,7 +820,7 @@ export function DraftPanel({
                         onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: rightTeam.id, sortOrder: idx })}
                         onAutoFill={() => handleAutoFill(rightTeam.id, rightTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
-                        onSwapPlayers={(a, b) => swapPlayersMutation.mutate({ teamId: rightTeam.id, sortOrderA: a, sortOrderB: b })}
+                        onSwapPlayers={(a, b) => swapPlayersMutation.mutate({ teamId: rightTeam.id, sortOrderA: a, sortOrderB: b, slotRoleA: MLBB_SLOT_LABELS[a], slotRoleB: MLBB_SLOT_LABELS[b] })}
                     />
                 </div>
             </div>

@@ -128,12 +128,16 @@ export class GameRosterService extends BaseService {
 
   /**
    * Swap players between two roster slots (exchange player_id values).
+   * Roles are fixed to slot positions — only player_id moves.
+   * If slotRoleA / slotRoleB are provided, re-stamp each slot's player_role.
    */
   static async swapSlots(
     gameId: number,
     teamId: string,
     sortOrderA: number,
-    sortOrderB: number
+    sortOrderB: number,
+    slotRoleA?: string,
+    slotRoleB?: string
   ): Promise<ServiceResponse<void>> {
     try {
       const supabase = await this.getClient();
@@ -154,17 +158,17 @@ export class GameRosterService extends BaseService {
       const entryA = entries.find(e => e.sort_order === sortOrderA)!;
       const entryB = entries.find(e => e.sort_order === sortOrderB)!;
 
-      // Swap player_id between the two slots
+      // Swap player_id only; re-stamp player_role to the slot's correct label
       const { error: updateA } = await supabase
         .from(TABLE_NAME)
-        .update({ player_id: entryB.player_id })
+        .update({ player_id: entryB.player_id, ...(slotRoleA ? { player_role: slotRoleA } : {}) })
         .match({ game_id: gameId, team_id: teamId, sort_order: sortOrderA });
 
       if (updateA) throw updateA;
 
       const { error: updateB } = await supabase
         .from(TABLE_NAME)
-        .update({ player_id: entryA.player_id })
+        .update({ player_id: entryA.player_id, ...(slotRoleB ? { player_role: slotRoleB } : {}) })
         .match({ game_id: gameId, team_id: teamId, sort_order: sortOrderB });
 
       if (updateB) throw updateB;
