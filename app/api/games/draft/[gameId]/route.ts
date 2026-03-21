@@ -102,6 +102,12 @@ export async function GET(
         const seasonId = (game.match as any)?.esports_seasons_stages?.season_id;
         const scheduledAt = (game.match as any)?.scheduled_at || null;
         const isValorant = esportName.toLowerCase().includes('valorant');
+        
+        const formatHeroName = (name: string | null | undefined) => {
+            if (!name || name === N) return N;
+            return isValorant ? name.toUpperCase() : name;
+        };
+
         const mapName = game.mlbb_map?.name || game.valorant_map?.name || N;
         const gameNumber = game.game_number || 1;
         const bestOf = (game.match as any)?.best_of || 3;
@@ -235,10 +241,10 @@ export async function GET(
                     for (const g of gameOrder) {
                         const gameDrafts = byGame[g.id] || [];
                         // Determine which team was blue/red in that game (approximate: use same blueId/redId)
-                        const bBans = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'ban').map((d: any) => d.hero_name || N);
-                        const rBans = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'ban').map((d: any) => d.hero_name || N);
-                        const bPicks = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'pick').map((d: any) => d.hero_name || N);
-                        const rPicks = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'pick').map((d: any) => d.hero_name || N);
+                        const bBans = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'ban').map((d: any) => formatHeroName(d.hero_name));
+                        const rBans = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'ban').map((d: any) => formatHeroName(d.hero_name));
+                        const bPicks = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'pick').map((d: any) => formatHeroName(d.hero_name));
+                        const rPicks = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'pick').map((d: any) => formatHeroName(d.hero_name));
                         draftHistory.push({
                             blueBans: pad5(bBans),
                             redBans: pad5(rBans),
@@ -256,7 +262,7 @@ export async function GET(
             while (r.length < 5) r.push(N);
             return r;
         }
-        const heroName = (a: any) => a?.hero_name || N;
+        const heroName = (a: any) => formatHeroName(a?.hero_name);
 
         const fmtBanRate = (hid: number | null): string => {
             if (!hid) return N;
