@@ -120,7 +120,7 @@ export default function GroupStageTable({ standings, loading }: GroupStageTableP
           const rawGroupName = group.group_name ?? standings.stage_name;
           let displayGroupName = rawGroupName;
           
-          if (rawGroupName) {
+          if (rawGroupName && !isPlayIn) {
               const trimmed = rawGroupName.trim();
               const isSingleLetter = trimmed.length === 1 && /[A-Za-z]/.test(trimmed);
               if (isSingleLetter) {
