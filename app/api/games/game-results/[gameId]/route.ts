@@ -181,10 +181,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Hero/agent names from draft picks or stats
     const getPickName = (stats: any[], picks: any[], idx: number): string => {
-      // Try draft pick first
-      if (picks[idx]?.hero_name) return picks[idx].hero_name
-      // Fallback to game_characters from stats
+      // Try game_characters from stats first (actual character played)
       if (stats[idx]?.game_characters?.name) return stats[idx].game_characters.name
+      // Fallback to draft pick
+      if (picks[idx]?.hero_name) return picks[idx].hero_name
       return N
     }
     const bPickNames = pad5(Array.from({ length: 5 }, (_, i) => getPickName(blueStats, bluePicks, i)))
