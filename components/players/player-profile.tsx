@@ -62,9 +62,6 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
   const displayRole = React.useMemo(() => {
     const roleString = currentTeam?.player_role || player?.role;
     if (!roleString) return null;
-    if (['Gold', 'EXP', 'Mid'].includes(roleString)) {
-      return `${roleString} Laner`;
-    }
     return roleString;
   }, [currentTeam?.player_role, player?.role]);
 
