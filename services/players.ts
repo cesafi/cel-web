@@ -112,6 +112,8 @@ export class PlayerService extends BaseService {
       const { data, error } = await supabase
         .from('player_seasons')
         .select(`
+            player_role,
+            is_team_captain,
             player:players!player_seasons_player_id_fkey(*)
         `)
         .eq('team_id', teamId);
@@ -121,9 +123,16 @@ export class PlayerService extends BaseService {
       }
 
       // Map result to just return the player objects
-      // The query returns { player: { ...playerData } }[]
+      // We override the player's legacy 'role' with the season-specific 'player_role'
       const players = data
-        .map((item: any) => item.player)
+        .map((item: any) => {
+          if (!item.player) return null;
+          return {
+            ...item.player,
+            role: item.player_role,
+            is_team_captain: item.is_team_captain
+          };
+        })
         .filter((p: any) => p !== null)
         .sort((a: any, b: any) => a.ign.localeCompare(b.ign));
 

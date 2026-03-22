@@ -219,10 +219,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // ── 10. Find MVP ──
     const mvp = allStats.find((s: any) => s.is_mvp === true)
-    const mvpIgn = mvp?.players?.ign || N
+    const mvpIgn = mvp?.player_id ? (rosterByPlayer[mvp.player_id]?.ign || mvp.players?.ign || N) : N
     const mvpSchoolName = mvp?.schools_teams?.schools?.name || N
     const mvpSchoolAbbr = mvp?.schools_teams?.schools?.abbreviation || N
-    const mvpRole = mvp?.players?.role || N
+    const mvpRole = mvp?.player_id ? (rosterByPlayer[mvp.player_id]?.role || mvp.players?.role || N) : N
     const mvpPick = mvp?.game_characters?.name || N
 
     // ═══════════════════════════════════════════

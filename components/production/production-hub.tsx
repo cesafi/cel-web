@@ -628,7 +628,7 @@ export default function ProductionHub() {
             <FilterSelect label="Player" value={filters.playerA} onChange={(v) => updateFilter('playerA', v)}
               placeholder={filters.teamA ? (teamAPlayers.length ? 'Select player...' : 'Loading...') : 'Select a team first'}>
               {teamAPlayers.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>{p.ign}{p.role ? ` (${p.role})` : ''}</SelectItem>
+                <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
               ))}
             </FilterSelect>
           </div>
@@ -652,7 +652,7 @@ export default function ProductionHub() {
             <FilterSelect label="Player" value={filters.playerB} onChange={(v) => updateFilter('playerB', v)}
               placeholder={filters.teamB ? (teamBPlayers.length ? 'Select player...' : 'Loading...') : 'Select a team first'}>
               {teamBPlayers.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>{p.ign}{p.role ? ` (${p.role})` : ''}</SelectItem>
+                <SelectItem key={p.id} value={p.id}>{p.ign}</SelectItem>
               ))}
             </FilterSelect>
           </div>

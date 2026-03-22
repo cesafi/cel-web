@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModalLayout } from '@/components/ui/modal-layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlayerSeasonWithDetails, PlayerSeasonInsert, PlayerSeasonUpdate } from '@/lib/types/player-seasons';
+import { Database, Constants } from '@/database.types';
 import { useAllSeasons } from '@/hooks/use-seasons';
 import { useAllSchoolsTeams } from '@/hooks/use-schools-teams';
 import { toast } from 'sonner';
@@ -40,11 +41,15 @@ export function PlayerSeasonModal({
     season_id: number;
     team_id: string | null;
     is_active: boolean;
+    is_team_captain: boolean;
+    player_role: string | null;
   }>({
     player_id: playerId,
     season_id: 0,
     team_id: null,
-    is_active: true
+    is_active: true,
+    is_team_captain: false,
+    player_role: null
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const hasStartedSubmitting = useRef(false);
@@ -65,14 +70,18 @@ export function PlayerSeasonModal({
           player_id: playerSeason.player_id,
           season_id: playerSeason.schools_teams?.season_id || 0,
           team_id: playerSeason.team_id,
-          is_active: playerSeason.is_active ?? true
+          is_active: playerSeason.is_active ?? true,
+          is_team_captain: playerSeason.is_team_captain ?? false,
+          player_role: playerSeason.player_role ?? null
         });
       } else {
         setFormData({
           player_id: playerId,
           season_id: 0,
           team_id: null,
-          is_active: true
+          is_active: true,
+          is_team_captain: false,
+          player_role: null
         });
       }
       setErrors({});
@@ -106,13 +115,17 @@ export function PlayerSeasonModal({
         onSubmit({
           id: formData.id,
           team_id: formData.team_id,
-          is_active: formData.is_active
+          is_active: formData.is_active,
+          is_team_captain: formData.is_team_captain,
+          player_role: formData.player_role as Database['public']['Enums']['player_role'] | null
         });
       } else {
         onSubmit({
           player_id: formData.player_id,
           team_id: formData.team_id,
-          is_active: formData.is_active
+          is_active: formData.is_active,
+          is_team_captain: formData.is_team_captain,
+          player_role: formData.player_role as Database['public']['Enums']['player_role'] | null
         });
       }
     } catch (error) {
@@ -230,6 +243,28 @@ export function PlayerSeasonModal({
               )}
             </div>
 
+            {/* Player Role */}
+            <div className="space-y-2">
+              <Label htmlFor="player_role">Player Role</Label>
+              <Select
+                value={formData.player_role || 'none'}
+                onValueChange={(value) => handleInputChange('player_role', value === 'none' ? null : value)}
+                disabled={!formData.team_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None / Sub</SelectItem>
+                  {Constants.public.Enums.player_role.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Active Status */}
             <div className="flex items-center space-x-2">
               <Switch
@@ -238,6 +273,16 @@ export function PlayerSeasonModal({
                 onCheckedChange={(checked) => handleInputChange('is_active', checked)}
               />
               <Label htmlFor="is_active">Active in this season</Label>
+            </div>
+
+            {/* Team Captain Status */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_team_captain"
+                checked={formData.is_team_captain}
+                onCheckedChange={(checked) => handleInputChange('is_team_captain', checked)}
+              />
+              <Label htmlFor="is_team_captain">Team Captain</Label>
             </div>
           </CardContent>
         </Card>

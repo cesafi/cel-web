@@ -114,14 +114,21 @@ export function PlayerSeasonsTable({ playerId, playerName }: PlayerSeasonsTableP
                         {entry.schools_teams?.seasons?.name || `Season ${entry.schools_teams?.season_id || 'Unknown'}`}
                       </div>
                     </div>
-                    <Badge 
-                      className={`${entry.is_active 
-                        ? 'bg-green-100 text-green-800 border-green-200' 
-                        : 'bg-muted text-muted-foreground border-muted'
-                      } border`}
-                    >
-                      {entry.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {entry.is_team_captain && (
+                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 border hover:bg-amber-100">
+                          Captain
+                        </Badge>
+                      )}
+                      <Badge 
+                        className={`${entry.is_active 
+                          ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100' 
+                          : 'bg-muted text-muted-foreground border-muted'
+                        } border`}
+                      >
+                        {entry.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

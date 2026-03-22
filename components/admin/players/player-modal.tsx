@@ -39,7 +39,6 @@ export function PlayerModal({
     last_name: '',
     photo_url: '',
     photo_url_secondary: '',
-    role: '',
     is_active: true
   });
 
@@ -67,7 +66,6 @@ export function PlayerModal({
           // Use optional chaining safely just in case the type isn't fully updated yet,
           // though Typescript might complain if we don't cast or if it's strictly typed.
           photo_url_secondary: (player as any).photo_url_secondary || '',
-          role: player.role || '',
           is_active: player.is_active ?? true
         });
       } else {
@@ -77,7 +75,6 @@ export function PlayerModal({
           last_name: '',
           photo_url: '',
           photo_url_secondary: '',
-          role: '',
           is_active: true
         });
       }
@@ -254,18 +251,6 @@ export function PlayerModal({
               {errors.last_name && <p className="text-sm text-red-500">{errors.last_name}</p>}
             </div>
 
-            {/* Role Field */}
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Input
-                id="role"
-                value={formData.role || ''}
-                onChange={(e) => handleInputChange('role', e.target.value)}
-                placeholder="e.g., Mid, Carry, Support"
-                className={errors.role ? 'border-red-500' : ''}
-              />
-              {errors.role && <p className="text-sm text-red-500">{errors.role}</p>}
-            </div>
 
 
 

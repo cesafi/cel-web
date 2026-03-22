@@ -907,21 +907,27 @@ export type Database = {
           created_at: string
           id: number
           is_active: boolean | null
+          is_team_captain: boolean | null
           player_id: string
+          player_role: Database["public"]["Enums"]["player_role"] | null
           team_id: string | null
         }
         Insert: {
           created_at?: string
           id?: number
           is_active?: boolean | null
+          is_team_captain?: boolean | null
           player_id: string
+          player_role?: Database["public"]["Enums"]["player_role"] | null
           team_id?: string | null
         }
         Update: {
           created_at?: string
           id?: number
           is_active?: boolean | null
+          is_team_captain?: boolean | null
           player_id?: string
+          player_role?: Database["public"]["Enums"]["player_role"] | null
           team_id?: string | null
         }
         Relationships: [
@@ -1781,6 +1787,17 @@ export type Database = {
         | "completed"
         | "rescheduled"
         | "canceled"
+      player_role:
+        | "EXP"
+        | "Jungle"
+        | "Mid"
+        | "Gold"
+        | "Roam"
+        | "Duelist"
+        | "Sentinel"
+        | "Controller"
+        | "Initiator"
+        | "Flex"
       round_type: "group" | "playoffs" | "finals"
       sponsor_type: "title" | "venue" | "event"
       stage_type: "round_robin" | "single_elimination" | "double_elimination"
@@ -1924,6 +1941,18 @@ export const Constants = {
         "completed",
         "rescheduled",
         "canceled",
+      ],
+      player_role: [
+        "EXP",
+        "Jungle",
+        "Mid",
+        "Gold",
+        "Roam",
+        "Duelist",
+        "Sentinel",
+        "Controller",
+        "Initiator",
+        "Flex",
       ],
       round_type: ["group", "playoffs", "finals"],
       sponsor_type: ["title", "venue", "event"],

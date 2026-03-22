@@ -59,6 +59,15 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
   const schoolInfo = currentTeam?.schools_teams?.schools || (player as any)?.schools_teams?.schools;
   const teamName = currentTeam?.schools_teams?.name || (player as any)?.schools_teams?.name;
 
+  const displayRole = React.useMemo(() => {
+    const roleString = currentTeam?.player_role || player?.role;
+    if (!roleString) return null;
+    if (['Gold', 'EXP', 'Mid'].includes(roleString)) {
+      return `${roleString} Laner`;
+    }
+    return roleString;
+  }, [currentTeam?.player_role, player?.role]);
+
   // Detect game type
   const [detectedGame, setDetectedGame] = React.useState<'mlbb' | 'valorant' | null>(null);
 
@@ -198,9 +207,14 @@ export default function PlayerProfile({ schoolSlug, playerIGN }: PlayerProfilePr
                     {player.first_name} {player.last_name}
                   </span>
                 )}
-                {player.role && (
+                {displayRole && (
                   <Badge variant="outline" className="border-white/30 bg-background/50 bg-black/20 backdrop-blur-md text-foreground text-white px-3 py-1 text-xs uppercase tracking-[0.2em] shadow-sm shadow-lg">
-                    {player.role}
+                    {displayRole}
+                  </Badge>
+                )}
+                {currentTeam?.is_team_captain && (
+                  <Badge variant="outline" className="border-amber-400/50 bg-amber-500/20 backdrop-blur-md text-amber-100 px-3 py-1 text-xs uppercase tracking-[0.2em] shadow-sm shadow-lg">
+                    TEAM CAPTAIN
                   </Badge>
                 )}
                 {teamName && (

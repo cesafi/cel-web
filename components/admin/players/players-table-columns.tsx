@@ -65,17 +65,7 @@ export const getPlayersTableColumns = (): TableColumn<PlayerWithTeam>[] => [
       </div>
     )
   },
-  {
-    key: 'role',
-    header: 'Role',
-    sortable: true,
-    width: '15%',
-    render: (player: PlayerWithTeam) => (
-      <div className="text-sm text-muted-foreground">
-        {player.role || '—'}
-      </div>
-    )
-  },
+
   {
     key: 'is_active',
     header: 'Status',
