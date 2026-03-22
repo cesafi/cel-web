@@ -298,11 +298,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Row 20: K/D/A
       const bKda = Array.from(
         { length: 5 },
-        (_, i) => `="${bStat(i, 'kills')}/${bStat(i, 'deaths')}/${bStat(i, 'assists')}"`,
+        (_, i) => `${bStat(i, 'kills')}/${bStat(i, 'deaths')}/${bStat(i, 'assists')}`,
       )
       const rKda = Array.from(
         { length: 5 },
-        (_, i) => `="${rStat(i, 'kills')}/${rStat(i, 'deaths')}/${rStat(i, 'assists')}"`,
+        (_, i) => `${rStat(i, 'kills')}/${rStat(i, 'deaths')}/${rStat(i, 'assists')}`,
       )
       csv += row(['', ...bKda, '', 'K/D/A', '', ...rev(rKda), ''])
 
