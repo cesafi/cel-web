@@ -224,16 +224,40 @@ export class PostGameStatsService extends BaseService {
           continue;
         }
 
-        // Fallback to Valorant stats MVP
-        const { data: valoMvp } = await supabase
+        // Fallback to Valorant stats MVP or highest round/ACS kills if MVP is missing
+        const { data: valoStats } = await supabase
           .from('stats_valorant_game_player')
-          .select('team_id')
-          .eq('game_id', game.id)
-          .eq('is_mvp', true)
-          .maybeSingle();
+          .select('team_id, is_mvp, kills')
+          .eq('game_id', game.id);
 
-        if (valoMvp?.team_id) {
-          teamWins[valoMvp.team_id] = (teamWins[valoMvp.team_id] || 0) + 1;
+        if (valoStats && valoStats.length > 0) {
+          const valoMvp = valoStats.find(s => s.is_mvp);
+          if (valoMvp?.team_id) {
+            teamWins[valoMvp.team_id] = (teamWins[valoMvp.team_id] || 0) + 1;
+            continue;
+          }
+
+          // Fallback if no MVP: team with most total kills
+          const teamTotals = valoStats.reduce((acc, p) => {
+            if (p.team_id) {
+              acc[p.team_id] = (acc[p.team_id] || 0) + (p.kills || 0);
+            }
+            return acc;
+          }, {} as Record<string, number>);
+
+          let maxKills = -1;
+          let winningTeamId = '';
+          for (const [tId, kills] of Object.entries(teamTotals)) {
+            if (kills > maxKills) {
+              maxKills = kills;
+              winningTeamId = tId;
+            }
+          }
+
+          if (winningTeamId) {
+            teamWins[winningTeamId] = (teamWins[winningTeamId] || 0) + 1;
+            continue;
+          }
         }
       }
 
@@ -253,10 +277,18 @@ export class PostGameStatsService extends BaseService {
       const t2Score = teamWins[t2.team_id] || 0;
 
       const desc = match.description || '';
-      const newDesc = desc.replace(
-        /\(\d+\)\s*vs\s*\(\d+\)/,
-        `(${t1Score}) vs (${t2Score})`
-      );
+      let replaceCount = 0;
+      const newDesc = desc.replace(/\(\d+\)/g, (matchStr) => {
+        if (replaceCount === 0) {
+          replaceCount++;
+          return `(${t1Score})`;
+        }
+        if (replaceCount === 1) {
+          replaceCount++;
+          return `(${t2Score})`;
+        }
+        return matchStr; // Return unchanged for 3rd+ matches just in case
+      });
 
       // 5. Check win condition
       const requiredWins = Math.ceil((match.best_of || 1) / 2);
@@ -265,7 +297,7 @@ export class PostGameStatsService extends BaseService {
       let endAt = match.end_at;
 
       if (maxScore >= requiredWins) {
-        newStatus = 'Finished' as any;
+        newStatus = 'finished' as any;
         endAt = endAt || new Date().toISOString();
       }
 

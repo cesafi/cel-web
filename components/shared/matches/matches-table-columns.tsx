@@ -1,8 +1,9 @@
 import { TableColumn } from '@/lib/types/table';
 import { MatchWithStageDetails } from '@/lib/types/matches';
-import { formatTableDate } from '@/lib/utils/date';
+import { formatDateShort, formatSmartDate } from '@/lib/utils/date';
 import { Pencil, Trash2, MapPin, Trophy, Eye } from 'lucide-react';
 import { formatCategoryName } from '@/lib/utils/sports';
+import { formatUtcForDisplay } from '@/lib/utils/utc-time';
 
 export const getMatchesTableColumns = (): TableColumn<MatchWithStageDetails>[] => [
   {
@@ -13,8 +14,8 @@ export const getMatchesTableColumns = (): TableColumn<MatchWithStageDetails>[] =
     render: (match: MatchWithStageDetails) => (
       <div className="flex items-center space-x-3">
         <div className="flex-shrink-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Trophy className="text-primary h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Trophy className="text-primary h-5 w-5" />
           </div>
         </div>
         <div className="min-w-0 flex-1">
@@ -39,7 +40,7 @@ export const getMatchesTableColumns = (): TableColumn<MatchWithStageDetails>[] =
           {match.esports_seasons_stages?.esports_categories?.esports?.name ?? 'N/A'}
         </div>
         <div className="text-xs text-muted-foreground">
-          {match.esports_seasons_stages?.esports_categories ? 
+          {match.esports_seasons_stages?.esports_categories ?
             formatCategoryName(
               match.esports_seasons_stages.esports_categories.division,
               match.esports_seasons_stages.esports_categories.levels
@@ -84,11 +85,11 @@ export const getMatchesTableColumns = (): TableColumn<MatchWithStageDetails>[] =
         {match.scheduled_at ? (
           <>
             <div className="text-sm font-medium">
-              {formatTableDate(match.scheduled_at)}
+              {formatUtcForDisplay(match.scheduled_at)}
             </div>
             {match.start_at && (
               <div className="text-xs text-muted-foreground">
-                Start: {formatTableDate(match.start_at)}
+                Start: {formatUtcForDisplay(match.start_at)}
               </div>
             )}
           </>

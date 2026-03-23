@@ -437,12 +437,18 @@ export class StatisticsService extends BaseService {
     game: 'mlbb' | 'valorant',
     metric: string,
     limit: number = 5,
-    seasonId?: number
+    seasonId?: number,
+    division?: string,
+    minGames?: number
   ): Promise<{ success: boolean; data?: LeaderboardEntry[]; error?: string }> {
     try {
+      const filters: Partial<StatisticsFilters> = {};
+      if (seasonId) filters.season_id = seasonId;
+      if (division) filters.division = division;
+
       const stats = game === 'mlbb'
-        ? await this.getMlbbPlayerStats(seasonId ? { season_id: seasonId } : undefined)
-        : await this.getValorantPlayerStats(seasonId ? { season_id: seasonId } : undefined);
+        ? await this.getMlbbPlayerStats(filters)
+        : await this.getValorantPlayerStats(filters);
 
       if (!stats.success) {
         return { success: false, error: stats.error };
@@ -452,11 +458,27 @@ export class StatisticsService extends BaseService {
         return { success: false, error: 'No data available' };
       }
 
+      let filteredData = (stats.data as any[]) || [];
+      if (minGames) {
+        filteredData = filteredData.filter(p => (p.games_played || 0) >= minGames);
+      }
+
       // Sort by metric and take top N
-      const sorted = [...stats.data].sort((a, b) => {
+      const sorted = [...filteredData].sort((a, b) => {
         const aVal = (a as any)[metric] || 0;
         const bVal = (b as any)[metric] || 0;
-        return bVal - aVal;
+        
+        if (bVal !== aVal) return bVal - aVal;
+        
+        // Secondary tiebreaker for MVP count
+        if (metric === 'mvp_count') {
+          const tieMetric = game === 'mlbb' ? 'avg_rating' : 'avg_acs';
+          const aTie = (a as any)[tieMetric] || 0;
+          const bTie = (b as any)[tieMetric] || 0;
+          return bTie - aTie;
+        }
+
+        return 0; // Absolute tie
       }).slice(0, limit);
 
       const leaderboard: LeaderboardEntry[] = sorted.map(player => ({

@@ -2,8 +2,10 @@
 
 import { ServiceResponse } from '@/lib/types/base';
 import { GameRosterService } from '@/services/game-roster';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export async function getGameRosterByGameId(gameId: number) {
+  noStore();
   return await GameRosterService.getByGameId(gameId);
 }
 

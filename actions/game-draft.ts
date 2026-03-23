@@ -4,8 +4,10 @@ import { ServiceResponse } from '@/lib/types/base';
 import { GameDraftService } from '@/services/game-draft';
 import { insertGameDraftActionSchema, updateGameDraftActionSchema } from '@/lib/validations/game-draft';
 import { GameDraftAction, GameDraftActionUpdate } from '@/lib/types/game-draft';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export async function getGameDraftActionsByGameId(gameId: number): Promise<ServiceResponse<GameDraftAction[]>> {
+  noStore();
   return await GameDraftService.getByGameId(gameId);
 }
 
