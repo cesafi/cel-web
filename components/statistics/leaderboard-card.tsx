@@ -102,7 +102,7 @@ export function LeaderboardCard({
 
         <CardHeader className="pb-5 relative z-10">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full">
               {/* Icon container with accent background */}
               <div className={cn(
                 'p-3 rounded-2xl transition-transform duration-500 group-hover:scale-110 shadow-inner',
@@ -121,18 +121,20 @@ export function LeaderboardCard({
                   <Trophy className="h-6 w-6" />
                 )}
               </div>
-              <div>
-                <h3 className="font-extrabold text-xl tracking-tight">{title}</h3>
-                <div className="flex flex-col mt-0.5">
-                  <p className={cn(
-                    "text-xs uppercase tracking-widest font-semibold",
-                    colors.text
-                  )}>{game}</p>
+              <div className="w-full flex-col">
+                <div className="flex items-center justify-between w-full">
+                  <h3 className="font-extrabold text-xl tracking-tight">{title}</h3>
                   {metric === 'MVPs' && (
                     <p className="text-[10px] text-muted-foreground/60 leading-none mt-1">
                       Ties broken by {game === 'mlbb' ? 'Rating' : 'ACS'}
                     </p>
                   )}
+                </div>
+                <div className="flex flex-col mt-0.5">
+                  <p className={cn(
+                    "text-xs uppercase tracking-widest font-semibold",
+                    colors.text
+                  )}>{game}</p>
                 </div>
               </div>
             </div>
