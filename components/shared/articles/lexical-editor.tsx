@@ -334,9 +334,9 @@ function ToolbarPlugin({
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         try {
-          // Validate file size (150KB max for strict SEO)
-          if (file.size > 150 * 1024) {
-            toast.error('Inline image size must be less than 150KB');
+          // Validate file size (300KB max for strict SEO)
+          if (file.size > 300 * 1024) {
+            toast.error('Inline image size must be less than 300KB');
             return;
           }
 

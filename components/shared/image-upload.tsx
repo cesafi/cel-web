@@ -17,7 +17,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 200 * 1024, // 200KB
+    maxFileSize: 400 * 1024, // 400KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   SCHOOL_LOGO: {
@@ -27,7 +27,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 1,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 100 * 1024, // 100KB
+    maxFileSize: 300 * 1024, // 300KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
   },
   ARTICLE_COVER: {
@@ -37,7 +37,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 16 / 9,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 300 * 1024, // 300KB
+    maxFileSize: 700 * 1024, // 700KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   TIMELINE: {
