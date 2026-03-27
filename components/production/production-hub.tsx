@@ -27,6 +27,7 @@ interface FilterState {
   metric: string;
   leaderboardLimit: string;
   matchId: string;
+  urlMode: 'direct' | 'hub'; // New: toggle between direct URLs and hub URLs
 }
 
 interface LinkCard {
@@ -36,89 +37,98 @@ interface LinkCard {
   category: string;
   icon: React.ComponentType<{ className?: string }>;
   buildUrl: (baseUrl: string, filters: FilterState) => string;
+  buildHubUrl?: (baseUrl: string, filters: FilterState) => string; // Optional hub URL builder
   game?: 'mlbb' | 'valorant' | 'both';
+  supportsHub?: boolean; // Whether this export supports hub mode
 }
 
 // ─── Link Cards ─────────────────────────────────────
 const LINK_CARDS: LinkCard[] = [
   {
     id: 'player-stats', title: 'Player Statistics', description: 'KDA, GPM/ACS, damage, win rate',
-    category: 'players', icon: Users, game: 'both',
+    category: 'players', icon: Users, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game });
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/player-stats?${p}`;
+      return `${b}/api/export/players/stats?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=player-stats`,
   },
   {
     id: 'leaderboard', title: 'Player Leaderboard', description: 'Top N players by metric',
-    category: 'players', icon: Star, game: 'both',
+    category: 'players', icon: Star, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game, metric: f.metric || 'total_kills', limit: f.leaderboardLimit || '5' });
       if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/leaderboard?${p}`;
+      return `${b}/api/export/players/leaderboard?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=player-leaderboard`,
   },
   {
     id: 'character-stats', title: 'Hero / Agent Stats', description: 'Pick/ban rates, win rates, avg KDA',
-    category: 'characters', icon: Shield, game: 'both',
+    category: 'characters', icon: Shield, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game });
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/character-stats?${p}`;
+      return `${b}/api/export/characters/stats?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=character-stats`,
   },
   {
     id: 'team-stats', title: 'Team Statistics', description: 'Aggregate W/L, KDA, damage',
-    category: 'teams', icon: Gamepad2, game: 'both',
+    category: 'teams', icon: Gamepad2, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game });
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
       if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/team-stats?${p}`;
+      return `${b}/api/export/teams/stats?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=team-stats`,
   },
   {
     id: 'h2h-teams', title: 'Head-to-Head: Teams', description: 'Side-by-side team comparison',
-    category: 'h2h', icon: Swords, game: 'both',
+    category: 'h2h', icon: Swords, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game });
       if (f.teamA) p.set('teamA', f.teamA);
       if (f.teamB) p.set('teamB', f.teamB);
       if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/h2h-teams?${p}`;
+      return `${b}/api/export/head-to-head/teams?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=h2h-teams`,
   },
   {
     id: 'h2h-players', title: 'Head-to-Head: Players', description: 'Side-by-side player comparison',
-    category: 'h2h', icon: Swords, game: 'both',
+    category: 'h2h', icon: Swords, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game });
       if (f.playerA) p.set('playerA', f.playerA);
       if (f.playerB) p.set('playerB', f.playerB);
       if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/h2h-players?${p}`;
+      return `${b}/api/export/head-to-head/players?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=h2h-players`,
   },
   {
     id: 'map-stats', title: 'Map Statistics', description: 'Pick/ban rates per map',
-    category: 'maps', icon: Map, game: 'valorant',
+    category: 'maps', icon: Map, game: 'valorant', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams();
       if (f.seasonId) p.set('seasonId', f.seasonId);
       if (f.stageId) p.set('stageId', f.stageId);
-      return `${b}/api/export/map-stats?${p}`;
+      return `${b}/api/export/maps/stats?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=map-stats`,
   },
   {
     id: 'match-overview', title: 'Match Overview', description: 'Scores, teams, schedule, stream',
     category: 'match', icon: Trophy, game: 'both',
-    buildUrl: (b, f) => `${b}/api/export/match-overview?matchId=${f.matchId || '0'}`,
+    buildUrl: (b, f) => `${b}/api/export/matches/${f.matchId || '0'}`,
   },
   {
     id: 'draft', title: 'Draft + Character Stats', description: 'Live draft with pick/ban rates',
@@ -132,7 +142,7 @@ const LINK_CARDS: LinkCard[] = [
   },
   {
     id: 'standings', title: 'Standings', description: 'League standings by stage',
-    category: 'standings', icon: Trophy, game: 'both',
+    category: 'standings', icon: Trophy, game: 'both', supportsHub: true,
     buildUrl: (b, f) => {
       const p = new URLSearchParams({ game: f.game });
       if (f.seasonId) p.set('seasonId', f.seasonId);
@@ -140,6 +150,7 @@ const LINK_CARDS: LinkCard[] = [
       if (f.categoryId) p.set('categoryId', f.categoryId);
       return `${b}/api/export/standings?${p}`;
     },
+    buildHubUrl: (b) => `${b}/api/export/hub?title=standings-data`,
   },
 ];
 
@@ -227,6 +238,7 @@ export default function ProductionHub() {
     game: 'mlbb', seasonId: '', categoryId: '', stageId: '',
     teamA: '', teamB: '', playerA: '', playerB: '',
     h2hMode: 'both', metric: 'total_kills', leaderboardLimit: '5', matchId: '',
+    urlMode: 'direct',
   });
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -502,6 +514,21 @@ export default function ProductionHub() {
               </button>
             ))}
           </div>
+          {/* URL Mode Toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50">
+            {(['direct', 'hub'] as const).map(mode => (
+              <button key={mode} onClick={() => updateFilter('urlMode', mode)}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200',
+                  filters.urlMode === mode
+                    ? 'bg-card shadow-sm border border-border/50 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                title={mode === 'direct' ? 'Dynamic URLs with filters' : 'Static URLs using database config'}>
+                {mode === 'direct' ? '🔗 Dynamic' : '📌 Static'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -689,7 +716,10 @@ export default function ProductionHub() {
               {isExpanded && (
                 <div className="border-t border-border/30">
                   {cards.map((card, idx) => {
-                    const url = card.buildUrl(baseUrl, filters);
+                    // Use hub URL if in hub mode and card supports it, otherwise use direct URL
+                    const url = (filters.urlMode === 'hub' && card.supportsHub && card.buildHubUrl)
+                      ? card.buildHubUrl(baseUrl, filters)
+                      : card.buildUrl(baseUrl, filters);
                     const isCopied = copiedId === card.id;
                     const isPrev = previewId === card.id;
 
