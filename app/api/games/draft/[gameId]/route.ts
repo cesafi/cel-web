@@ -163,6 +163,7 @@ export async function GET(
         // ── 9. Season-wide hero stats (for picks) ──
         type Agg = { games: Set<number>; wins: Set<number>; k: number; d: number; a: number; totalGames: number };
         const heroStats: Record<number, Agg> = {};
+        let totalSeasonGames = 0;
 
         if (heroIds.length > 0 && seasonId) {
             try {
@@ -198,6 +199,7 @@ export async function GET(
                 }
                 
                 // Set totalGames to the number of games where each hero was played
+                totalSeasonGames = seasonGames.size;
                 for (const hid of heroIds) {
                     if (heroStats[hid]) heroStats[hid].totalGames = heroStats[hid].games.size;
                 }
@@ -285,8 +287,8 @@ export async function GET(
         const fmtPR = (hid: number | null): string => {
             if (!hid) return N;
             const a = heroStats[hid];
-            if (!a || a.totalGames === 0) return N;
-            return `${((a.games.size / a.totalGames) * 100).toFixed(0)}%`;
+            if (!a || totalSeasonGames === 0) return N;
+            return `${((a.games.size / totalSeasonGames) * 100).toFixed(0)}%`;
         };
 
         // Padded arrays (1–5)
