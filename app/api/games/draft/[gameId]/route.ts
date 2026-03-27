@@ -272,8 +272,8 @@ export async function GET(
         const fmtWR = (hid: number | null): string => {
             if (!hid) return N;
             const a = heroStats[hid];
-            if (!a || a.games.size === 0) return N;
-            return `${((a.wins.size / a.games.size) * 100).toFixed(0)}%`;
+            if (!a || a.totalGames === 0) return N;
+            return `${((a.wins.size / a.totalGames) * 100).toFixed(0)}%`;
         };
         const fmtKDA = (hid: number | null): string => {
             if (!hid) return N;
