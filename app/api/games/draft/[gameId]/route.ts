@@ -197,9 +197,9 @@ export async function GET(
                     ag.k += r.kills || 0; ag.d += r.deaths || 0; ag.a += r.assists || 0;
                 }
                 
-                const totalSeasonGames = seasonGames.size;
+                // Set totalGames to the number of games where each hero was played
                 for (const hid of heroIds) {
-                    if (heroStats[hid]) heroStats[hid].totalGames = totalSeasonGames;
+                    if (heroStats[hid]) heroStats[hid].totalGames = heroStats[hid].games.size;
                 }
             } catch (e) { console.warn('Season hero stats error:', e); }
         }
@@ -273,7 +273,7 @@ export async function GET(
             if (!hid) return N;
             const a = heroStats[hid];
             if (!a || a.totalGames === 0) return N;
-            return `${a.wins.size} / ${a.totalGames}`
+            return `${((a.wins.size / a.totalGames) * 100).toFixed(0)}%`;
         };
         const fmtKDA = (hid: number | null): string => {
             if (!hid) return N;
