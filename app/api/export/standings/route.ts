@@ -84,11 +84,13 @@ export async function GET(request: NextRequest) {
                 // Group header
                 csv += row(['', group.group_name?.toUpperCase() || 'GROUP', '', '', '', '', '', '', '', '', '', '', '', '', '']);
 
-                // Column headers — game-specific
+                // Column headers — simplified for round robin
                 if (isValorant) {
-                    csv += row(['#', 'ABBREV', 'SCHOOL', 'MP', 'W', 'D', 'L', 'PTS', 'RW', 'RL', 'RD', 'GW', 'GL', 'GD', '']);
+                    // Rank, Team Abbrev, Team Name, W-D-L, Pts, Round Diff
+                    csv += row(['RANK', 'ABBREV', 'TEAM NAME', 'W', 'D', 'L', 'PTS', 'ROUND DIFF', '', '', '', '', '', '', '']);
                 } else {
-                    csv += row(['#', 'ABBREV', 'SCHOOL', 'MP', 'W', 'D', 'L', 'PTS', 'GW', 'GL', 'GD', 'AVG WIN TIME', '', '', '']);
+                    // Rank, Team Abbrev, Team Name, W-D-L, Pts, Avg Win Duration
+                    csv += row(['RANK', 'ABBREV', 'TEAM NAME', 'W', 'D', 'L', 'PTS', 'AVG WIN TIME', '', '', '', '', '', '', '']);
                 }
 
                 // Team rows (capped)
@@ -96,16 +98,9 @@ export async function GET(request: NextRequest) {
                 for (let i = 0; i < MAX_TEAMS; i++) {
                     const t = teams[i] as TeamStanding | undefined;
                     if (!t) {
-                        if (isValorant) {
-                            csv += row([i + 1, N, N, N, N, N, N, N, N, N, N, N, N, N, '']);
-                        } else {
-                            csv += row([i + 1, N, N, N, N, N, N, N, N, N, N, N, '', '', '']);
-                        }
+                        csv += row([i + 1, N, N, N, N, N, N, N, '', '', '', '', '', '', '']);
                         continue;
                     }
-
-                    const gd = t.goals_for - t.goals_against;
-                    const gdStr = gd >= 0 ? `+${gd}` : String(gd);
 
                     if (isValorant) {
                         const rd = (t.round_difference ?? 0);
@@ -114,34 +109,24 @@ export async function GET(request: NextRequest) {
                             t.position,
                             t.school_abbreviation || N,
                             t.school_name || N,
-                            t.matches_played,
                             t.wins,
                             t.draws,
                             t.losses,
                             t.points,
-                            t.rounds_won ?? 0,
-                            t.rounds_lost ?? 0,
                             rdStr,
-                            t.goals_for,
-                            t.goals_against,
-                            gdStr,
-                            '',
+                            '', '', '', '', '', '', '',
                         ]);
                     } else {
                         csv += row([
                             t.position,
                             t.school_abbreviation || N,
                             t.school_name || N,
-                            t.matches_played,
                             t.wins,
                             t.draws,
                             t.losses,
                             t.points,
-                            t.goals_for,
-                            t.goals_against,
-                            gdStr,
                             t.avg_win_duration || '-',
-                            '', '', '',
+                            '', '', '', '', '', '', '',
                         ]);
                     }
                 }

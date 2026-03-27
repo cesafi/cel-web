@@ -253,7 +253,7 @@ export default function ProductionHub() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/production/filters?format=json');
+        const res = await fetch('/api/export/filters?format=json');
         const json = await res.json();
         if (json.success) {
           setSeasons(json.data.seasons || []);
@@ -273,7 +273,7 @@ export default function ProductionHub() {
     if (!filters.seasonId) { setAllStages([]); return; }
     async function fetchStages() {
       try {
-        const res = await fetch('/api/production/filters?format=json');
+        const res = await fetch('/api/export/filters?format=json');
         const json = await res.json();
         // Extract unique stages from matches for this season
         if (json.success) {
@@ -301,14 +301,14 @@ export default function ProductionHub() {
   // ─── Fetch team players ─────────────────────
   useEffect(() => {
     if (!filters.teamA) { setTeamAPlayers([]); return; }
-    fetch(`/api/production/filters?format=json&teamId=${filters.teamA}`)
+    fetch(`/api/export/filters?format=json&teamId=${filters.teamA}`)
       .then(r => r.json()).then(j => { if (j.success) setTeamAPlayers(j.data.players || []); })
       .catch(() => {});
   }, [filters.teamA]);
 
   useEffect(() => {
     if (!filters.teamB) { setTeamBPlayers([]); return; }
-    fetch(`/api/production/filters?format=json&teamId=${filters.teamB}`)
+    fetch(`/api/export/filters?format=json&teamId=${filters.teamB}`)
       .then(r => r.json()).then(j => { if (j.success) setTeamBPlayers(j.data.players || []); })
       .catch(() => {});
   }, [filters.teamB]);

@@ -44,16 +44,17 @@ export const PUBLIC_ROUTES = [
   '/api/image-proxy',
   '/api/games/draft/[gameId]',
   '/api/games/stats/[gameId]',
-  '/api/production/filters',
-  '/api/production/players/stats',
-  '/api/production/players/leaderboard',
-  '/api/production/characters/stats',
-  '/api/production/teams/stats',
-  '/api/production/head-to-head/teams',
-  '/api/production/head-to-head/players',
-  '/api/production/maps/stats',
-  '/api/production/matches/[matchId]',
-  '/api/production/standings',
+  '/api/export/filters',
+  '/api/export/players/stats',
+  '/api/export/players/leaderboard',
+  '/api/export/characters/stats',
+  '/api/export/teams/stats',
+  '/api/export/head-to-head/teams',
+  '/api/export/head-to-head/players',
+  '/api/export/maps/stats',
+  '/api/export/matches/[matchId]',
+  '/api/export/standings',
+  '/api/export/standings-data',
   '/api/games/game-results/[gameId]',
   '/api/matches/valorant-map-veto/[matchId]',
 
@@ -156,18 +157,20 @@ export const ROUTE_PATTERNS = {
     /^\/api\/export\/draft$/, // /api/export/draft
     /^\/api\/export\/game-results$/, // /api/export/game-results
     /^\/api\/export\/valorant-map-veto$/, // /api/export/valorant-map-veto
-    /^\/api\/export\/player-stats$/, // /api/export/player-stats
-    /^\/api\/export\/leaderboard$/, // /api/export/leaderboard
-    /^\/api\/export\/character-stats$/, // /api/export/character-stats
-    /^\/api\/export\/team-stats$/, // /api/export/team-stats
-    /^\/api\/export\/map-stats$/, // /api/export/map-stats
-    /^\/api\/export\/h2h-teams$/, // /api/export/h2h-teams
-    /^\/api\/export\/h2h-players$/, // /api/export/h2h-players
-    /^\/api\/export\/match-overview$/, // /api/export/match-overview
+    /^\/api\/export\/players\/leaderboard$/, // /api/export/players/leaderboard
+    /^\/api\/export\/players\/stats$/, // /api/export/players/stats
+    /^\/api\/export\/characters\/stats$/, // /api/export/characters/stats
+    /^\/api\/export\/teams\/stats$/, // /api/export/teams/stats
+    /^\/api\/export\/maps\/stats$/, // /api/export/maps/stats
+    /^\/api\/export\/head-to-head\/teams$/, // /api/export/head-to-head/teams
+    /^\/api\/export\/head-to-head\/players$/, // /api/export/head-to-head/players
+    /^\/api\/export\/matches\/[^\/]+$/, // /api/export/matches/[matchId]
     /^\/api\/export\/standings$/, // /api/export/standings
+    /^\/api\/export\/standings-data$/, // /api/export/standings-data
+    /^\/api\/export\/filters$/, // /api/export/filters
+    /^\/api\/export\/hub$/, // /api/export/hub (unified endpoint)
     /^\/api\/games\/game-results\/[^\/]+$/, // /api/games/game-results/[gameId]
     /^\/api\/matches\/valorant-map-veto\/[^\/]+$/, // /api/matches/valorant-map-veto/[matchId]
-    /^\/api\/production\/.*$/, // /api/production/* (all production endpoints)
     /^\/lobby\/[^\/]+$/, // /lobby/[matchId]
     /^\/veto(\/.*)?$/ // /veto/[token] and /veto
   ],

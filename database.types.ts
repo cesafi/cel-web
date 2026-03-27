@@ -16,21 +16,27 @@ export type Database = {
     Tables: {
       active_api_exports: {
         Row: {
+          base_url: string | null
           game_id: number | null
           id: number
           match_id: number | null
+          query_params: Json | null
           title: string
         }
         Insert: {
+          base_url?: string | null
           game_id?: number | null
           id?: number
           match_id?: number | null
+          query_params?: Json | null
           title: string
         }
         Update: {
+          base_url?: string | null
           game_id?: number | null
           id?: number
           match_id?: number | null
+          query_params?: Json | null
           title?: string
         }
         Relationships: [
