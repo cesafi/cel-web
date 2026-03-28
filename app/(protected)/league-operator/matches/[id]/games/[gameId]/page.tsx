@@ -143,11 +143,12 @@ export default function LeagueOperatorGameDetailPage() {
             ? <Clock className="h-4 w-4 text-blue-500" />
             : <XCircle className="h-4 w-4 text-muted-foreground" />;
 
-    const apiEndpoint = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/games/draft/${gameId}`;
+    const draftEndpoint = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/draft`;
+    const statsEndpoint = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/game-results`;
 
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(apiEndpoint);
-        toast.success('API link copied to clipboard');
+    const handleCopyLink = (url: string, label: string) => {
+        navigator.clipboard.writeText(url);
+        toast.success(`${label} API link copied to clipboard`);
     };
 
     const handleDeleteGame = async () => {
@@ -364,17 +365,17 @@ export default function LeagueOperatorGameDetailPage() {
                 />
             )}
 
-            {/* ── API Export Link ── */}
+            {/* ── API Export Link (Draft) ── */}
             <div className="rounded-xl border bg-card p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <Link2 className="h-4 w-4" />
-                    API Export
+                    API Export (Draft)
                 </h3>
                 <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                        {apiEndpoint}
+                        {draftEndpoint}
                     </code>
-                    <Button variant="outline" size="sm" onClick={handleCopyLink}>
+                    <Button variant="outline" size="sm" onClick={() => handleCopyLink(draftEndpoint, 'Draft')}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
                         Copy
                     </Button>
@@ -422,16 +423,13 @@ export default function LeagueOperatorGameDetailPage() {
             <div className="rounded-xl border bg-card p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <Link2 className="h-4 w-4" />
-                    API EXPORT
+                    API Export (Stats)
                 </h3>
                 <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                        {`${apiEndpoint.replace('/draft/', '/stats/')}`}
+                        {statsEndpoint}
                     </code>
-                    <Button variant="outline" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(`${apiEndpoint.replace('/draft/', '/stats/')}`)
-                        toast.success('Stats API link copied to clipboard')
-                    }}>
+                    <Button variant="outline" size="sm" onClick={() => handleCopyLink(statsEndpoint, 'Stats')}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
                         Copy
                     </Button>

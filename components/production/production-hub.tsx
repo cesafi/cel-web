@@ -27,7 +27,6 @@ interface FilterState {
   metric: string;
   leaderboardLimit: string;
   matchId: string;
-  urlMode: 'direct' | 'hub'; // New: toggle between direct URLs and hub URLs
 }
 
 interface LinkCard {
@@ -37,120 +36,65 @@ interface LinkCard {
   category: string;
   icon: React.ComponentType<{ className?: string }>;
   buildUrl: (baseUrl: string, filters: FilterState) => string;
-  buildHubUrl?: (baseUrl: string, filters: FilterState) => string; // Optional hub URL builder
   game?: 'mlbb' | 'valorant' | 'both';
-  supportsHub?: boolean; // Whether this export supports hub mode
 }
 
 // ─── Link Cards ─────────────────────────────────────
 const LINK_CARDS: LinkCard[] = [
   {
     id: 'player-stats', title: 'Player Statistics', description: 'KDA, GPM/ACS, damage, win rate',
-    category: 'players', icon: Users, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/players/stats?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=player-stats`,
+    category: 'players', icon: Users, game: 'both',
+    buildUrl: (b) => `${b}/api/export/players/stats`,
   },
   {
     id: 'leaderboard', title: 'Player Leaderboard', description: 'Top N players by metric',
-    category: 'players', icon: Star, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game, metric: f.metric || 'total_kills', limit: f.leaderboardLimit || '5' });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/players/leaderboard?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=player-leaderboard`,
+    category: 'players', icon: Star, game: 'both',
+    buildUrl: (b) => `${b}/api/export/players/leaderboard`,
   },
   {
     id: 'character-stats', title: 'Hero / Agent Stats', description: 'Pick/ban rates, win rates, avg KDA',
-    category: 'characters', icon: Shield, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/characters/stats?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=character-stats`,
+    category: 'characters', icon: Shield, game: 'both',
+    buildUrl: (b) => `${b}/api/export/characters/stats`,
   },
   {
     id: 'team-stats', title: 'Team Statistics', description: 'Aggregate W/L, KDA, damage',
-    category: 'teams', icon: Gamepad2, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/teams/stats?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=team-stats`,
+    category: 'teams', icon: Gamepad2, game: 'both',
+    buildUrl: (b) => `${b}/api/export/teams/stats`,
   },
   {
     id: 'h2h-teams', title: 'Head-to-Head: Teams', description: 'Side-by-side team comparison',
-    category: 'h2h', icon: Swords, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.teamA) p.set('teamA', f.teamA);
-      if (f.teamB) p.set('teamB', f.teamB);
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/head-to-head/teams?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=h2h-teams`,
+    category: 'h2h', icon: Swords, game: 'both',
+    buildUrl: (b) => `${b}/api/export/head-to-head/teams`,
   },
   {
     id: 'h2h-players', title: 'Head-to-Head: Players', description: 'Side-by-side player comparison',
-    category: 'h2h', icon: Swords, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.playerA) p.set('playerA', f.playerA);
-      if (f.playerB) p.set('playerB', f.playerB);
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/head-to-head/players?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=h2h-players`,
+    category: 'h2h', icon: Swords, game: 'both',
+    buildUrl: (b) => `${b}/api/export/head-to-head/players`,
   },
   {
     id: 'map-stats', title: 'Map Statistics', description: 'Pick/ban rates per map',
-    category: 'maps', icon: Map, game: 'valorant', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams();
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      return `${b}/api/export/maps/stats?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=map-stats`,
+    category: 'maps', icon: Map, game: 'valorant',
+    buildUrl: (b) => `${b}/api/export/maps/stats`,
   },
   {
     id: 'match-overview', title: 'Match Overview', description: 'Scores, teams, schedule, stream',
     category: 'match', icon: Trophy, game: 'both',
-    buildUrl: (b, f) => `${b}/api/export/matches/${f.matchId || '0'}`,
+    buildUrl: (b) => `${b}/api/export/matches`,
   },
   {
     id: 'draft', title: 'Draft + Character Stats', description: 'Live draft with pick/ban rates',
     category: 'match', icon: Shield, game: 'both',
-    buildUrl: (b, f) => `${b}/api/games/draft/${f.matchId || '0'}`,
+    buildUrl: (b) => `${b}/api/export/draft`,
   },
   {
     id: 'game-stats', title: 'Per-Game Stats', description: 'Individual game player stats',
     category: 'match', icon: BarChart3, game: 'both',
-    buildUrl: (b, f) => `${b}/api/games/game-results/${f.matchId || '0'}`,
+    buildUrl: (b) => `${b}/api/export/game-results`,
   },
   {
     id: 'standings', title: 'Standings', description: 'League standings by stage',
-    category: 'standings', icon: Trophy, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/standings?${p}`;
-    },
-    buildHubUrl: (b) => `${b}/api/export/hub?title=standings-data`,
+    category: 'standings', icon: Trophy, game: 'both',
+    buildUrl: (b) => `${b}/api/export/standings`,
   },
 ];
 
@@ -238,7 +182,6 @@ export default function ProductionHub() {
     game: 'mlbb', seasonId: '', categoryId: '', stageId: '',
     teamA: '', teamB: '', playerA: '', playerB: '',
     h2hMode: 'both', metric: 'total_kills', leaderboardLimit: '5', matchId: '',
-    urlMode: 'direct',
   });
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -247,6 +190,7 @@ export default function ProductionHub() {
   const [previewData, setPreviewData] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPushing, setIsPushing] = useState(false);
 
   // Data
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -455,6 +399,22 @@ export default function ProductionHub() {
     finally { setPreviewLoading(false); }
   }, [previewId]);
 
+  const pushFiltersToLive = async () => {
+    setIsPushing(true);
+    try {
+      await fetch('/api/export/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filters })
+      });
+      alert('Global configuration pushed successfully! vMix overlays will now display these targets.');
+    } catch (e) {
+      alert('Failed to push to live.');
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
   // ─── Helpers ────────────────────────────────
   const getMatchLabel = (m: any) => {
     const parts = m.match_participants || [];
@@ -514,21 +474,7 @@ export default function ProductionHub() {
               </button>
             ))}
           </div>
-          {/* URL Mode Toggle */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50">
-            {(['direct', 'hub'] as const).map(mode => (
-              <button key={mode} onClick={() => updateFilter('urlMode', mode)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200',
-                  filters.urlMode === mode
-                    ? 'bg-card shadow-sm border border-border/50 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                title={mode === 'direct' ? 'Dynamic URLs with filters' : 'Static URLs using database config'}>
-                {mode === 'direct' ? '🔗 Dynamic' : '📌 Static'}
-              </button>
-            ))}
-          </div>
+
         </div>
       </div>
 
@@ -555,9 +501,18 @@ export default function ProductionHub() {
 
       {/* ═══════ CASCADING FILTERS ═══════ */}
       <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-1 rounded-full bg-primary" />
-          <h2 className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Global Filters</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-primary" />
+            <h2 className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Global Filters</h2>
+          </div>
+          <button 
+             onClick={pushFiltersToLive}
+             disabled={isPushing}
+             className="px-4 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50">
+             <Radio className={cn("h-3.5 w-3.5", isPushing && "animate-pulse")} />
+             {isPushing ? 'Syncing DB...' : 'Push to VMIX (Live)'}
+          </button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -716,10 +671,7 @@ export default function ProductionHub() {
               {isExpanded && (
                 <div className="border-t border-border/30">
                   {cards.map((card, idx) => {
-                    // Use hub URL if in hub mode and card supports it, otherwise use direct URL
-                    const url = (filters.urlMode === 'hub' && card.supportsHub && card.buildHubUrl)
-                      ? card.buildHubUrl(baseUrl, filters)
-                      : card.buildUrl(baseUrl, filters);
+                    const url = card.buildUrl(baseUrl, filters);
                     const isCopied = copiedId === card.id;
                     const isPrev = previewId === card.id;
 

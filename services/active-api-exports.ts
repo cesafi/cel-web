@@ -77,4 +77,20 @@ export class ActiveApiExportService {
 
         return { success: true, data };
     }
+
+    static async setQueryParams(title: string, queryParams: any): Promise<ServiceResponse<any>> {
+        const supabase = await getSupabaseServer();
+        const { data, error } = await supabase
+            .from('active_api_exports')
+            .update({ query_params: queryParams })
+            .eq('title', title)
+            .select()
+            .single();
+
+        if (error) {
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, data };
+    }
 }
