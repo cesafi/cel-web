@@ -31,6 +31,13 @@ interface FilterState {
   matchId: string;
 }
 
+interface ActiveExport {
+  title: string;
+  game_id: number | null;
+  match_id: number | null;
+  query_params: any;
+}
+
 interface LinkCard {
   id: string;
   title: string;
@@ -260,6 +267,7 @@ export default function ProductionHub() {
   const [teamAPlayers, setTeamAPlayers] = useState<any[]>([]);
   const [teamBPlayers, setTeamBPlayers] = useState<any[]>([]);
   const [liveMatches, setLiveMatches] = useState<any[]>([]);
+  const [activeExports, setActiveExports] = useState<ActiveExport[]>([]);
   const [loading, setLoading] = useState(true);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -282,9 +290,14 @@ export default function ProductionHub() {
         // 2. Fetch active configuration
         const activeRes = await fetch('/api/export/filters/active');
         const activeJson = await activeRes.json();
-        if (activeJson.success && activeJson.data) {
-          const { query_params, match_id } = activeJson.data;
-          if (query_params) {
+        if (activeJson.success && Array.isArray(activeJson.data)) {
+          setActiveExports(activeJson.data);
+          
+          // Find the best candidate for initial filters (prefer standings)
+          const source = activeJson.data.find((e: any) => e.title === 'standings') || activeJson.data[0];
+          
+          if (source && source.query_params) {
+            const { query_params, match_id } = source;
             setFilters(prev => ({
               ...prev,
               game: query_params.game || prev.game,
@@ -319,7 +332,16 @@ export default function ProductionHub() {
     async function sync() {
       setIsSyncing(true);
       const res = await syncProductionState(filters);
-      if (!res.success) {
+      if (res.success) {
+        // Refetch active exports to update UI indicators
+        try {
+          const activeRes = await fetch('/api/export/filters/active');
+          const activeJson = await activeRes.json();
+          if (activeJson.success && Array.isArray(activeJson.data)) {
+            setActiveExports(activeJson.data);
+          }
+        } catch (e) {}
+      } else {
         toast.error('Failed to sync production state: ' + (res.errors || []).filter(Boolean).join(', '));
       }
       setIsSyncing(false);
@@ -575,6 +597,56 @@ export default function ProductionHub() {
         </div>
       </div>
 
+      {/* ═══════ CURRENT BROADCAST STATE ═══════ */}
+      {activeExports.length > 0 && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20">
+                <Radio className="h-3 w-3 text-primary" />
+              </div>
+              <h2 className="text-xs font-bold text-primary uppercase tracking-tight">Current Broadcast State</h2>
+            </div>
+            <div className="text-[10px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full border border-border/50">
+              {activeExports.length} endpoints synced
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Game</span>
+              <div className="flex items-center gap-1.5">
+                 <Image src={`/img/${filters.game}.webp`} alt="" width={14} height={14} className="rounded-sm" />
+                 <span className="text-xs font-medium capitalize">{filters.game}</span>
+              </div>
+            </div>
+
+            {filters.seasonId && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Season</span>
+                <span className="text-xs font-medium">{seasons.find(s => String(s.id) === filters.seasonId)?.name || `Season ${filters.seasonId}`}</span>
+              </div>
+            )}
+
+            {filters.matchId && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Match Context</span>
+                <span className="text-xs font-medium text-primary/80">
+                  {allMatches.find(m => String(m.id) === filters.matchId) 
+                    ? getMatchLabel(allMatches.find(m => String(m.id) === filters.matchId))
+                    : `Match #${filters.matchId}`}
+                </span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Global Metric</span>
+              <span className="text-xs font-medium">{metrics.find(m => m.value === filters.metric)?.label || filters.metric}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══════ LIVE MATCH ═══════ */}
       {liveMatches.length > 0 && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
@@ -779,6 +851,12 @@ export default function ProductionHub() {
                                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20">
                                     <Radio className="h-2.5 w-2.5 text-blue-500" />
                                     <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">Broadcast URL</span>
+                                  </div>
+                                )}
+                                {activeExports.some(e => e.title === card.id) && (
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20">
+                                    <Check className="h-2.5 w-2.5 text-green-500" />
+                                    <span className="text-[9px] font-bold text-green-500 uppercase tracking-wider">Synced</span>
                                   </div>
                                 )}
                               </div>
