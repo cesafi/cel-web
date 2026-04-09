@@ -21,8 +21,10 @@ import { LexicalEditor } from '@/components/shared/articles/lexical-editor';
 import { DateTimeInput } from '@/components/ui/datetime-input';
 import { ImageUpload } from '@/components/shared/image-upload';
 import { CoverImageAdjuster, CoverImagePosition } from '@/components/shared/articles/cover-image-adjuster';
+import { ArrowLeft, Save, Sparkles } from 'lucide-react';
+import { extractSmartExcerpt } from '@/lib/utils/content-renderer';
+import { Textarea } from '@/components/ui/textarea';
 import slugify from 'slugify';
-import { ArrowLeft, Save } from 'lucide-react';
 
 interface ArticleFormProps {
   mode: 'create' | 'edit';
@@ -48,6 +50,7 @@ export function ArticleForm({
         id: article.id,
         title: article.title,
         content: article.content,
+        excerpt: article.excerpt || '',
         cover_image_url: article.cover_image_url,
         cover_image_position: article.cover_image_position as CoverImagePosition | null,
         authored_by: article.authored_by,
@@ -58,6 +61,7 @@ export function ArticleForm({
     } else {
       return {
         title: '',
+        excerpt: '',
         content: {},
         cover_image_url: '',
         cover_image_position: null,
@@ -78,6 +82,7 @@ export function ArticleForm({
         id: article.id,
         title: article.title,
         content: article.content || {},
+        excerpt: article.excerpt || '',
         cover_image_url: article.cover_image_url,
         cover_image_position: article.cover_image_position as CoverImagePosition | null,
         authored_by: article.authored_by,
@@ -88,6 +93,7 @@ export function ArticleForm({
     } else {
       setFormData({
         title: '',
+        excerpt: '',
         content: {},
         cover_image_url: '',
         cover_image_position: null,
@@ -247,6 +253,52 @@ export function ArticleForm({
                     className={errors.title ? 'border-red-500' : ''}
                   />
                   {errors.title && <p className="text-sm text-red-500">{errors.title}</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Excerpt */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle>Excerpt</CardTitle>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    if (!editorContent) {
+                      toast.error('No content to extract from');
+                      return;
+                    }
+                    try {
+                      const parsed = JSON.parse(editorContent);
+                      const generated = extractSmartExcerpt(parsed, 150);
+                      setFormData(prev => ({ ...prev, excerpt: generated }));
+                      toast.success('Excerpt generated');
+                    } catch {
+                       toast.error('Could not parse content');
+                    }
+                  }}
+                  className="h-8 gap-1"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Auto-Generate
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm text-muted-foreground mb-3 flex justify-between items-end">
+                  <span>A short summary of the article used for cards and previews. Defaults to auto-generation if left blank.</span>
+                  <span className="text-xs">{formData.excerpt?.length || 0}/250</span>
+                </div>
+                <div className="space-y-2">
+                  <Textarea
+                    value={formData.excerpt || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, excerpt: e.target.value.substring(0, 250) }))}
+                    placeholder="Enter a brief excerpt..."
+                    maxLength={250}
+                    className={errors.excerpt ? 'border-red-500 min-h-[100px]' : 'min-h-[100px]'}
+                  />
+                  {errors.excerpt && <p className="text-sm text-red-500">{errors.excerpt}</p>}
                 </div>
               </CardContent>
             </Card>

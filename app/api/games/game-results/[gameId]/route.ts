@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .from('games')
       .select(
         `
-                *,
+                id, game_number, match_id, coin_toss_winner, side_selection,
                 match:matches(
                     id, stage_id, best_of, scheduled_at,
                     match_participants(id, team_id, match_score, team:schools_teams(id, name, school:schools(abbreviation, name))),

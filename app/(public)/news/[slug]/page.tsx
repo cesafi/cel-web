@@ -69,7 +69,7 @@ export default function NewsArticlePage() {
     title: article.title,
     slug: article.slug,
     excerpt:
-      (article.content as { excerpt?: string })?.excerpt || extractSmartExcerpt(article.content, 200),
+      article.excerpt || (article.content as { excerpt?: string })?.excerpt || extractSmartExcerpt(article.content, 200),
     content: renderArticleContent(article.content),
     author: article.authored_by || 'CESAFI Media Team',
     publishedAt: article.published_at || article.created_at,
@@ -258,7 +258,7 @@ export default function NewsArticlePage() {
                   title: relatedArticle.title,
                   slug: relatedArticle.slug,
                   excerpt:
-                    (relatedArticle.content as { excerpt?: string })?.excerpt ||
+                    relatedArticle.excerpt || (relatedArticle.content as { excerpt?: string })?.excerpt ||
                     extractSmartExcerpt(relatedArticle.content, 150),
                   category:
                     (relatedArticle.content as { category?: string })?.category || 'General',

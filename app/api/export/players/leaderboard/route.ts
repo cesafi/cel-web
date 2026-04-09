@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     if (!result.success) return NextResponse.json({ success: false, error: result.error }, { status: 500 });
 
-    return vmixResponse(result.data, format, 'leaderboard', {}, 300);
+    return vmixResponse(result.data, format, 'leaderboard', {}, 600);
   } catch (error: any) {
     console.error('Error in leaderboard API:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

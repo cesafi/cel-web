@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: 'Welcome to the CESAFI Esports League (CEL). Follow the latest tournaments, matches, and standings of collegiate student-gamers.',
 };
 
-export const revalidate = 900; // Revalidate every 15 minutes
+export const revalidate = 1800; // Revalidate every 30 minutes
 
 export default async function LandingPage() {
   // Fetch data server-side

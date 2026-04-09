@@ -5,6 +5,7 @@ import {
 import { BaseService } from './base';
 import { Article, ArticlePaginationOptions, ArticleInsert, ArticleUpdate } from '@/lib/types/articles';
 import CloudinaryService, { extractCloudinaryPublicId } from './cloudinary';
+import { extractSmartExcerpt } from '@/lib/utils/content-renderer';
 
 const TABLE_NAME = 'articles';
 
@@ -94,7 +95,7 @@ export class ArticleService extends BaseService {
       const supabase = await this.getClient();
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select('*')
+        .select('id, title, slug, excerpt, cover_image_url, cover_image_position, published_at, created_at, authored_by, status, view_count')
         .eq('status', 'published')
         .lte('published_at', new Date().toISOString())
         .order('published_at', { ascending: false })
@@ -159,6 +160,11 @@ export class ArticleService extends BaseService {
 
       const insertData = { ...data };
 
+      // Auto-extract excerpt from content if present
+      if (insertData.content) {
+          insertData.excerpt = extractSmartExcerpt(insertData.content, 150);
+      }
+
       // Handle publishing workflow logic
       // Note: published_at is now manually set by head writers/admins
       // Only clear published_at if status is not published/approved
@@ -193,7 +199,12 @@ export class ArticleService extends BaseService {
       const supabase = await this.getClient();
 
       // Handle publishing workflow logic
-      const updateData = { ...data };
+      const updateData = { ...data } as any;
+
+      // Auto-extract excerpt from content if present
+      if (updateData.content) {
+          updateData.excerpt = extractSmartExcerpt(updateData.content, 150);
+      }
 
       // Note: published_at is now manually set by head writers/admins
       // Only clear published_at if status is not published/approved

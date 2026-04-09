@@ -47,7 +47,7 @@ export const createArticleSchema = z.object({
   title: z
     .string()
     .min(1, { message: 'Article title is required.' })
-    .max(255, { message: 'Title cannot exceed 255 characters.' }),
+    .max(150, { message: 'Title cannot exceed 150 characters.' }),
   content: ArticleContentSchema,
   cover_image_url: z.string().nullable().optional(),
   cover_image_position: z.object({
@@ -57,6 +57,7 @@ export const createArticleSchema = z.object({
   }).nullable().optional(),
   authored_by: z.string().min(1, { message: 'Author is required.' }),
   slug: z.string().min(1, { message: 'Slug is required.' }),
+  excerpt: z.string().max(250, { message: 'Excerpt cannot exceed 250 characters.' }).nullable().optional(),
   status: z
     .enum(Constants.public.Enums.article_status, {
       message: 'Status must be one of: draft, review, approved, revise, cancelled'
@@ -79,7 +80,7 @@ export const updateArticleSchema = z.object({
   title: z
     .string()
     .min(1, { message: 'Article title cannot be empty.' })
-    .max(255, { message: 'Title cannot exceed 255 characters.' })
+    .max(150, { message: 'Title cannot exceed 150 characters.' })
     .optional(),
   content: ArticleContentSchema.optional(),
   cover_image_url: z.string().nullable().optional(),
@@ -90,6 +91,7 @@ export const updateArticleSchema = z.object({
   }).nullable().optional(),
   authored_by: z.string().min(1, { message: 'Author cannot be empty.' }).optional(),
   slug: z.string().min(1, { message: 'Slug cannot be empty.' }).optional(),
+  excerpt: z.string().max(250, { message: 'Excerpt cannot exceed 250 characters.' }).nullable().optional(),
   status: z
     .enum(Constants.public.Enums.article_status, {
       message: 'Status must be one of: draft, review, approved, revise, cancelled'

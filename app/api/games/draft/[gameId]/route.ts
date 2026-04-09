@@ -37,7 +37,7 @@ export async function GET(
         const { data: game, error: gameError } = await supabase
             .from('games')
             .select(`
-                *,
+                id, game_number, match_id, coin_toss_winner, side_selection,
                 match:matches(
                     id, stage_id, best_of, scheduled_at,
                     match_participants(team_id, match_score, team:schools_teams(id, name, school:schools(abbreviation, name))),
@@ -139,7 +139,9 @@ export async function GET(
             try {
                 const view = isValorant ? 'mv_valorant_agent_stats' : 'mv_mlbb_hero_stats';
                 const col = isValorant ? 'agent_id' : 'hero_id';
-                const { data } = await supabase.from(view as any).select('*').in(col, heroIds).eq('season_id', seasonId);
+                const { data } = await supabase.from(view as any)
+                    .select(`${col}, total_picks, total_bans, total_wins, total_kills, total_deaths, total_assists, total_games`)
+                    .in(col, heroIds).eq('season_id', seasonId);
                 for (const r of (data || []) as any[]) {
                     const id = r[col];
                     const ex = globalStats[id];

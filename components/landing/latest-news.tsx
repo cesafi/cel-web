@@ -20,7 +20,7 @@ export default function LatestNews({ initialArticles }: LatestNewsProps) {
       id: article.id.toString(),
       title: article.title,
       slug: article.slug,
-      excerpt: (article.content as { excerpt?: string })?.excerpt || extractPlainText(article.content, 150),
+      excerpt: article.excerpt || (article.content as { excerpt?: string })?.excerpt || extractPlainText(article.content, 150),
       author: article.authored_by || 'CESAFI Media Team',
       publishedAt: article.published_at || article.created_at,
       category: (article.content as { category?: string })?.category || 'General',

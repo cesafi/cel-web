@@ -675,7 +675,7 @@ export class MatchesService extends BaseService {
       const buildQuery = (direction: 'future' | 'past', limit: number) => {
         let query = supabase
           .from('matches')
-          .select(this.MATCH_SELECT, { count: 'exact' });
+          .select(this.MATCH_SELECT_MINIMAL, { count: 'exact' });
 
         // Direction filter
         if (direction === 'future') {

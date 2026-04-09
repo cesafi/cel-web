@@ -1,5 +1,6 @@
 import { BaseService } from './base';
 import { Database } from '../database.types';
+import { ServiceResponse } from '../lib/types/base';
 
 // Types for statistics
 export interface PlayerStatsSummary {
@@ -432,6 +433,7 @@ export class StatisticsService extends BaseService {
 
   /**
    * Get top players for a specific metric (leaderboard)
+   * Queries the MV directly with ORDER BY and LIMIT to avoid full data dump.
    */
   static async getLeaderboard(
     game: 'mlbb' | 'valorant',
@@ -440,32 +442,36 @@ export class StatisticsService extends BaseService {
     seasonId?: number
   ): Promise<{ success: boolean; data?: LeaderboardEntry[]; error?: string }> {
     try {
-      const stats = game === 'mlbb'
-        ? await this.getMlbbPlayerStats(seasonId ? { season_id: seasonId } : undefined)
-        : await this.getValorantPlayerStats(seasonId ? { season_id: seasonId } : undefined);
+      const supabase = await this.getClient();
 
-      if (!stats.success) {
-        return { success: false, error: stats.error };
+      const viewName = game === 'mlbb' ? 'mv_mlbb_player_stats' : 'mv_valorant_player_stats';
+      
+      // Select only the fields needed for leaderboard display + the metric column
+      let query = supabase
+        .from(viewName as any)
+        .select(`player_id, player_ign, player_photo_url, team_name, team_logo_url, ${metric}`)
+        .order(metric, { ascending: false, nullsFirst: false })
+        .limit(limit);
+
+      if (seasonId) {
+        query = query.eq('season_id', seasonId);
       }
 
-      if (!stats.data) {
-        return { success: false, error: 'No data available' };
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return { success: true, data: [] };
       }
 
-      // Sort by metric and take top N
-      const sorted = [...stats.data].sort((a, b) => {
-        const aVal = (a as any)[metric] || 0;
-        const bVal = (b as any)[metric] || 0;
-        return bVal - aVal;
-      }).slice(0, limit);
-
-      const leaderboard: LeaderboardEntry[] = sorted.map(player => ({
+      const leaderboard: LeaderboardEntry[] = (data as any[]).map(player => ({
         player_id: player.player_id,
         player_ign: player.player_ign,
         player_photo_url: player.player_photo_url,
         team_name: player.team_name,
         team_logo_url: player.team_logo_url,
-        value: (player as any)[metric] || 0,
+        value: player[metric] || 0,
         metric_name: metric
       }));
 
@@ -914,16 +920,17 @@ export class StatisticsService extends BaseService {
           existing.total_assists += row.total_assists;
 
           if (game === 'mlbb') {
-            existing.total_gold += row.total_gold;
-            existing.total_damage += row.total_damage_dealt;
-            existing.total_turret_damage += row.total_turret_damage;
-            existing.total_lord_slain += row.total_lord_slain;
-            existing.total_turtle_slain += row.total_turtle_slain;
+            existing.total_gold += row.total_gold || 0;
+            existing.total_damage += row.total_damage_dealt || 0;
+            existing.total_turret_damage += row.total_turret_damage || 0;
+            existing.total_lord_slain += row.total_lord_slain || 0;
+            existing.total_turtle_slain += row.total_turtle_slain || 0;
           } else {
-            existing.total_acs += row.avg_acs * row.games_played; // Approx weighted sum to re-avg later
-            existing.total_first_bloods += row.total_first_bloods;
-            existing.total_plants += row.total_plants;
-            existing.total_defuses += row.total_defuses;
+            existing.total_acs += (row.avg_acs || 0) * row.games_played;
+            existing.total_econ_rating += (row.avg_econ_rating || 0) * row.games_played;
+            existing.total_first_bloods += row.total_first_bloods || 0;
+            existing.total_plants += row.total_plants || 0;
+            existing.total_defuses += row.total_defuses || 0;
           }
         } else {
           const newEntry = {
@@ -939,16 +946,17 @@ export class StatisticsService extends BaseService {
             total_assists: row.total_assists,
             // Init game-specific
             ...(game === 'mlbb' ? {
-              total_gold: row.total_gold,
-              total_damage: row.total_damage_dealt,
-              total_turret_damage: row.total_turret_damage,
-              total_lord_slain: row.total_lord_slain,
-              total_turtle_slain: row.total_turtle_slain,
+              total_gold: row.total_gold || 0,
+              total_damage: row.total_damage_dealt || 0,
+              total_turret_damage: row.total_turret_damage || 0,
+              total_lord_slain: row.total_lord_slain || 0,
+              total_turtle_slain: row.total_turtle_slain || 0,
             } : {
-              total_acs: row.avg_acs * row.games_played, // Weighted sum
-              total_first_bloods: row.total_first_bloods,
-              total_plants: row.total_plants,
-              total_defuses: row.total_defuses,
+              total_acs: (row.avg_acs || 0) * row.games_played,
+              total_econ_rating: (row.avg_econ_rating || 0) * row.games_played,
+              total_first_bloods: row.total_first_bloods || 0,
+              total_plants: row.total_plants || 0,
+              total_defuses: row.total_defuses || 0,
             })
           };
           teamMap.set(teamId, newEntry);
@@ -981,6 +989,7 @@ export class StatisticsService extends BaseService {
         total_turtle_slain: team.total_turtle_slain,
         // Valorant specific
         avg_acs: team.total_acs && team.games_played > 0 ? team.total_acs / team.games_played : undefined,
+        avg_econ_rating: team.total_econ_rating && team.games_played > 0 ? team.total_econ_rating / team.games_played : undefined,
         total_first_bloods: team.total_first_bloods,
         total_plants: team.total_plants,
         total_defuses: team.total_defuses,
@@ -1183,29 +1192,31 @@ export class StatisticsService extends BaseService {
   /**
    * Get head-to-head statistics for two players
    */
-  static async getPlayerH2H(game: 'mlbb' | 'valorant', playerAId: string, playerBId: string) {
+  static async getPlayerH2H(
+    game: 'mlbb' | 'valorant', 
+    playerAId: string, 
+    playerBId: string, 
+    filters?: Partial<StatisticsFilters>
+  ): Promise<ServiceResponse<{ playerA: any; playerB: any }>> {
     try {
-      // Fetch stats for all players and filter for the two we need
-      const result = game === 'mlbb' 
-        ? await this.getMlbbPlayerStats() 
-        : await this.getValorantPlayerStats();
+      const supabase = await this.getClient();
+      const { data, error } = await supabase.rpc('get_h2h_comparison', {
+        p_game: game,
+        p_type: 'players',
+        p_id_a: playerAId,
+        p_id_b: playerBId,
+        p_season_id: filters?.season_id,
+        p_stage_id: filters?.stage_id
+      });
 
-      if (!result.success) {
-        return { success: false, error: (result as any).error || 'Failed to fetch player stats' };
-      }
-      
-      if (!result.data) {
-        return { success: false, error: 'No data returned' };
-      }
-
-      const playerA = (result.data as any[]).find(p => p.player_id === playerAId);
-      const playerB = (result.data as any[]).find(p => p.player_id === playerBId);
+      if (error) throw error;
+      const result = data as any;
 
       return {
         success: true,
         data: {
-          playerA: playerA || null,
-          playerB: playerB || null
+          playerA: result.a || null,
+          playerB: result.b || null
         }
       };
     } catch (error) {
@@ -1216,26 +1227,31 @@ export class StatisticsService extends BaseService {
   /**
    * Get head-to-head statistics for two teams
    */
-  static async getTeamH2H(game: 'mlbb' | 'valorant', teamAId: string, teamBId: string) {
+  static async getTeamH2H(
+    game: 'mlbb' | 'valorant', 
+    teamAId: string, 
+    teamBId: string, 
+    filters?: Partial<StatisticsFilters>
+  ): Promise<ServiceResponse<{ teamA: any; teamB: any }>> {
     try {
-      const result = await this.getTeamStats(game);
+      const supabase = await this.getClient();
+      const { data, error } = await supabase.rpc('get_h2h_comparison', {
+        p_game: game,
+        p_type: 'teams',
+        p_id_a: teamAId,
+        p_id_b: teamBId,
+        p_season_id: filters?.season_id,
+        p_stage_id: filters?.stage_id
+      });
 
-      if (!result.success) {
-        return { success: false, error: (result as any).error || 'Failed to fetch team stats' };
-      }
-      
-      if (!result.data) {
-        return { success: false, error: 'No data returned' };
-      }
-
-      const teamA = (result.data as any[]).find(t => t.team_id === teamAId);
-      const teamB = (result.data as any[]).find(t => t.team_id === teamBId);
+      if (error) throw error;
+      const result = data as any;
 
       return {
         success: true,
         data: {
-          teamA: teamA || null,
-          teamB: teamB || null
+          teamA: result.a || null,
+          teamB: result.b || null
         }
       };
     } catch (error) {

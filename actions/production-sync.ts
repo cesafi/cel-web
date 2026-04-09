@@ -32,12 +32,19 @@ export async function syncProductionState(filters: any) {
 
         // Special handling for H2H
         if (title.startsWith('h2h')) {
-            queryParams.playerA = filters.playerA;
-            queryParams.playerB = filters.playerB;
-            queryParams.teamA = filters.teamA;
-            queryParams.teamB = filters.teamB;
+            queryParams.playerA = filters.playerA ? String(filters.playerA) : undefined;
+            queryParams.playerB = filters.playerB ? String(filters.playerB) : undefined;
+            queryParams.teamA = filters.teamA ? String(filters.teamA) : undefined;
+            queryParams.teamB = filters.teamB ? String(filters.teamB) : undefined;
             queryParams.mode = filters.h2hMode;
         }
+
+        // Sanitize all params to strings to prevent [object Object] serialization
+        Object.keys(queryParams).forEach(key => {
+            if (queryParams[key] !== undefined && queryParams[key] !== null && typeof queryParams[key] === 'object') {
+                queryParams[key] = JSON.stringify(queryParams[key]);
+            }
+        });
 
         // Special handling for Match Overview
         if (title === 'match-overview') {

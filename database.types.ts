@@ -92,6 +92,7 @@ export type Database = {
           cover_image_position: Json | null
           cover_image_url: string | null
           created_at: string
+          excerpt: string | null
           id: string
           published_at: string | null
           slug: string
@@ -106,6 +107,7 @@ export type Database = {
           cover_image_position?: Json | null
           cover_image_url?: string | null
           created_at?: string
+          excerpt?: string | null
           id?: string
           published_at?: string | null
           slug: string
@@ -120,6 +122,7 @@ export type Database = {
           cover_image_position?: Json | null
           cover_image_url?: string | null
           created_at?: string
+          excerpt?: string | null
           id?: string
           published_at?: string | null
           slug?: string
@@ -1784,6 +1787,30 @@ export type Database = {
       }
     }
     Functions: {
+      get_group_stage_standings: { Args: { p_stage_id: number }; Returns: Json }
+      get_h2h_comparison:
+        | {
+            Args: {
+              p_game: string
+              p_id_a: string
+              p_id_b: string
+              p_season_id?: number
+              p_stage_id?: number
+              p_type: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_game: string
+              p_id_a: string
+              p_id_b: string
+              p_season_id?: number
+              p_stage_id?: number
+              p_type: string
+            }
+            Returns: Json
+          }
       is_admin: { Args: never; Returns: boolean }
       is_head_writer: { Args: never; Returns: boolean }
       is_league_operator: { Args: never; Returns: boolean }

@@ -1,15 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { vmixResponse, formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { ActiveApiExportService } from '@/services/active-api-exports';
 
 /**
- * Production API: Get available filter options
- * Includes seasons, categories (with esport name), teams, players, and matches
- * Supports cascading filters via query params
+ * Production API: Get available filter options or active state
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const isStateRequest = searchParams.has('state') || searchParams.has('active');
+    
+    // ─── 0. Handle Active State Request ───
+    if (isStateRequest) {
+      const result = await ActiveApiExportService.getAll();
+      if (!result.success || !result.data) {
+        return NextResponse.json({ success: false, error: result.error || 'Active config not found' }, { status: 404 });
+      }
+      return NextResponse.json({
+        success: true,
+        data: result.data.map(item => ({
+          title: item.title,
+          game_id: item.game_id,
+          match_id: item.match_id,
+          query_params: item.query_params || {}
+        }))
+      });
+    }
+
     const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
     const teamId = searchParams.get('teamId') || undefined;
     const format = getFormatParam(request);

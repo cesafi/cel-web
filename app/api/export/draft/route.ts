@@ -1,26 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { getActiveParams } from '@/lib/utils/active-params';
+
+// Re-export the handler from the canonical route, resolving active params first
+import { GET as draftHandler } from '@/app/api/games/draft/[gameId]/route';
 
 /**
- * Proxy to unified games draft API
- * Provided for backward compatibility and build system satisfaction
+ * Production API: Draft
+ * Resolves active gameId from DB config, then delegates directly to the handler.
+ * No internal fetch — eliminates double-request overhead.
  */
 export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
-    const gameId = searchParams.get('gameId');
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    
-    // If we have a gameId, proxy to the dynamic route, otherwise the general one
-    const targetPath = gameId ? `/api/games/draft/${gameId}` : '/api/games/draft';
-    const targetUrl = new URL(targetPath, baseUrl);
-    
-    // Forward params
-    searchParams.forEach((v, k) => { if (k !== 'gameId') targetUrl.searchParams.set(k, v); });
+    const params = await getActiveParams(request, 'draft');
+    const gameId = params.gameId;
 
-    try {
-        const response = await fetch(targetUrl.toString());
-        const data = await response.json();
-        return NextResponse.json(data, { status: response.status });
-    } catch (error) {
-        return NextResponse.json({ success: false, error: 'Proxy error' }, { status: 500 });
+    if (!gameId) {
+        const { NextResponse } = await import('next/server');
+        return NextResponse.json({ success: false, error: 'gameId is required' }, { status: 400 });
     }
+
+    // Call the handler directly with the resolved gameId
+    return draftHandler(request, { params: Promise.resolve({ gameId: String(gameId) }) });
 }

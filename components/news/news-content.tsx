@@ -67,7 +67,7 @@ export default function NewsContent({
       id: article.id.toString(),
       title: article.title,
       slug: article.slug,
-      excerpt: (article.content as { excerpt?: string })?.excerpt || extractSmartExcerpt(article.content, 150),
+      excerpt: article.excerpt || (article.content as { excerpt?: string })?.excerpt || extractSmartExcerpt(article.content, 150),
       author: article.authored_by || 'CEL Writers Department',
       publishedAt: article.published_at || article.created_at,
       category: (article.content as { category?: string })?.category || 'General',

@@ -276,8 +276,16 @@ export default function ProductionHub() {
   useEffect(() => {
     async function fetchData() {
       try {
+        setLoading(true);
         // 1. Fetch filter options
         const filterRes = await fetch('/api/export/filters?format=json');
+        if (!filterRes.ok) throw new Error(`Filters API returned ${filterRes.status}`);
+        
+        const filterContentType = filterRes.headers.get('content-type');
+        if (!filterContentType || !filterContentType.includes('application/json')) {
+          throw new Error('Filters API returned non-JSON response (likely HTML error page)');
+        }
+
         const filterJson = await filterRes.json();
         if (filterJson.success) {
           setSeasons(filterJson.data.seasons || []);
@@ -288,37 +296,46 @@ export default function ProductionHub() {
         }
 
         // 2. Fetch active configuration
-        const activeRes = await fetch('/api/export/filters/active');
-        const activeJson = await activeRes.json();
-        if (activeJson.success && Array.isArray(activeJson.data)) {
-          setActiveExports(activeJson.data);
-          
-          // Find the best candidate for initial filters (prefer standings)
-          const source = activeJson.data.find((e: any) => e.title === 'standings') || activeJson.data[0];
-          
-          if (source && source.query_params) {
-            const { query_params, match_id } = source;
-            setFilters(prev => ({
-              ...prev,
-              game: query_params.game || prev.game,
-              seasonId: query_params.seasonId ? String(query_params.seasonId) : prev.seasonId,
-              stageId: query_params.stageId ? String(query_params.stageId) : prev.stageId,
-              categoryId: query_params.categoryId ? String(query_params.categoryId) : prev.categoryId,
-              metric: query_params.metric || prev.metric,
-              leaderboardLimit: query_params.leaderboardLimit ? String(query_params.leaderboardLimit) : prev.leaderboardLimit,
-              matchId: match_id ? String(match_id) : (query_params.matchId ? String(query_params.matchId) : prev.matchId),
-              playerA: query_params.playerA ? String(query_params.playerA) : prev.playerA,
-              playerB: query_params.playerB ? String(query_params.playerB) : prev.playerB,
-              teamA: query_params.teamA ? String(query_params.teamA) : prev.teamA,
-              teamB: query_params.teamB ? String(query_params.teamB) : prev.teamB,
-              h2hMode: query_params.mode || prev.h2hMode,
-            }));
+        const activeRes = await fetch('/api/export/filters?active=true');
+        if (!activeRes.ok) {
+          // If active filters don't exist yet, it's not a fatal error for the whole hub
+          console.warn('Active filters API returned error status:', activeRes.status);
+        } else {
+          const activeContentType = activeRes.headers.get('content-type');
+          if (activeContentType && activeContentType.includes('application/json')) {
+            const activeJson = await activeRes.json();
+            if (activeJson.success && Array.isArray(activeJson.data)) {
+              setActiveExports(activeJson.data);
+              
+              // Find the best candidate for initial filters (prefer standings)
+              const source = activeJson.data.find((e: any) => e.title === 'standings') || activeJson.data[0];
+              
+              if (source && source.query_params) {
+                const { query_params, match_id } = source;
+                setFilters(prev => ({
+                  ...prev,
+                  game: query_params.game || prev.game,
+                  seasonId: query_params.seasonId ? String(query_params.seasonId) : prev.seasonId,
+                  stageId: query_params.stageId ? String(query_params.stageId) : prev.stageId,
+                  categoryId: query_params.categoryId ? String(query_params.categoryId) : prev.categoryId,
+                  metric: query_params.metric || prev.metric,
+                  leaderboardLimit: query_params.leaderboardLimit ? String(query_params.leaderboardLimit) : prev.leaderboardLimit,
+                  matchId: match_id ? String(match_id) : (query_params.matchId ? String(query_params.matchId) : prev.matchId),
+                  playerA: query_params.playerA ? String(query_params.playerA) : prev.playerA,
+                  playerB: query_params.playerB ? String(query_params.playerB) : prev.playerB,
+                  teamA: query_params.teamA ? String(query_params.teamA) : prev.teamA,
+                  teamB: query_params.teamB ? String(query_params.teamB) : prev.teamB,
+                  h2hMode: query_params.mode || prev.h2hMode,
+                }));
+              }
+            }
           }
         }
-      } catch (e) { console.error('Failed to initialize hub state:', e); }
-      finally { 
+      } catch (e) { 
+        console.error('Failed to initialize hub state:', e);
+        toast.error('Initialization Error: Check console for details');
+      } finally { 
         setLoading(false); 
-        // Small delay to ensure state update is processed before allowing sync
         setTimeout(() => setHasInitialized(true), 200);
       }
     }

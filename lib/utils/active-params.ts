@@ -46,12 +46,21 @@ export async function getActiveParams(
     if (result.data.game_id) dbOverrides.gameId = String(result.data.game_id);
 
     // Merge: URL params > DB overrides > DB raw params > Dynamic route params
-    return {
+    const merged = {
         ...cleanedDynamic,
         ...dbParams,
         ...dbOverrides,
         ...Object.fromEntries(searchParams.entries())
     };
+
+    // Robust serialization: Ensure all values are primitives to prevent [object Object] errors in DB queries
+    return Object.fromEntries(
+        Object.entries(merged).map(([k, v]) => {
+            if (v === null || v === undefined) return [k, undefined];
+            if (typeof v === 'object') return [k, JSON.stringify(v)];
+            return [k, String(v)];
+        })
+    );
 }
 
 /**

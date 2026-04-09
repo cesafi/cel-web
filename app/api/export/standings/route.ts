@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
             format,
             'standings',
             {},
-            30 // Cache for 30s
+            60 // Cache for 1 min (60s)
         );
     } catch (error: any) {
         console.error('Error in production standings:', error);

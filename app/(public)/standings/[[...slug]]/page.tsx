@@ -8,7 +8,7 @@ import {
 } from '@/actions/standings';
 import { findItemBySlug, fromSlug, normalizeStageSlug } from '@/lib/slug-utils';
 
-export const revalidate = 300; // Revalidate every 5 minutes
+export const revalidate = 900; // Revalidate every 15 minutes
 
 interface StandingsPageProps {
   params: Promise<{ slug?: string[] }>;
