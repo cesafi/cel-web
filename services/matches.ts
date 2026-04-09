@@ -4,6 +4,7 @@ import { MatchWithFullDetails, Match, MatchInsert, MatchUpdate, ScheduleMatch, S
 export class MatchesService extends BaseService {
   /**
    * Common select query for matches with full details
+   * Pruned to exclude heavy extracted_stats_draft for egress savings
    */
   private static readonly MATCH_SELECT = `
     *,
@@ -29,7 +30,7 @@ export class MatchesService extends BaseService {
       )
     ),
     match_participants (
-      *,
+      id, team_id, match_id, match_score, created_at,
       schools_teams (
         id,
         name,
@@ -42,7 +43,45 @@ export class MatchesService extends BaseService {
       )
     ),
     games (
-      *
+      id, match_id, game_number, status, start_at, end_at, duration, 
+      valorant_map_id, mlbb_map_id, mlbb_equipment_image_url, 
+      mlbb_data_image_url, valorant_screenshot_url
+    )
+  `;
+
+  /**
+   * Minimal select for list/schedule views (no games)
+   */
+  private static readonly MATCH_SELECT_MINIMAL = `
+    *,
+    esports_seasons_stages (
+      id,
+      competition_stage,
+      season_id,
+      esports_categories (
+        id,
+        division,
+        levels,
+        esports (
+          id,
+          name,
+          logo_url,
+          abbreviation
+        )
+      )
+    ),
+    match_participants (
+      id, team_id, match_id, match_score,
+      schools_teams (
+        id,
+        name,
+        school:schools (
+          id,
+          name,
+          abbreviation,
+          logo_url
+        )
+      )
     )
   `;
 
@@ -96,7 +135,7 @@ export class MatchesService extends BaseService {
 
       const { data, error } = await supabase
         .from('matches')
-        .select(this.MATCH_SELECT)
+        .select(this.MATCH_SELECT_MINIMAL)
         .gte('scheduled_at', now)
         .order('scheduled_at', { ascending: true })
         .limit(limit);
@@ -118,7 +157,7 @@ export class MatchesService extends BaseService {
 
       const { data, error } = await supabase
         .from('matches')
-        .select(this.MATCH_SELECT)
+        .select(this.MATCH_SELECT_MINIMAL)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -195,7 +234,7 @@ export class MatchesService extends BaseService {
       // Then get paginated data
       const { data, error } = await supabase
         .from('matches')
-        .select(this.MATCH_SELECT)
+        .select(this.MATCH_SELECT_MINIMAL)
         .eq('stage_id', stageId)
         .order('scheduled_at', { ascending: false })
         .range(offset, offset + pageSize - 1);
@@ -457,7 +496,7 @@ export class MatchesService extends BaseService {
 
       let query = supabase
         .from('matches')
-        .select(this.MATCH_SELECT, { count: 'exact' });
+        .select(this.MATCH_SELECT_MINIMAL, { count: 'exact' });
 
       // Apply direction filter
       if (direction === 'future') {

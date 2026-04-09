@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
  * Production API: Get Valorant map pick/ban rate statistics
@@ -8,10 +9,10 @@ import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
-    const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
-    const format = getFormatParam(request);
+    const params = await getActiveParams(request, 'map-stats');
+    const seasonId = params.seasonId ? parseInt(params.seasonId as string) : undefined;
+    const stageId = params.stageId ? parseInt(params.stageId as string) : undefined;
+    const format = getProductionFormat(request);
 
     const result = await StatisticsService.getMapStats(seasonId, stageId);
 

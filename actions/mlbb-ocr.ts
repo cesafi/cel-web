@@ -105,6 +105,19 @@ Important Rules:
 
     const extractedData = JSON.parse(content) as MlbbScreenshotData;
 
+    // Normalize MLBB Score to 1/0 based on extracted totals
+    // We want binary Winner/Loser only
+    if (extractedData.score) {
+      if (extractedData.score.blue > extractedData.score.red) {
+        extractedData.score = { blue: 1, red: 0 };
+      } else if (extractedData.score.red > extractedData.score.blue) {
+        extractedData.score = { blue: 0, red: 1 };
+      } else {
+        // Tie or error, let user decide
+        extractedData.score = { blue: 0, red: 0 };
+      }
+    }
+
     return {
       success: true,
       data: extractedData

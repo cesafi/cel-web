@@ -12,6 +12,8 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { syncProductionState } from '@/actions/production-sync';
+import { toast } from 'sonner';
 
 // ─── Types ──────────────────────────────────────────
 interface FilterState {
@@ -44,102 +46,57 @@ const LINK_CARDS: LinkCard[] = [
   {
     id: 'player-stats', title: 'Player Statistics', description: 'KDA, GPM/ACS, damage, win rate',
     category: 'players', icon: Users, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/player-stats?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/players/stats`,
   },
   {
     id: 'leaderboard', title: 'Player Leaderboard', description: 'Top N players by metric',
     category: 'players', icon: Star, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game, metric: f.metric || 'total_kills', limit: f.leaderboardLimit || '5' });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/leaderboard?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/players/leaderboard`,
   },
   {
     id: 'character-stats', title: 'Hero / Agent Stats', description: 'Pick/ban rates, win rates, avg KDA',
     category: 'characters', icon: Shield, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/character-stats?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/characters/stats`,
   },
   {
     id: 'team-stats', title: 'Team Statistics', description: 'Aggregate W/L, KDA, damage',
     category: 'teams', icon: Gamepad2, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/team-stats?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/teams/stats`,
   },
   {
     id: 'h2h-teams', title: 'Head-to-Head: Teams', description: 'Side-by-side team comparison',
     category: 'h2h', icon: Swords, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.teamA) p.set('teamA', f.teamA);
-      if (f.teamB) p.set('teamB', f.teamB);
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/h2h-teams?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/head-to-head/teams`,
   },
   {
     id: 'h2h-players', title: 'Head-to-Head: Players', description: 'Side-by-side player comparison',
     category: 'h2h', icon: Swords, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.playerA) p.set('playerA', f.playerA);
-      if (f.playerB) p.set('playerB', f.playerB);
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      return `${b}/api/export/h2h-players?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/head-to-head/players`,
   },
   {
     id: 'map-stats', title: 'Map Statistics', description: 'Pick/ban rates per map',
     category: 'maps', icon: Map, game: 'valorant',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams();
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      return `${b}/api/export/map-stats?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/maps/stats`,
   },
   {
     id: 'match-overview', title: 'Match Overview', description: 'Scores, teams, schedule, stream',
     category: 'match', icon: Trophy, game: 'both',
-    buildUrl: (b, f) => `${b}/api/export/match-overview?matchId=${f.matchId || '0'}`,
+    buildUrl: (b) => `${b}/api/production/matches`,
   },
   {
     id: 'draft', title: 'Draft + Character Stats', description: 'Live draft with pick/ban rates',
     category: 'match', icon: Shield, game: 'both',
-    buildUrl: (b, f) => `${b}/api/games/draft/${f.matchId || '0'}`,
+    buildUrl: (b) => `${b}/api/games/draft`,
   },
   {
     id: 'game-stats', title: 'Per-Game Stats', description: 'Individual game player stats',
     category: 'match', icon: BarChart3, game: 'both',
-    buildUrl: (b, f) => `${b}/api/games/game-results/${f.matchId || '0'}`,
+    buildUrl: (b) => `${b}/api/games/game-results`,
   },
   {
     id: 'standings', title: 'Standings', description: 'League standings by stage',
     category: 'standings', icon: Trophy, game: 'both',
-    buildUrl: (b, f) => {
-      const p = new URLSearchParams({ game: f.game });
-      if (f.seasonId) p.set('seasonId', f.seasonId);
-      if (f.stageId) p.set('stageId', f.stageId);
-      if (f.categoryId) p.set('categoryId', f.categoryId);
-      return `${b}/api/export/standings?${p}`;
-    },
+    buildUrl: (b) => `${b}/api/production/standings`,
   },
 ];
 
@@ -235,6 +192,7 @@ export default function ProductionHub() {
   const [previewData, setPreviewData] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Data
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -267,6 +225,22 @@ export default function ProductionHub() {
     }
     fetchData();
   }, []);
+
+  // ─── Sync State to Database ─────────────────
+  useEffect(() => {
+    async function sync() {
+      setIsSyncing(true);
+      const res = await syncProductionState(filters);
+      if (!res.success) {
+        toast.error('Failed to sync production state: ' + (res.errors || []).filter(Boolean).join(', '));
+      }
+      setIsSyncing(false);
+    }
+    
+    // Use a small delay to debounce sync
+    const timer = setTimeout(sync, 800);
+    return () => clearTimeout(timer);
+  }, [filters]);
 
   // ─── Fetch stages when season changes ────────
   useEffect(() => {
@@ -483,7 +457,15 @@ export default function ProductionHub() {
               <BarChart3 className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Production Hub</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight">Production Hub</h1>
+                {isSyncing && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 animate-pulse">
+                    <RefreshCw className="h-2.5 w-2.5 text-primary animate-spin" />
+                    <span className="text-[10px] font-bold text-primary uppercase">Syncing...</span>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">Generate API links for overlays, caster prep & graphics</p>
             </div>
           </div>

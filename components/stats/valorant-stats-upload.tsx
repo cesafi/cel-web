@@ -7,19 +7,29 @@ import { recalculateMatchScoresAction } from '@/actions/stats-mlbb';
 import { updateGameById, getGameById } from '@/actions/games';
 import { upsertGameScoresForGame, getGameScoresByGameId } from '@/actions/game-scores';
 import { getGameRosterByGameId } from '@/actions/game-roster';
+import { useQueryClient } from '@tanstack/react-query';
+import { matchKeys } from '@/hooks/use-matches';
+import { cn } from '@/lib/utils';
+import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { ValorantScreenshotData } from '@/lib/types/stats-valorant';
 import { Player } from '@/lib/types/players';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Upload, Save, RefreshCcw } from 'lucide-react';
+import { Loader2, Upload, Save, RefreshCcw, ArrowLeftRight, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
-import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
+import { 
+  uploadGameScreenshots, 
+  saveExtractedStatsDraft, 
+  clearExtractedStatsDraft 
+} from '@/actions/stats-persistence';
 
 interface ValorantStatsUploadProps {
   gameId: number;
@@ -44,13 +54,27 @@ interface ValorantStatsUploadProps {
 }
 
 export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSaved }: ValorantStatsUploadProps) {
+  const queryClient = useQueryClient();
+  const [isSwappingSides, setIsSwappingSides] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [screenshotPreviewUrl, setScreenshotPreviewUrl] = useState<string | null>(null);
+
+  // Manage preview URL
+  useEffect(() => {
+    if (uploadedFile) {
+      const url = URL.createObjectURL(uploadedFile);
+      setScreenshotPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setScreenshotPreviewUrl(null);
+    }
+  }, [uploadedFile]);
+  
   const [playerMapping, setPlayerMapping] = useState<Record<string, string>>(() => {
     const initialMapping: Record<string, string> = {};
-    // Map first 5 players from each team to the initial 10 rows
     const team1Picks = team1.players.slice(0, 5);
     const team2Picks = team2.players.slice(0, 5);
 
-    // Rows 0-4 are Team 1, Rows 5-9 are Team 2
     for (let i = 0; i < 5; i++) {
       if (team1Picks[i]) initialMapping[i.toString()] = team1Picks[i].id;
       if (team2Picks[i]) initialMapping[(i + 5).toString()] = team2Picks[i].id;
@@ -59,7 +83,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
   });
 
   const [previewData, setPreviewData] = useState<ValorantScreenshotData>(() => {
-    // Exactly 10 empty rows
     const emptyPlayers = [];
     for (let i = 0; i < 5; i++) {
       emptyPlayers.push({
@@ -101,6 +124,10 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
   const [isSaving, setIsSaving] = useState(false);
   const [mvpIndex, setMvpIndex] = useState<number | null>(null);
   const [hasExistingStats, setHasExistingStats] = useState(false);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [isRestored, setIsRestored] = useState(false);
+  const [isFetchingStats, setIsFetchingStats] = useState(true);
+  const hasFetched = useRef(false);
 
   const { data: gameDraftActions, isFetched: isDraftActionsFetched } = useGameDraftActions(gameId);
   const { data: globalCharacters } = useAllGameCharactersWithEsport();
@@ -111,7 +138,7 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
 
   useEffect(() => {
     async function fetchAgents() {
-      const res = await getGameCharactersByEsportId(2); // ES_ID_VALORANT = 2
+      const res = await getGameCharactersByEsportId(2);
       if (res.success && res.data) {
         setGameCharacters(res.data);
       }
@@ -119,6 +146,60 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     }
     fetchAgents();
   }, []);
+
+  const STORAGE_KEY = `stats-v1-valorant-${gameId}`;
+
+  useEffect(() => {
+    if (isFetchingStats || isSaving) return;
+
+    const draftData = {
+      previewData,
+      playerMapping,
+      mvpIndex,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draftData));
+  }, [previewData, playerMapping, mvpIndex, isFetchingStats, isSaving, STORAGE_KEY]);
+
+  // Restore draft from localStorage or Database
+  useEffect(() => {
+    if (isFetchingStats || isRestored) return;
+
+    async function restoreDraft() {
+      // 1. Try Database Draft first
+      const res = await getGameById(gameId);
+      if (res.success && res.data?.extracted_stats_draft) {
+        const draft = res.data.extracted_stats_draft as unknown as ValorantScreenshotData;
+        setPreviewData(draft);
+        if (res.data.valorant_screenshot_url) setScreenshotPreviewUrl(res.data.valorant_screenshot_url);
+        
+        // Auto-set MVP if present in draft
+        const mIndex = draft.players.findIndex(p => (p as any).is_mvp); // Check if MVP flag is in draft
+        if (mIndex !== -1) setMvpIndex(mIndex);
+        
+        setIsRestored(true);
+        toast.info('Draft restored from server');
+        return;
+      }
+
+      // 2. Fallback to LocalStorage
+      const savedDraft = localStorage.getItem(STORAGE_KEY);
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          setPreviewData(parsed.previewData);
+          setPlayerMapping(parsed.playerMapping);
+          setMvpIndex(parsed.mvpIndex);
+          setIsRestored(true);
+          toast.success('Unsaved draft restored');
+        } catch (e) {
+          console.error('Failed to restore draft:', e);
+        }
+      }
+    }
+
+    restoreDraft();
+  }, [gameId, isFetchingStats, isRestored, STORAGE_KEY]);
 
   useEffect(() => {
     async function fetchRosters() {
@@ -131,10 +212,7 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     fetchRosters();
   }, [gameId]);
 
-  const [isFetchingStats, setIsFetchingStats] = useState(true);
-  const hasFetched = useRef(false);
 
-  // Helper to fetch agent by name or ID
   const getAgent = (idOrName: string | number) => {
     if (!gameCharacters.length) return undefined;
     if (typeof idOrName === 'number' || !isNaN(Number(idOrName))) {
@@ -144,21 +222,16 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     return gameCharacters.find(c => c.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalized);
   };
 
-  // Helper: find the draft pick for a given player using roster-based correlation
   const findPickForPlayer = (playerId: string, draftActions: any[]) => {
     if (!draftActions?.length || !gameRosters?.length) return null;
-    // Find the player's roster entry to get their team and slot
     const rosterEntry = gameRosters.find((r: any) => r.player_id === playerId);
     if (!rosterEntry) return null;
-    // Get the ordered picks for this player's team
     const teamPicks = draftActions
       .filter((a: any) => a.action_type === 'pick' && a.team_id === rosterEntry.team_id)
       .sort((a: any, b: any) => a.sort_order - b.sort_order);
-    // The roster sort_order (0-4) maps to the pick index
     return teamPicks[rosterEntry.sort_order] || null;
   };
 
-  // Effect 1: Fetch existing stats (only needs characters to be loaded for agent name resolution)
   useEffect(() => {
     if (hasFetched.current || !isCharactersFetched) return;
 
@@ -222,7 +295,7 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                   assists: stat.assists ?? 0
                 },
                 econRating: stat.econ_rating ?? 0,
-                firstBloods: stat.first_bloods ?? 0,
+                first_bloods: stat.first_bloods ?? 0,
                 plants: stat.plants ?? 0,
                 defuses: stat.defuses ?? 0
               };
@@ -235,7 +308,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
           setHasExistingStats(true);
         }
 
-        // Also fetch game duration and game_scores (rounds won)
         const [gameResult, scoresResult] = await Promise.all([
           getGameById(gameId),
           getGameScoresByGameId(gameId),
@@ -249,7 +321,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
         if (gameResult?.success && gameResult.data) {
           const dur = (gameResult.data as any).duration;
           if (dur && dur !== '00:00:00') {
-            // Convert HH:MM:SS or MM:SS:00 to MM:SS
             const parts = dur.split(':');
             if (parts.length === 3 && parts[0] === '00') {
               fetchedDuration = `${parts[1]}:${parts[2]}`;
@@ -289,11 +360,8 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     fetchExistingStats();
 
     return () => { mounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, isCharactersFetched]);
 
-  // Effect 2: Once draft, characters, and rosters are all loaded AND no existing stats were found,
-  // apply agents from draft data using roster-based correlation
   useEffect(() => {
     if (!hasFetched.current || hasExistingStats) return;
     if (!isDraftActionsFetched || !isCharactersFetched || !isRostersFetched) return;
@@ -317,22 +385,59 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
       }
       return { ...prev, players: newPlayers };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDraftActionsFetched, isCharactersFetched, isRostersFetched, hasExistingStats]);
+  }, [isDraftActionsFetched, isCharactersFetched, isRostersFetched, hasExistingStats, gameDraftActions, gameRosters, playerMapping]);
 
-  // Handle file upload
+  useEffect(() => {
+    if (!isRostersFetched || hasExistingStats || !gameRosters.length) return;
+
+    setPlayerMapping(prev => {
+      const newMapping = { ...prev };
+      gameRosters.forEach(r => {
+        const isTeam1 = r.team_id === team1.id;
+        const slot = isTeam1 ? r.sort_order : r.sort_order + 5;
+        if (slot >= 0 && slot < 10) {
+          newMapping[slot.toString()] = r.player_id;
+        }
+      });
+      if (JSON.stringify(newMapping) === JSON.stringify(prev)) return prev;
+      return newMapping;
+    });
+
+    setPreviewData(prev => {
+      const newPlayers = [...prev.players];
+      let changed = false;
+      gameRosters.forEach(r => {
+        const isTeam1 = r.team_id === team1.id;
+        const slot = isTeam1 ? r.sort_order : r.sort_order + 5;
+        if (slot >= 0 && slot < 10) {
+          const allPlayers = [...team1.players, ...team2.players];
+          const player = allPlayers.find(p => p.id === r.player_id);
+          if (player && (newPlayers[slot].playerName !== player.ign || newPlayers[slot].team !== (isTeam1 ? 'Ally' : 'Enemy'))) {
+            newPlayers[slot] = {
+              ...newPlayers[slot],
+              playerName: player.ign || `Player ${slot + 1}`,
+              team: isTeam1 ? 'Ally' : 'Enemy'
+            };
+            changed = true;
+          }
+        }
+      });
+      return changed ? { ...prev, players: newPlayers } : prev;
+    });
+  }, [gameRosters, isRostersFetched, hasExistingStats, team1.id, team2.id, team1.players, team2.players]);
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
+    setUploadedFile(file);
     const formData = new FormData();
     formData.append('image', file);
 
     try {
       const result = await extractValorantStatsFromImage(formData);
       if (result.success && result.data) {
-        // Convert OCR agent name strings to character IDs for dropdown compatibility
         const convertedData = { ...result.data };
         convertedData.players = convertedData.players.map(p => {
           if (p.agentName) {
@@ -344,7 +449,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
           return p;
         });
 
-        // Auto-map players by IGN
         const newMapping: Record<string, string> = { ...playerMapping };
         const allPlayers = [...team1.players, ...team2.players];
 
@@ -361,7 +465,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
           }
         });
 
-        // Auto-map draft agents using roster-based correlation
         if (gameDraftActions && gameRosters?.length) {
           convertedData.players.forEach((stat, index) => {
             const pId = newMapping[index.toString()];
@@ -381,7 +484,22 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
 
         setPlayerMapping(newMapping);
         setPreviewData(convertedData);
-        toast.success('Stats extracted successfully');
+
+        // --- PERSISTENCE START ---
+        // 1. Upload screenshot to Cloudinary
+        const uploadRes = await uploadGameScreenshots(gameId, {
+          valorantScreenshot: file
+        });
+        
+        if (uploadRes.success && uploadRes.data?.valorant_screenshot_url) {
+          setScreenshotPreviewUrl(uploadRes.data.valorant_screenshot_url);
+        }
+
+        // 2. Save JSON draft to DB
+        await saveExtractedStatsDraft(gameId, convertedData);
+        // --- PERSISTENCE END ---
+
+        toast.success('Stats extracted and saved as draft');
       } else {
         toast.error(result.error || 'Failed to extract stats');
       }
@@ -392,11 +510,53 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     }
   };
 
-  // Auto-map extracted players to system players based on IGN
-  // (autoMapPlayers removed since it's now integrated in handleFileUpload)
+  const handleSwapSides = async () => {
+    setIsSwappingSides(true);
+    try {
+      const gameRes = await getGameById(gameId);
+      if (!gameRes.success || !gameRes.data) {
+        toast.error('Failed to fetch current game state');
+        return;
+      }
+
+      const sideSelection = gameRes.data.side_selection;
+      const coinTossWinnerId = gameRes.data.coin_toss_winner;
+
+      let newSide: 'blue' | 'red' = 'blue';
+      if (sideSelection === 'blue') {
+        newSide = 'red';
+      } else if (sideSelection === 'red') {
+        newSide = 'blue';
+      } else if (coinTossWinnerId) {
+        newSide = 'red';
+      } else {
+        newSide = 'red';
+      }
+
+      const res = await updateGameById({ id: gameId, side_selection: newSide });
+      if (res.success) {
+        toast.success(`Game sides officially swapped to ${newSide.toUpperCase()}`);
+        setPreviewData(prev => ({
+          ...prev,
+          score: {
+            ally: prev.score.enemy,
+            enemy: prev.score.ally
+          }
+        }));
+        queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
+        queryClient.invalidateQueries({ queryKey: ['active-api-exports'] });
+      } else {
+        toast.error(res.error || 'Failed to swap sides in database');
+      }
+    } catch (e) {
+      console.error('Swap side error:', e);
+      toast.error('An unexpected error occurred during side swap');
+    } finally {
+      setIsSwappingSides(false);
+    }
+  };
 
   const handleCopyFromDraft = async () => {
-    // Fetch fresh draft actions and rosters directly to avoid stale cached data
     const { getGameDraftActionsByGameId } = await import('@/actions/game-draft');
     const [freshDraftResult, rosterResult] = await Promise.all([
       getGameDraftActionsByGameId(gameId),
@@ -415,7 +575,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
       return;
     }
 
-    // Update local state so future calls also have fresh data
     setGameRosters(freshRosters);
 
     setPreviewData(prevData => {
@@ -439,10 +598,34 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
     toast.success('Agents mapped from draft');
   };
 
-  // Handle manual stat edits
+  const handleReset = () => {
+    setPreviewData(() => {
+      return {
+        matchResult: 'VICTORY',
+        matchDuration: '',
+        mapName: '',
+        score: { ally: 0, enemy: 0 },
+        players: Array.from({ length: 10 }).map((_, i) => ({
+          playerName: '',
+          team: i < 5 ? 'Ally' : 'Enemy',
+          agentName: '',
+          acs: 0,
+          kda: { kills: 0, deaths: 0, assists: 0 },
+          econRating: 0,
+          firstBloods: 0,
+          plants: 0,
+          defuses: 0
+        }))
+      };
+    });
+    setMvpIndex(null);
+    setUploadedFile(null);
+    setScreenshotPreviewUrl(null);
+    toast.success('Stats reset');
+  };
+
   const handleStatChange = (index: number, field: string, value: string) => {
     const newPlayers = [...previewData.players];
-    // Deep copy the player object to avoid mutating state directly
     const player = JSON.parse(JSON.stringify(newPlayers[index]));
 
     if (field === 'k') {
@@ -467,20 +650,56 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
 
     newPlayers[index] = player;
     setPreviewData({ ...previewData, players: newPlayers });
+    if (errors[`agent-${index}`]) {
+      setErrors(prev => {
+        const { [`agent-${index}`]: _, ...rest } = prev;
+        return rest;
+      });
+    }
   };
 
-  // Handle Save
+  const validateStats = () => {
+    const newErrors: Record<string, boolean> = {};
+
+    if (!previewData.matchDuration || previewData.matchDuration.trim() === '') {
+      newErrors.matchDuration = true;
+    }
+
+    if (previewData.score.ally === 0 && previewData.score.enemy === 0) {
+      newErrors.score = true;
+    }
+
+    if (mvpIndex === null) {
+      newErrors.mvp = true;
+    }
+
+    previewData.players.forEach((p, i) => {
+      if (!p.agentName || p.agentName === '') {
+        newErrors[`agent-${i}`] = true;
+      }
+
+      const mapping = playerMapping[i.toString()];
+      if (!mapping || mapping === 'skip') {
+        newErrors[`player-${i}`] = true;
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async () => {
+    if (!validateStats()) {
+      toast.error('Please fill in all required fields highlighted in red.');
+      return;
+    }
     setIsSaving(true);
     try {
-      // Filter out players who aren't mapped
       const statsToSave = previewData.players
         .map((stat, index) => {
           const playerId = playerMapping[index.toString()];
           if (!playerId || playerId === 'skip') return null;
 
-          // Determine team ID
-          // Let's look up the player's current team from props
           const playerInTeam1 = team1.players.find(p => p.id === playerId);
           const playerInTeam2 = team2.players.find(p => p.id === playerId);
 
@@ -512,7 +731,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
         return;
       }
 
-      // First delete existing stats for this game to avoid duplicate keys/errors when replacing
       await deleteValorantStatsByGameId(gameId);
 
       const result = await createMultipleValorantStats(statsToSave);
@@ -525,7 +743,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
         await updateGameById({ id: gameId, duration: durationToSave });
       }
 
-      // Save rounds won as game_scores
       if (previewData.score.ally > 0 || previewData.score.enemy > 0) {
         await upsertGameScoresForGame(gameId, [
           { game_id: gameId, match_participant_id: team1.matchParticipantId, score: previewData.score.ally },
@@ -534,11 +751,11 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
       }
 
       if (result.success) {
+        localStorage.removeItem(STORAGE_KEY);
         toast.success(`${hasExistingStats ? 'Updated' : 'Saved'} stats for ${statsToSave.length} players`);
         setHasExistingStats(true);
-        // Auto-transition game status to completed
         await updateGameById({ id: gameId, status: 'completed' });
-        // Recalculate match scores and update description
+        await clearExtractedStatsDraft(gameId); // Clear draft on success
         try {
           await recalculateMatchScoresAction(matchId);
         } catch (e) {
@@ -563,7 +780,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
 
   return (
     <div className="space-y-6">
-      {/* ALWAYS SHOW UPLOAD */}
       <Card className="border-dashed border-2">
         <CardContent className="py-10">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
@@ -602,7 +818,6 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
         </CardContent>
       </Card>
 
-      {/* ALWAYS SHOW TABLE */}
       {isFetchingStats ? (
         <div className="flex flex-col items-center justify-center p-8 space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -614,28 +829,36 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Extracted Statistics</h3>
               <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handleSwapSides} disabled={isSwappingSides}>
+                  {isSwappingSides ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeftRight className="mr-2 h-4 w-4" />}
+                  Swap Sides
+                </Button>
                 <Button size="sm" variant="secondary" onClick={handleCopyFromDraft}>
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Copy Agents from Draft
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => {
-                  setPreviewData(() => {
-                    return {
-                      matchResult: 'VICTORY',
-                      matchDuration: '',
-                      mapName: '',
-                      score: { ally: 0, enemy: 0 },
-                      players: Array.from({ length: 10 }).map((_, i) => ({
-                        playerName: '',
-                        team: i < 5 ? 'Ally' : 'Enemy',
-                        agentName: '',
-                        acs: 0,
-                        kda: { kills: 0, deaths: 0, assists: 0 },
-                        firstBloods: 0
-                      }))
-                    };
+                  setPreviewData({
+                    matchResult: 'VICTORY',
+                    matchDuration: '',
+                    mapName: '',
+                    score: { ally: 0, enemy: 0 },
+                    players: Array.from({ length: 10 }).map((_, i) => ({
+                      playerName: '',
+                      team: i < 5 ? 'Ally' : 'Enemy',
+                      agentName: '',
+                      acs: 0,
+                      kda: { kills: 0, deaths: 0, assists: 0 },
+                      econRating: 0,
+                      firstBloods: 0,
+                      plants: 0,
+                      defuses: 0
+                    }))
                   });
                   setMvpIndex(null);
+                  setErrors({});
+                  localStorage.removeItem(STORAGE_KEY);
+                  toast.success('Stats reset');
                 }}>
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Reset
@@ -659,8 +882,14 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                 <Input
                   type="number"
                   value={previewData.score.ally}
-                  onChange={(e) => setPreviewData({ ...previewData, score: { ...previewData.score, ally: Number(e.target.value) || 0 } })}
-                  className="h-8 w-14 text-center font-mono font-bold text-lg"
+                  onChange={(e) => {
+                    const val = Number(e.target.value) || 0;
+                    setPreviewData({ ...previewData, score: { ...previewData.score, ally: val } });
+                    if (errors.score && (val > 0 || previewData.score.enemy > 0)) {
+                      setErrors(prev => { const { score: _, ...rest } = prev; return rest; });
+                    }
+                  }}
+                  className={`h-8 w-14 text-center font-mono font-bold text-lg ${errors.score ? 'border-destructive ring-1 ring-destructive' : ''}`}
                   min={0}
                 />
               </div>
@@ -671,8 +900,13 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                 <Input
                   type="text"
                   value={previewData.matchDuration || ''}
-                  onChange={(e) => setPreviewData({ ...previewData, matchDuration: e.target.value })}
-                  className="h-8 w-20 text-center font-mono"
+                  onChange={(e) => {
+                    setPreviewData({ ...previewData, matchDuration: e.target.value });
+                    if (errors.matchDuration) {
+                      setErrors(prev => { const { matchDuration: _, ...rest } = prev; return rest; });
+                    }
+                  }}
+                  className={`h-8 w-20 text-center font-mono ${errors.matchDuration ? 'border-destructive ring-1 ring-destructive' : ''}`}
                   placeholder="MM:SS"
                 />
               </div>
@@ -682,8 +916,14 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                 <Input
                   type="number"
                   value={previewData.score.enemy}
-                  onChange={(e) => setPreviewData({ ...previewData, score: { ...previewData.score, enemy: Number(e.target.value) || 0 } })}
-                  className="h-8 w-14 text-center font-mono font-bold text-lg"
+                  onChange={(e) => {
+                    const val = Number(e.target.value) || 0;
+                    setPreviewData({ ...previewData, score: { ...previewData.score, enemy: val } });
+                    if (errors.score && (val > 0 || previewData.score.ally > 0)) {
+                      setErrors(prev => { const { score: _, ...rest } = prev; return rest; });
+                    }
+                  }}
+                  className={`h-8 w-14 text-center font-mono font-bold text-lg ${errors.score ? 'border-destructive ring-1 ring-destructive' : ''}`}
                   min={0}
                 />
                 <span className="text-sm font-semibold">{team2.abbreviation}</span>
@@ -740,7 +980,7 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                           value={stat.agentName}
                           onValueChange={(value) => handleStatChange(index, 'agentName', value)}
                         >
-                          <SelectTrigger className="h-8 w-[120px]">
+                          <SelectTrigger className={`h-8 w-[120px] ${errors[`agent-${index}`] ? 'border-destructive ring-1 ring-destructive' : ''}`}>
                             <SelectValue placeholder="Agent" />
                           </SelectTrigger>
                           <SelectContent>
@@ -754,8 +994,13 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                         <div className="flex justify-center">
                           <Checkbox
                             checked={mvpIndex === index}
-                            onCheckedChange={() => setMvpIndex(index)}
-                            className="border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+                            onCheckedChange={() => {
+                              setMvpIndex(index);
+                              if (errors.mvp) {
+                                setErrors(prev => { const { mvp: _, ...rest } = prev; return rest; });
+                              }
+                            }}
+                            className={`border-muted-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background ${errors.mvp ? 'border-destructive ring-1 ring-destructive' : ''}`}
                           />
                         </div>
                       </TableCell>
@@ -831,6 +1076,12 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                           value={mappedPlayerId || ''}
                           onValueChange={(value) => {
                             setPlayerMapping(prev => ({ ...prev, [index.toString()]: value }));
+                            if (errors[`player-${index}`] && value && value !== 'skip') {
+                              setErrors(prev => {
+                                const { [`player-${index}`]: _, ...rest } = prev;
+                                return rest;
+                              });
+                            }
 
                             if (value !== 'skip' && gameDraftActions && gameRosters?.length) {
                               const pick = findPickForPlayer(value, gameDraftActions);
@@ -855,7 +1106,7 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
                             }
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={errors[`player-${index}`] ? 'border-destructive ring-1 ring-destructive' : ''}>
                             <SelectValue placeholder="Select player..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -903,6 +1154,41 @@ export function ValorantStatsUpload({ gameId, matchId, team1, team2, onStatsSave
               )}
             </Button>
           </div>
+
+          {screenshotPreviewUrl && (
+            <div className="mt-8 pt-8 border-t border-dashed w-full text-center">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Reference View</h4>
+                <p className="text-[10px] text-muted-foreground lowercase italic">Click image to pop out</p>
+              </div>
+              <div className="flex justify-center">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <div className="group relative cursor-zoom-in rounded-lg border bg-muted/50 p-1 transition-all hover:ring-2 hover:ring-primary overflow-hidden w-64 h-40">
+                      <img src={screenshotPreviewUrl} alt="Valorant Screenshot" className="h-full w-full object-cover rounded shadow-inner" />
+                      <div className="absolute inset-x-0 bottom-0 bg-black/60 py-1 text-[10px] font-bold text-white text-center opacity-0 transition-opacity group-hover:opacity-100 uppercase">
+                        Scoreboard View
+                      </div>
+                      <div className="absolute top-2 right-2 p-1.5 bg-black/40 rounded-full text-white opacity-0 transition-opacity group-hover:opacity-100 border border-white/20">
+                        <ZoomIn className="h-3 w-3" />
+                      </div>
+                    </div>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[95vw] max-h-[95vh] p-1 border-none bg-transparent shadow-none">
+                    <DialogTitle asChild>
+                      <VisuallyHidden>Valorant Screenshot Preview</VisuallyHidden>
+                    </DialogTitle>
+                    <div className="relative w-full h-full flex items-center justify-center overflow-auto p-4 flex-col gap-4">
+                        <img src={screenshotPreviewUrl} alt="Valorant Screenshot" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10" />
+                        <div className="px-4 py-1.5 bg-black/80 backdrop-blur rounded-full text-white text-sm font-bold border border-white/20 shadow-xl pointer-events-none uppercase tracking-widest">
+                          VALORANT MATCH SUMMARY
+                        </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          )}
         </div>
       )
       }

@@ -212,9 +212,10 @@ export function toCsv(data: any[]): string {
 
 export type VmixFormat = 'json' | 'json-flat' | 'xml' | 'csv';
 
+const DEFAULT_CACHE_CONTROL = 'public, s-maxage=120, stale-while-revalidate=60';
+
 const CORS_HEADERS: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
 };
 
 /**
@@ -228,8 +229,17 @@ const CORS_HEADERS: Record<string, string> = {
 export function formatResponse(
     data: any,
     format: VmixFormat = 'json',
-    rootName = 'data'
+    rootName = 'data',
+    cacheSeconds?: number
 ): NextResponse {
+    const cacheHeader = cacheSeconds 
+        ? `public, s-maxage=${cacheSeconds}, stale-while-revalidate=${Math.floor(cacheSeconds * 2)}` 
+        : DEFAULT_CACHE_CONTROL;
+
+    const headers = {
+        ...CORS_HEADERS,
+        'Cache-Control': cacheHeader,
+    };
     switch (format) {
         case 'json-flat': {
             const flat = Array.isArray(data)
@@ -242,7 +252,7 @@ export function formatResponse(
             const xml = toXml(data, rootName);
             return new NextResponse(xml, {
                 headers: {
-                    ...CORS_HEADERS,
+                    ...headers,
                     'Content-Type': 'application/xml; charset=utf-8',
                 },
             });
@@ -253,7 +263,7 @@ export function formatResponse(
             const csv = toCsv(rows);
             return new NextResponse(csv, {
                 headers: {
-                    ...CORS_HEADERS,
+                    ...headers,
                     'Content-Type': 'text/csv; charset=utf-8',
                 },
             });
@@ -268,7 +278,7 @@ export function formatResponse(
 
         default:
             // json — return as-is (backward compatible)
-            return NextResponse.json(data, { headers: CORS_HEADERS });
+            return NextResponse.json(data, { headers });
     }
 }
 
@@ -299,15 +309,17 @@ export function vmixResponse(
     rawData: any,
     format: VmixFormat,
     rootName = 'data',
-    extra: Record<string, any> = {}
+    extra: Record<string, any> = {},
+    cacheSeconds?: number
 ): NextResponse {
     if (format === 'json') {
         return formatResponse(
             { success: true, data: rawData, ...extra },
             format,
-            rootName
+            rootName,
+            cacheSeconds
         );
     }
     // For CSV / json-flat / XML — pass raw data directly (no wrapper)
-    return formatResponse(rawData, format, rootName);
+    return formatResponse(rawData, format, rootName, cacheSeconds);
 }

@@ -16,21 +16,27 @@ export type Database = {
     Tables: {
       active_api_exports: {
         Row: {
+          base_url: string | null
           game_id: number | null
           id: number
           match_id: number | null
+          query_params: Json | null
           title: string
         }
         Insert: {
+          base_url?: string | null
           game_id?: number | null
           id?: number
           match_id?: number | null
+          query_params?: Json | null
           title: string
         }
         Update: {
+          base_url?: string | null
           game_id?: number | null
           id?: number
           match_id?: number | null
+          query_params?: Json | null
           title?: string
         }
         Relationships: [
@@ -567,45 +573,57 @@ export type Database = {
           created_at: string
           duration: string
           end_at: string | null
+          extracted_stats_draft: Json | null
           game_number: number
           id: number
           match_id: number
+          mlbb_data_image_url: string | null
+          mlbb_equipment_image_url: string | null
           mlbb_map_id: number | null
           side_selection: string | null
           start_at: string | null
           status: string | null
           updated_at: string
           valorant_map_id: number | null
+          valorant_screenshot_url: string | null
         }
         Insert: {
           coin_toss_winner?: string | null
           created_at?: string
           duration?: string
           end_at?: string | null
+          extracted_stats_draft?: Json | null
           game_number?: number
           id?: number
           match_id: number
+          mlbb_data_image_url?: string | null
+          mlbb_equipment_image_url?: string | null
           mlbb_map_id?: number | null
           side_selection?: string | null
           start_at?: string | null
           status?: string | null
           updated_at?: string
           valorant_map_id?: number | null
+          valorant_screenshot_url?: string | null
         }
         Update: {
           coin_toss_winner?: string | null
           created_at?: string
           duration?: string
           end_at?: string | null
+          extracted_stats_draft?: Json | null
           game_number?: number
           id?: number
           match_id?: number
+          mlbb_data_image_url?: string | null
+          mlbb_equipment_image_url?: string | null
           mlbb_map_id?: number | null
           side_selection?: string | null
           start_at?: string | null
           status?: string | null
           updated_at?: string
           valorant_map_id?: number | null
+          valorant_screenshot_url?: string | null
         }
         Relationships: [
           {

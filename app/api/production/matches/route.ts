@@ -1,29 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MatchesService } from '@/services/matches';
-import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
- * Production API: Get match overview (details, participants, scores)
- * Useful for pre-show graphics and match cards
+ * Production API: Get active match overview
+ * Permanent URL: /api/production/matches
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ matchId: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { matchId } = await params;
-    const id = parseInt(matchId, 10);
+    const params = await getActiveParams(request, 'match-overview');
+    const matchId = params.matchId ? parseInt(params.matchId as string) : undefined;
+    const format = getProductionFormat(request);
 
-    if (isNaN(id)) {
+    if (!matchId) {
       return NextResponse.json(
-        { success: false, error: 'Invalid match ID' },
+        { success: false, error: 'No active match configured' },
         { status: 400 }
       );
     }
 
-    const format = getFormatParam(request);
-
-    const result = await MatchesService.getMatchById(id);
+    const result = await MatchesService.getMatchById(matchId);
 
     if (!result.success || !result.data) {
       return NextResponse.json(

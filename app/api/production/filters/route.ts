@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return vmixResponse(responseData.data, format, 'filters');
+    return vmixResponse(responseData.data, format, 'filters', {}, 600);
   } catch (error: any) {
     console.error('Error in production filters API:', error);
     return NextResponse.json(

@@ -13,6 +13,7 @@ import { updateMatchById, deleteMatchById } from '@/actions/matches';
 import { createGame, updateGameById } from '@/actions/games';
 import { MatchInsert, MatchUpdate } from '@/lib/types/matches';
 import { MapVetoPanel } from '@/components/veto/map-veto-panel';
+import { getValorantMapVetoesByMatchId } from '@/actions/valorant-map-vetoes';
 import { getActiveValorantMaps } from '@/actions/valorant-maps';
 import { getActiveMlbbMaps } from '@/actions/mlbb-maps';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -176,8 +177,11 @@ export default function MatchDetailPage() {
   };
 
   const handleVetoComplete = async () => {
-    // Fetch vetoes from cache manually since this is fired right after a Pick/Ban completes
-    const vetoes: any[] = queryClient.getQueryData(['valorant-map-vetoes', matchId]) || [];
+    // Fetch fresh vetoes directly to avoid race conditions with the cache
+    const result = await getValorantMapVetoesByMatchId(matchId);
+    if (!result.success || !result.data) return;
+    
+    const vetoes = result.data;
     const pickedVetoes = vetoes.filter(v => v.action === 'pick' || v.action === 'remain');
 
     // Map veto text names to map database IDs
@@ -198,7 +202,6 @@ export default function MatchDetailPage() {
       });
       if (result.success && result.data) {
         sortedGames.push(result.data as any);
-        // We do not increment updateCount here to specifically count map assignments
       }
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
  * Production API: Get hero/agent pick-ban statistics
@@ -10,12 +11,12 @@ import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const game = searchParams.get('game') || 'mlbb';
-    const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
-    const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
-    const division = searchParams.get('division') || undefined;
-    const format = getFormatParam(request);
+    const params = await getActiveParams(request, 'character-stats');
+    const game = params.game || 'mlbb';
+    const seasonId = params.seasonId ? parseInt(params.seasonId as string) : undefined;
+    const stageId = params.stageId ? parseInt(params.stageId as string) : undefined;
+    const division = (params.division as string) || undefined;
+    const format = getProductionFormat(request);
 
     const result = game === 'mlbb'
       ? await StatisticsService.getHeroStats(seasonId, stageId, division)

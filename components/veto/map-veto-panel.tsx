@@ -436,6 +436,24 @@ export function MapVetoPanel({
 
   const currentStep = pendingSideVeto ? null : getCurrentVetoStep(vetoes as ValorantMapVetoWithTeam[], bestOf);
 
+  // Auto-selection for remaining map (decider)
+  useEffect(() => {
+    if (
+      currentStep && 
+      currentStep.action === 'remain' && 
+      availableMaps.length === 1 && 
+      !addVetoMutation.isPending && 
+      !publicVetoMutation.isPending
+    ) {
+      const lastMap = availableMaps[0];
+      // Use a brief timeout to ensure background state is settled
+      const timer = setTimeout(() => {
+        handleMapSelect(lastMap);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, availableMaps, addVetoMutation.isPending, publicVetoMutation.isPending]);
+
   // Handle map selection
   const handleMapSelect = async (map: ValorantMap) => {
     if (!currentStep) return;

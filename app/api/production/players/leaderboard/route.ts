@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
  * Production API: Get leaderboard (top N players by a specific metric)
@@ -8,12 +9,12 @@ import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const game = (searchParams.get('game') || 'mlbb') as 'mlbb' | 'valorant';
-    const metric = searchParams.get('metric') || (game === 'mlbb' ? 'total_kills' : 'avg_acs');
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 5;
-    const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
-    const format = getFormatParam(request);
+    const params = await getActiveParams(request, 'player-leaderboard');
+    const game = (params.game || 'mlbb') as 'mlbb' | 'valorant';
+    const metric = (params.metric as string) || (game === 'mlbb' ? 'total_kills' : 'avg_acs');
+    const limit = params.limit ? parseInt(params.limit as string) : 5;
+    const seasonId = params.seasonId ? parseInt(params.seasonId as string) : undefined;
+    const format = getProductionFormat(request);
 
     const result = await StatisticsService.getLeaderboard(game, metric, limit, seasonId);
 
@@ -27,7 +28,9 @@ export async function GET(request: NextRequest) {
     return vmixResponse(
       result.data,
       format,
-      'leaderboard'
+      'leaderboard',
+      {},
+      300 // Cache leaderboard for 5 minutes
     );
   } catch (error: any) {
     console.error('Error in production leaderboard API:', error);

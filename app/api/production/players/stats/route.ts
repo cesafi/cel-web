@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
  * Production API: Get aggregated player statistics
@@ -8,15 +9,15 @@ import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const game = searchParams.get('game') || 'mlbb';
-    const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
-    const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
-    const categoryId = searchParams.get('categoryId') ? parseInt(searchParams.get('categoryId')!) : undefined;
-    const teamId = searchParams.get('teamId') || undefined;
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
-    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined;
-    const format = getFormatParam(request);
+    const params = await getActiveParams(request, 'player-stats');
+    const game = params.game || 'mlbb';
+    const seasonId = params.seasonId ? parseInt(params.seasonId as string) : undefined;
+    const stageId = params.stageId ? parseInt(params.stageId as string) : undefined;
+    const categoryId = params.categoryId ? parseInt(params.categoryId as string) : undefined;
+    const teamId = (params.teamId as string) || undefined;
+    const limit = params.limit ? parseInt(params.limit as string) : undefined;
+    const page = params.page ? parseInt(params.page as string) : undefined;
+    const format = getProductionFormat(request);
 
     const filters = {
       game: game as 'mlbb' | 'valorant',
@@ -43,7 +44,8 @@ export async function GET(request: NextRequest) {
       result.data,
       format,
       'player_stats',
-      { count: (result as any).count }
+      { count: (result as any).count },
+      300 // Cache player stats for 5 minutes
     );
   } catch (error: any) {
     console.error('Error in production player stats API:', error);

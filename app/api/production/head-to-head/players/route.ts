@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { StatisticsService } from '@/services/statistics';
-import { vmixResponse, formatResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse, formatResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
  * Production API: Head-to-Head Player Comparison
@@ -10,14 +11,14 @@ import { vmixResponse, formatResponse, getFormatParam } from '@/lib/utils/vmix-f
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const playerA = searchParams.get('playerA');
-    const playerB = searchParams.get('playerB');
-    const game = (searchParams.get('game') || 'mlbb') as 'mlbb' | 'valorant';
-    const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
-    const mode = (searchParams.get('mode') || 'both') as 'direct' | 'overall' | 'both';
-    const format = getFormatParam(request);
-    const table = searchParams.get('table') as string | null;
+    const params = await getActiveParams(request, 'h2h-players');
+    const playerA = params.playerA as string;
+    const playerB = params.playerB as string;
+    const game = (params.game || 'mlbb') as 'mlbb' | 'valorant';
+    const seasonId = params.seasonId ? parseInt(params.seasonId as string) : undefined;
+    const mode = (params.mode || 'both') as 'direct' | 'overall' | 'both';
+    const format = getProductionFormat(request);
+    const table = params.table as string | null;
 
     if (!playerA || !playerB) {
       return NextResponse.json(

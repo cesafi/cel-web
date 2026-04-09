@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
-import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
+import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 
 /**
  * Production API: Get team statistics
@@ -8,12 +9,12 @@ import { vmixResponse, getFormatParam } from '@/lib/utils/vmix-format';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const game = (searchParams.get('game') || 'mlbb') as 'mlbb' | 'valorant';
-    const seasonId = searchParams.get('seasonId') ? parseInt(searchParams.get('seasonId')!) : undefined;
-    const stageId = searchParams.get('stageId') ? parseInt(searchParams.get('stageId')!) : undefined;
-    const division = searchParams.get('division') || undefined;
-    const format = getFormatParam(request);
+    const params = await getActiveParams(request, 'team-stats');
+    const game = (params.game || 'mlbb') as 'mlbb' | 'valorant';
+    const seasonId = params.seasonId ? parseInt(params.seasonId as string) : undefined;
+    const stageId = params.stageId ? parseInt(params.stageId as string) : undefined;
+    const division = (params.division as string) || undefined;
+    const format = getProductionFormat(request);
 
     const result = await StatisticsService.getTeamStats(game, seasonId, stageId, division);
 
@@ -27,7 +28,9 @@ export async function GET(request: NextRequest) {
     return vmixResponse(
       result.data,
       format,
-      'team_stats'
+      'team_stats',
+      {},
+      120 // Cache team stats for 2 minutes
     );
   } catch (error: any) {
     console.error('Error in production team stats API:', error);
