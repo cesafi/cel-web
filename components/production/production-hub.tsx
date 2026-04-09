@@ -38,50 +38,99 @@ interface LinkCard {
   category: string;
   icon: React.ComponentType<{ className?: string }>;
   buildUrl: (baseUrl: string, filters: FilterState) => string;
+  buildHubUrl?: (baseUrl: string) => string;
   game?: 'mlbb' | 'valorant' | 'both';
+  supportsHub?: boolean;
 }
 
 // ─── Link Cards ─────────────────────────────────────
 const LINK_CARDS: LinkCard[] = [
   {
     id: 'player-stats', title: 'Player Statistics', description: 'KDA, GPM/ACS, damage, win rate',
-    category: 'players', icon: Users, game: 'both',
-    buildUrl: (b) => `${b}/api/production/players/stats`,
+    category: 'players', icon: Users, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game });
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      if (f.stageId) p.set('stageId', f.stageId);
+      if (f.categoryId) p.set('categoryId', f.categoryId);
+      return `${b}/api/export/players/stats?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/players/stats`,
   },
   {
     id: 'leaderboard', title: 'Player Leaderboard', description: 'Top N players by metric',
-    category: 'players', icon: Star, game: 'both',
-    buildUrl: (b) => `${b}/api/production/players/leaderboard`,
+    category: 'players', icon: Star, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game, metric: f.metric || 'total_kills', limit: f.leaderboardLimit || '5' });
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      return `${b}/api/export/players/leaderboard?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/players/leaderboard`,
   },
   {
     id: 'character-stats', title: 'Hero / Agent Stats', description: 'Pick/ban rates, win rates, avg KDA',
-    category: 'characters', icon: Shield, game: 'both',
-    buildUrl: (b) => `${b}/api/production/characters/stats`,
+    category: 'characters', icon: Shield, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game });
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      if (f.stageId) p.set('stageId', f.stageId);
+      if (f.categoryId) p.set('categoryId', f.categoryId);
+      return `${b}/api/export/characters/stats?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/characters/stats`,
   },
   {
     id: 'team-stats', title: 'Team Statistics', description: 'Aggregate W/L, KDA, damage',
-    category: 'teams', icon: Gamepad2, game: 'both',
-    buildUrl: (b) => `${b}/api/production/teams/stats`,
+    category: 'teams', icon: Gamepad2, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game });
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      if (f.stageId) p.set('stageId', f.stageId);
+      if (f.categoryId) p.set('categoryId', f.categoryId);
+      return `${b}/api/export/teams/stats?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/teams/stats`,
   },
   {
     id: 'h2h-teams', title: 'Head-to-Head: Teams', description: 'Side-by-side team comparison',
-    category: 'h2h', icon: Swords, game: 'both',
-    buildUrl: (b) => `${b}/api/production/head-to-head/teams`,
+    category: 'h2h', icon: Swords, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game });
+      if (f.teamA) p.set('teamA', f.teamA);
+      if (f.teamB) p.set('teamB', f.teamB);
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      return `${b}/api/export/head-to-head/teams?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/head-to-head/teams`,
   },
   {
     id: 'h2h-players', title: 'Head-to-Head: Players', description: 'Side-by-side player comparison',
-    category: 'h2h', icon: Swords, game: 'both',
-    buildUrl: (b) => `${b}/api/production/head-to-head/players`,
+    category: 'h2h', icon: Swords, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game });
+      if (f.playerA) p.set('playerA', f.playerA);
+      if (f.playerB) p.set('playerB', f.playerB);
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      return `${b}/api/export/head-to-head/players?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/head-to-head/players`,
   },
   {
     id: 'map-stats', title: 'Map Statistics', description: 'Pick/ban rates per map',
-    category: 'maps', icon: Map, game: 'valorant',
-    buildUrl: (b) => `${b}/api/production/maps/stats`,
+    category: 'maps', icon: Map, game: 'valorant', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams();
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      if (f.stageId) p.set('stageId', f.stageId);
+      return `${b}/api/export/maps/stats?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/maps/stats`,
   },
   {
     id: 'match-overview', title: 'Match Overview', description: 'Scores, teams, schedule, stream',
-    category: 'match', icon: Trophy, game: 'both',
-    buildUrl: (b) => `${b}/api/production/matches`,
+    category: 'match', icon: Trophy, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => `${b}/api/export/matches/${f.matchId || '0'}`,
+    buildHubUrl: (b) => `${b}/api/export/matches`,
   },
   {
     id: 'draft', title: 'Draft + Character Stats', description: 'Live draft with pick/ban rates',
@@ -95,8 +144,15 @@ const LINK_CARDS: LinkCard[] = [
   },
   {
     id: 'standings', title: 'Standings', description: 'League standings by stage',
-    category: 'standings', icon: Trophy, game: 'both',
-    buildUrl: (b) => `${b}/api/production/standings`,
+    category: 'standings', icon: Trophy, game: 'both', supportsHub: true,
+    buildUrl: (b, f) => {
+      const p = new URLSearchParams({ game: f.game });
+      if (f.seasonId) p.set('seasonId', f.seasonId);
+      if (f.stageId) p.set('stageId', f.stageId);
+      if (f.categoryId) p.set('categoryId', f.categoryId);
+      return `${b}/api/export/standings?${p}`;
+    },
+    buildHubUrl: (b) => `${b}/api/export/standings`,
   },
 ];
 
@@ -193,6 +249,7 @@ export default function ProductionHub() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Data
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -211,23 +268,54 @@ export default function ProductionHub() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/production/filters?format=json');
-        const json = await res.json();
-        if (json.success) {
-          setSeasons(json.data.seasons || []);
-          setAllTeams(json.data.teams || []);
-          setAllMatches(json.data.matches || []);
-          setAllCategories(json.data.categories || []);
-          setLiveMatches(json.data.live_matches || []);
+        // 1. Fetch filter options
+        const filterRes = await fetch('/api/export/filters?format=json');
+        const filterJson = await filterRes.json();
+        if (filterJson.success) {
+          setSeasons(filterJson.data.seasons || []);
+          setAllTeams(filterJson.data.teams || []);
+          setAllMatches(filterJson.data.matches || []);
+          setAllCategories(filterJson.data.categories || []);
+          setLiveMatches(filterJson.data.live_matches || []);
         }
-      } catch (e) { console.error('Failed to fetch filters:', e); }
-      finally { setLoading(false); }
+
+        // 2. Fetch active configuration
+        const activeRes = await fetch('/api/export/filters/active');
+        const activeJson = await activeRes.json();
+        if (activeJson.success && activeJson.data) {
+          const { query_params, match_id } = activeJson.data;
+          if (query_params) {
+            setFilters(prev => ({
+              ...prev,
+              game: query_params.game || prev.game,
+              seasonId: query_params.seasonId ? String(query_params.seasonId) : prev.seasonId,
+              stageId: query_params.stageId ? String(query_params.stageId) : prev.stageId,
+              categoryId: query_params.categoryId ? String(query_params.categoryId) : prev.categoryId,
+              metric: query_params.metric || prev.metric,
+              leaderboardLimit: query_params.leaderboardLimit ? String(query_params.leaderboardLimit) : prev.leaderboardLimit,
+              matchId: match_id ? String(match_id) : (query_params.matchId ? String(query_params.matchId) : prev.matchId),
+              playerA: query_params.playerA ? String(query_params.playerA) : prev.playerA,
+              playerB: query_params.playerB ? String(query_params.playerB) : prev.playerB,
+              teamA: query_params.teamA ? String(query_params.teamA) : prev.teamA,
+              teamB: query_params.teamB ? String(query_params.teamB) : prev.teamB,
+              h2hMode: query_params.mode || prev.h2hMode,
+            }));
+          }
+        }
+      } catch (e) { console.error('Failed to initialize hub state:', e); }
+      finally { 
+        setLoading(false); 
+        // Small delay to ensure state update is processed before allowing sync
+        setTimeout(() => setHasInitialized(true), 200);
+      }
     }
     fetchData();
   }, []);
 
   // ─── Sync State to Database ─────────────────
   useEffect(() => {
+    if (!hasInitialized) return;
+
     async function sync() {
       setIsSyncing(true);
       const res = await syncProductionState(filters);
@@ -240,14 +328,14 @@ export default function ProductionHub() {
     // Use a small delay to debounce sync
     const timer = setTimeout(sync, 800);
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [filters, hasInitialized]);
 
   // ─── Fetch stages when season changes ────────
   useEffect(() => {
     if (!filters.seasonId) { setAllStages([]); return; }
     async function fetchStages() {
       try {
-        const res = await fetch('/api/production/filters?format=json');
+        const res = await fetch('/api/export/filters?format=json');
         const json = await res.json();
         // Extract unique stages from matches for this season
         if (json.success) {
@@ -275,14 +363,14 @@ export default function ProductionHub() {
   // ─── Fetch team players ─────────────────────
   useEffect(() => {
     if (!filters.teamA) { setTeamAPlayers([]); return; }
-    fetch(`/api/production/filters?format=json&teamId=${filters.teamA}`)
+    fetch(`/api/export/filters?format=json&teamId=${filters.teamA}`)
       .then(r => r.json()).then(j => { if (j.success) setTeamAPlayers(j.data.players || []); })
       .catch(() => {});
   }, [filters.teamA]);
 
   useEffect(() => {
     if (!filters.teamB) { setTeamBPlayers([]); return; }
-    fetch(`/api/production/filters?format=json&teamId=${filters.teamB}`)
+    fetch(`/api/export/filters?format=json&teamId=${filters.teamB}`)
       .then(r => r.json()).then(j => { if (j.success) setTeamBPlayers(j.data.players || []); })
       .catch(() => {});
   }, [filters.teamB]);
@@ -671,43 +759,63 @@ export default function ProductionHub() {
               {isExpanded && (
                 <div className="border-t border-border/30">
                   {cards.map((card, idx) => {
-                    const url = card.buildUrl(baseUrl, filters);
+                    const dynamicUrl = card.buildUrl(baseUrl, filters);
+                    const hubUrl = card.buildHubUrl ? card.buildHubUrl(baseUrl) : null;
+                    const finalUrl = hubUrl || dynamicUrl;
                     const isCopied = copiedId === card.id;
                     const isPrev = previewId === card.id;
 
                     return (
-                      <div key={card.id} className={cn('px-5 py-4 space-y-2.5', idx > 0 && 'border-t border-border/20')}>
+                      <div key={card.id} className={cn('px-5 py-4 space-y-3', idx > 0 && 'border-t border-border/20')}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 min-w-0">
                             <div className="p-2 rounded-lg bg-primary/5 border border-primary/10 flex-shrink-0 mt-0.5">
                               <card.icon className="h-3.5 w-3.5 text-primary/70" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="text-sm font-medium">{card.title}</h4>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-medium">{card.title}</h4>
+                                {hubUrl && (
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20">
+                                    <Radio className="h-2.5 w-2.5 text-blue-500" />
+                                    <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">Broadcast URL</span>
+                                  </div>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground/60 mt-0.5">{card.description}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-0.5 flex-shrink-0">
-                            <button onClick={() => fetchPreview(url, card.id)}
+                          
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => fetchPreview(dynamicUrl, card.id)}
                               className={cn('p-2 rounded-lg transition-all duration-200',
                                 isPrev ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground')}
                               title={isPrev ? 'Hide preview' : 'Show preview'}>
                               {isPrev ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </button>
-                            <button onClick={() => copyToClipboard(url, card.id)}
+                            <button onClick={() => copyToClipboard(finalUrl, card.id)}
                               className={cn('p-2 rounded-lg transition-all duration-200',
                                 isCopied ? 'bg-green-500/10 text-green-400' : 'hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground')}
                               title="Copy URL">
                               {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                             </button>
-                            <a href={url} target="_blank" rel="noopener noreferrer"
+                            <a href={finalUrl} target="_blank" rel="noopener noreferrer"
                               className="p-2 rounded-lg hover:bg-muted/50 text-muted-foreground/50 hover:text-muted-foreground transition-all duration-200"
                               title="Open in new tab"><ExternalLink className="h-3.5 w-3.5" /></a>
                           </div>
                         </div>
-                        <div onClick={() => copyToClipboard(url, card.id)}
-                          className="bg-muted/20 hover:bg-muted/30 border border-border/20 rounded-lg px-3 py-2 font-mono text-[11px] text-muted-foreground/70 break-all cursor-pointer select-all transition-colors">
-                          {url}
+
+                        <div onClick={() => copyToClipboard(finalUrl, card.id)}
+                          className={cn(
+                            "group relative border rounded-lg px-3 py-2.5 font-mono text-[11px] break-all cursor-pointer select-all transition-all",
+                            hubUrl 
+                              ? "bg-blue-500/5 border-blue-500/20 text-blue-400/80 hover:bg-blue-500/10"
+                              : "bg-muted/20 border-border/20 text-muted-foreground/70 hover:bg-muted/30"
+                          )}>
+                          {finalUrl}
+                          <div className="absolute top-1/2 right-3 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Copy className="h-3 w-3 text-muted-foreground" />
+                          </div>
                         </div>
                         {isPrev && (
                           <div className="bg-muted/10 border border-border/20 rounded-lg overflow-hidden">

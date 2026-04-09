@@ -4,30 +4,52 @@ import { VmixFormat } from './vmix-format';
 
 /**
  * Utility to fetch and merge active parameters for a production API.
- * Priority: URL Search Params (if provided) > Database Active Config
+ * Priority: URL Search Params (if provided) > Dynamic Route Params > Database Active Config
  */
-export async function getActiveParams(request: NextRequest, title: string) {
+export async function getActiveParams(
+    request: NextRequest, 
+    title: string, 
+    dynamicParams: Record<string, string | string[] | undefined> = {}
+) {
     const { searchParams } = new URL(request.url);
     
+    // Convert dynamic params to simple record
+    const cleanedDynamic = Object.fromEntries(
+        Object.entries(dynamicParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
+    );
+
     // Check if URL has any functional params (other than format)
     const hasUrlParams = Array.from(searchParams.keys()).some(k => k !== 'format');
     
-    // If we have URL params, we can still use them (useful for deep-linking or custom Casters)
+    // If we have URL params, they take highest priority
     if (hasUrlParams) {
-        return Object.fromEntries(searchParams.entries());
+        return {
+            ...cleanedDynamic,
+            ...Object.fromEntries(searchParams.entries())
+        };
     }
 
     // Otherwise, fetch from the "Active" database table
     const result = await ActiveApiExportService.getByTitle(title);
     if (!result.success || !result.data) {
-        return Object.fromEntries(searchParams.entries());
+        return {
+            ...cleanedDynamic,
+            ...Object.fromEntries(searchParams.entries())
+        };
     }
 
     const dbParams = (result.data.query_params as Record<string, any>) || {};
     
-    // Merge URL "id" or "format" with DB params
+    // Map db match_id/game_id if present
+    const dbOverrides: Record<string, any> = {};
+    if (result.data.match_id) dbOverrides.matchId = String(result.data.match_id);
+    if (result.data.game_id) dbOverrides.gameId = String(result.data.game_id);
+
+    // Merge: URL params > DB overrides > DB raw params > Dynamic route params
     return {
+        ...cleanedDynamic,
         ...dbParams,
+        ...dbOverrides,
         ...Object.fromEntries(searchParams.entries())
     };
 }

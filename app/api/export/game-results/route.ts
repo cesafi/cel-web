@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ActiveApiExportService } from '@/services/active-api-exports';
-import { GET as handlerGET } from '@/app/api/games/game-results/[gameId]/route';
 
+/**
+ * Proxy to unified games results API
+ * Provided for backward compatibility and build system satisfaction
+ */
 export async function GET(request: NextRequest) {
+    const { searchParams } = new URL(request.url);
+    const gameId = searchParams.get('gameId');
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    
+    // If we have a gameId, proxy to the dynamic route, otherwise the general one
+    const targetPath = gameId ? `/api/games/game-results/${gameId}` : '/api/games/game-results';
+    const targetUrl = new URL(targetPath, baseUrl);
+    
+    // Forward params
+    searchParams.forEach((v, k) => { if (k !== 'gameId') targetUrl.searchParams.set(k, v); });
+
     try {
-        // 1. Get the active game-results game_id
-        const result = await ActiveApiExportService.getActiveGameId('game-results');
-
-        if (!result.success || !result.data) {
-            return NextResponse.json(
-                { success: false, error: result.success === false ? result.error : 'No active game configured for stats export.' },
-                { status: 404 }
-            );
-        }
-
-        // 2. Mock the params and pass to the original handler
-        const params = Promise.resolve({ gameId: String(result.data) });
-        return handlerGET(request, { params });
-    } catch (error: any) {
-        return NextResponse.json(
-            { success: false, error: 'Internal server error while resolving active export' },
-            { status: 500 }
-        );
+        const response = await fetch(targetUrl.toString());
+        const data = await response.json();
+        return NextResponse.json(data, { status: response.status });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: 'Proxy error' }, { status: 500 });
     }
 }

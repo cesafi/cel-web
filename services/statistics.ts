@@ -1179,5 +1179,68 @@ export class StatisticsService extends BaseService {
       return this.formatError<any[]>(error, 'Failed to fetch stages');
     }
   }
+
+  /**
+   * Get head-to-head statistics for two players
+   */
+  static async getPlayerH2H(game: 'mlbb' | 'valorant', playerAId: string, playerBId: string) {
+    try {
+      // Fetch stats for all players and filter for the two we need
+      const result = game === 'mlbb' 
+        ? await this.getMlbbPlayerStats() 
+        : await this.getValorantPlayerStats();
+
+      if (!result.success) {
+        return { success: false, error: (result as any).error || 'Failed to fetch player stats' };
+      }
+      
+      if (!result.data) {
+        return { success: false, error: 'No data returned' };
+      }
+
+      const playerA = (result.data as any[]).find(p => p.player_id === playerAId);
+      const playerB = (result.data as any[]).find(p => p.player_id === playerBId);
+
+      return {
+        success: true,
+        data: {
+          playerA: playerA || null,
+          playerB: playerB || null
+        }
+      };
+    } catch (error) {
+      return this.formatError(error, 'Failed to fetch player H2H stats');
+    }
+  }
+
+  /**
+   * Get head-to-head statistics for two teams
+   */
+  static async getTeamH2H(game: 'mlbb' | 'valorant', teamAId: string, teamBId: string) {
+    try {
+      const result = await this.getTeamStats(game);
+
+      if (!result.success) {
+        return { success: false, error: (result as any).error || 'Failed to fetch team stats' };
+      }
+      
+      if (!result.data) {
+        return { success: false, error: 'No data returned' };
+      }
+
+      const teamA = (result.data as any[]).find(t => t.team_id === teamAId);
+      const teamB = (result.data as any[]).find(t => t.team_id === teamBId);
+
+      return {
+        success: true,
+        data: {
+          teamA: teamA || null,
+          teamB: teamB || null
+        }
+      };
+    } catch (error) {
+      return this.formatError(error, 'Failed to fetch team H2H stats');
+    }
+  }
 }
 
