@@ -120,8 +120,8 @@ export function useMatchesTable(stageId: number | null) {
     
     // Update match mutation
     const updateMutation = useMutation({
-      mutationFn: async (data: MatchUpdate & { id: number }) => {
-        const result = await updateMatchByIdAction(data);
+      mutationFn: async ({ data, participantTeamIds }: { data: MatchUpdate & { id: number }, participantTeamIds?: string[] }) => {
+        const result = await updateMatchByIdAction(data, participantTeamIds);
         if (!result.success) throw new Error(result.error);
         return result.data;
       },
@@ -167,8 +167,8 @@ export function useMatchesTable(stageId: number | null) {
         createMatch: (data: MatchInsert, participantTeamIds?: string[]) => {
             createMutation.mutate({ data, participantTeamIds });
         },
-        updateMatch: (data: MatchUpdate & { id: number }) => {
-            updateMutation.mutate(data);
+        updateMatch: (data: MatchUpdate & { id: number }, participantTeamIds?: string[]) => {
+            updateMutation.mutate({ data, participantTeamIds });
         },
         deleteMatch: (id: number) => {
             deleteMutation.mutate(id);

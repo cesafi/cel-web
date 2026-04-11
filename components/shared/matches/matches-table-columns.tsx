@@ -1,6 +1,7 @@
 import { TableColumn } from '@/lib/types/table';
 import { MatchWithStageDetails } from '@/lib/types/matches';
 import { formatTableDate } from '@/lib/utils/date';
+import { SmartDate } from '@/components/ui';
 import { Pencil, Trash2, MapPin, Trophy, Eye } from 'lucide-react';
 import { formatCategoryName } from '@/lib/utils/sports';
 
@@ -84,17 +85,33 @@ export const getMatchesTableColumns = (): TableColumn<MatchWithStageDetails>[] =
         {match.scheduled_at ? (
           <>
             <div className="text-sm font-medium">
-              {formatTableDate(match.scheduled_at)}
+              <SmartDate date={match.scheduled_at} showTime={true} />
             </div>
-            {match.start_at && (
-              <div className="text-xs text-muted-foreground">
-                Start: {formatTableDate(match.start_at)}
-              </div>
-            )}
           </>
         ) : (
           <div className="text-sm text-muted-foreground">
             Not scheduled
+          </div>
+        )}
+      </div>
+    )
+  },
+  {
+    key: 'group',
+    header: 'Group',
+    sortable: true,
+    width: '20%',
+    render: (match: MatchWithStageDetails) => (
+      <div className="space-y-1">
+        {match.group_name ? (
+          <>
+            <div className="text-sm font-medium">
+              {match.group_name} {match.round || ''}
+            </div>
+          </>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            No group
           </div>
         )}
       </div>

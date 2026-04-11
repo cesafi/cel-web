@@ -37,10 +37,15 @@ export function formatSmartDate(
     const now = new Date();
     const diffInHours = (now.getTime() - dateObj.getTime()) / (1000 * 60 * 60);
 
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${Math.floor(diffInHours)} hours ago`;
-    if (diffInHours < 48) return 'Yesterday';
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)} days ago`;
+    if (diffInHours >= 0 && diffInHours < 1) return 'Just now';
+    if (diffInHours >= 1 && diffInHours < 24) return `${Math.floor(diffInHours)} hours ago`;
+    if (diffInHours >= 24 && diffInHours < 48) return 'Yesterday';
+    if (diffInHours >= 48 && diffInHours < 168) return `${Math.floor(diffInHours / 24)} days ago`;
+    
+    // Future relative times
+    if (diffInHours < 0 && diffInHours > -1) return 'In less than an hour';
+    if (diffInHours <= -1 && diffInHours > -24) return `In ${Math.floor(Math.abs(diffInHours))} hours`;
+    if (diffInHours <= -24 && diffInHours > -48) return 'Tomorrow';
   }
 
   // Smart formatting based on recency

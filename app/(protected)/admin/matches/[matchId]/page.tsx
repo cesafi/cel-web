@@ -241,11 +241,11 @@ export default function MatchDetailPage() {
     }
   };
 
-  const handleUpdateMatch = async (data: MatchInsert | MatchUpdate) => {
+  const handleUpdateMatch = async (data: MatchInsert | MatchUpdate, participantTeamIds?: string[]) => {
     setIsSubmitting(true);
     try {
       if ('id' in data && data.id) {
-        const result = await updateMatchById(data as MatchUpdate & { id: number });
+        const result = await updateMatchById(data as MatchUpdate & { id: number }, participantTeamIds);
         if (result.success) {
           toast.success('Match updated');
           setEditModalOpen(false);

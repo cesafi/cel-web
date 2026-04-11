@@ -65,6 +65,7 @@ export function MatchModal({
 
   const hasStartedCreating = useRef(false);
   const hasStartedUpdating = useRef(false);
+  const userInteracted = useRef(false);
 
   const selectedStage = stages?.find(stage => stage.id === formData.stage_id);
 
@@ -92,7 +93,7 @@ export function MatchModal({
 
   // Auto-generate match details when teams or TBD count changes
   useEffect(() => {
-    if (mode === 'add' && (selectedTeamIds.length > 0 || tbdCount > 0)) {
+    if ((mode === 'add' || userInteracted.current) && (selectedTeamIds.length > 0 || tbdCount > 0)) {
       const selectedTeams = availableTeams.filter(team => selectedTeamIds.includes(team.id));
       // Filter out teams without schools data
       const teamsWithSchools = selectedTeams.filter(team => team.schools != null);
@@ -179,6 +180,7 @@ export function MatchModal({
       setErrors({});
       hasStartedCreating.current = false;
       hasStartedUpdating.current = false;
+      userInteracted.current = false;
     }
   }, [open, mode, match, selectedStageId]);
 
@@ -260,6 +262,7 @@ export function MatchModal({
   };
 
   const handleTeamSelection = (teamId: string, checked: boolean) => {
+    userInteracted.current = true;
     setSelectedTeamIds(prev => {
       if (checked) {
         return [...prev, teamId];
@@ -411,7 +414,7 @@ export function MatchModal({
                         <button
                           type="button"
                           className="ml-1 rounded-full hover:bg-muted p-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-muted-foreground hover:text-foreground"
-                          onClick={() => setTbdCount(prev => Math.max(0, prev - 1))}
+                          onClick={() => { setTbdCount(prev => Math.max(0, prev - 1)); userInteracted.current = true; }}
                         >
                           <X className="h-3 w-3" />
                           <span className="sr-only">Remove TBD participant</span>
@@ -425,7 +428,7 @@ export function MatchModal({
                   {/* Add TBD Participant button */}
                   <button
                     type="button"
-                    onClick={() => setTbdCount(prev => prev + 1)}
+                    onClick={() => { setTbdCount(prev => prev + 1); userInteracted.current = true; }}
                     className="flex items-center gap-2 w-full p-2 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground border border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
                   >
                     <Plus className="h-4 w-4" />
@@ -476,10 +479,10 @@ export function MatchModal({
                 id="matchName"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder={mode === 'add' ? 'Auto-generated when teams are selected' : 'Enter match name'}
+                placeholder={mode === 'add' || userInteracted.current ? 'Auto-generated when teams are selected' : 'Enter match name'}
                 className={errors.name ? 'border-red-500' : ''}
               />
-              {mode === 'add' && formData.name && (
+              {(mode === 'add' || userInteracted.current) && formData.name && (
                 <p className="text-xs text-muted-foreground">Auto-generated from selected teams. You can edit this.</p>
               )}
               {errors.name && (
@@ -494,11 +497,11 @@ export function MatchModal({
                 id="matchDescription"
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder={mode === 'add' ? 'Auto-generated when teams are selected' : 'Enter match description'}
+                placeholder={mode === 'add' || userInteracted.current ? 'Auto-generated when teams are selected' : 'Enter match description'}
                 className={errors.description ? 'border-red-500' : ''}
                 rows={2}
               />
-              {mode === 'add' && formData.description && (
+              {(mode === 'add' || userInteracted.current) && formData.description && (
                 <p className="text-xs text-muted-foreground">Auto-generated from selected teams. You can edit this.</p>
               )}
               {errors.description && (

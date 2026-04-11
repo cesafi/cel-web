@@ -107,7 +107,7 @@ export function MatchesTable({ userRole, showLeagueStageSelector = true }: Match
       // For add mode, we need to handle participants
       createMatch(data as MatchInsert, participantTeamIds);
     } else if (editingMatch) {
-      updateMatch({ ...(data as MatchUpdate), id: editingMatch.id });
+      updateMatch({ ...(data as MatchUpdate), id: editingMatch.id }, participantTeamIds);
     }
   };
 
