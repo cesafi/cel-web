@@ -37,7 +37,8 @@ import {
     Copy,
     Users,
     Trash2,
-    Map
+    Map,
+    ArrowLeftRight
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
@@ -296,12 +297,38 @@ export default function GameDetailPage() {
             </div>
 
             {/* ── Game Attributes Editor ── */}
-            {team1 && team2 && !isValorant && (
+            {team1 && team2 && (
                 <div className="rounded-xl border bg-card p-5 space-y-4">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                        <Swords className="h-4 w-4" />
-                        Game Attributes Overlay
-                    </h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                            <Swords className="h-4 w-4" />
+                            Game Attributes Overlay
+                        </h3>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isUpdatingAttr}
+                            onClick={async () => {
+                                const currentCoinToss = game.coin_toss_winner || match.coin_toss_winner_id;
+                                const currentSide = game.side_selection;
+                                let newSide: string = 'red';
+
+                                if (currentSide === 'blue') {
+                                    newSide = 'red';
+                                } else if (currentSide === 'red') {
+                                    newSide = 'blue';
+                                } else if (currentCoinToss) {
+                                    // Default is blue for coin toss winner, so flip to red
+                                    newSide = 'red';
+                                }
+
+                                await handleUpdateGameAttr('side_selection', newSide);
+                            }}
+                        >
+                            <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
+                            Swap Sides
+                        </Button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Coin Toss Winner / Advantage</label>

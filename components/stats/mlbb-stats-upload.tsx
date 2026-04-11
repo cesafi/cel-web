@@ -25,8 +25,6 @@ import { Loader2, Upload, Save, RefreshCcw, Coins, FileImage, ShieldAlert, Sword
 import { toast } from 'sonner';
 import { useGameDraftActions } from '@/hooks/use-game-draft';
 import { useAllGameCharactersWithEsport } from '@/hooks/use-game-characters';
-import { useQueryClient } from '@tanstack/react-query';
-import { matchKeys } from '@/hooks/use-matches';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 
@@ -55,8 +53,6 @@ interface MlbbStatsUploadProps {
 }
 
 export function MlbbStatsUpload({ gameId, matchId, team1, team2, coinTossWinnerId, sideSelection, onStatsSaved }: MlbbStatsUploadProps) {
-  const queryClient = useQueryClient();
-  const [isSwappingSides, setIsSwappingSides] = useState(false);
   const [equipmentFile, setEquipmentFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [equipmentPreviewUrl, setEquipmentPreviewUrl] = useState<string | null>(null);
@@ -881,48 +877,6 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, coinTossWinnerI
     }
   };
 
-  const handleSwapSides = async () => {
-    setIsSwappingSides(true);
-    try {
-      // Logic to flip side_selection. 
-      // If blue -> red, If red -> blue, If none -> check coin toss default and flip
-      let newSide: 'blue' | 'red' = 'blue';
-
-      if (sideSelection === 'blue') {
-        newSide = 'red';
-      } else if (sideSelection === 'red') {
-        newSide = 'blue';
-      } else if (coinTossWinnerId) {
-        // Default is blue for coin toss winner, so flip to red
-        newSide = 'red';
-      } else {
-        // No coin toss, no side, default is red for team2
-        newSide = 'red';
-      }
-
-      const res = await updateGameById({ id: gameId, side_selection: newSide });
-      if (res.success) {
-        toast.success(`Game sides officially swapped to ${newSide.toUpperCase()}`);
-        setPreviewData(prev => ({
-          ...prev,
-          score: {
-            blue: prev.score.red,
-            red: prev.score.blue
-          }
-        }));
-        queryClient.invalidateQueries({ queryKey: matchKeys.detail(matchId) });
-        queryClient.invalidateQueries({ queryKey: ['active-api-exports'] });
-      } else {
-        toast.error(res.error || 'Failed to swap sides in database');
-      }
-    } catch (e) {
-      console.error('Swap side error:', e);
-      toast.error('An unexpected error occurred during side swap');
-    } finally {
-      setIsSwappingSides(false);
-    }
-  };
-
   const getTeamForPlayer = (playerId: string) => {
     if (team1.players.some(p => p.id === playerId)) return team1;
     if (team2.players.some(p => p.id === playerId)) return team2;
@@ -1100,10 +1054,6 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, coinTossWinnerI
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Extracted Statistics</h3>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleSwapSides} disabled={isSwappingSides}>
-                  {isSwappingSides ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeftRight className="mr-2 h-4 w-4" />}
-                  Swap Sides
-                </Button>
                 <Button size="sm" variant="secondary" onClick={handleCopyFromDraft}>
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Copy from Draft

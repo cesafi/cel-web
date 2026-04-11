@@ -44,6 +44,7 @@ export class MatchesService extends BaseService {
     ),
     games (
       id, match_id, game_number, status, start_at, end_at, duration, 
+      coin_toss_winner, side_selection,
       valorant_map_id, mlbb_map_id, mlbb_equipment_image_url, 
       mlbb_data_image_url, valorant_screenshot_url
     )

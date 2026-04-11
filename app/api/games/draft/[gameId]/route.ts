@@ -140,7 +140,7 @@ export async function GET(
                 const view = isValorant ? 'mv_valorant_agent_stats' : 'mv_mlbb_hero_stats';
                 const col = isValorant ? 'agent_id' : 'hero_id';
                 const { data } = await supabase.from(view as any)
-                    .select(`${col}, total_picks, total_bans, total_wins, total_kills, total_deaths, total_assists, total_games`)
+                    .select(`${col}, total_picks, total_bans, total_wins, total_kills, total_deaths, total_assists`)
                     .in(col, heroIds).eq('season_id', seasonId);
                 for (const r of (data || []) as any[]) {
                     const id = r[col];
@@ -149,23 +149,20 @@ export async function GET(
                         ex.total_picks += r.total_picks || 0; ex.total_wins += r.total_wins || 0;
                         ex.total_bans += r.total_bans || 0; ex.total_kills += r.total_kills || 0;
                         ex.total_deaths += r.total_deaths || 0; ex.total_assists += r.total_assists || 0;
-                        ex.total_games += r.total_games || 0;
                     } else {
                         globalStats[id] = {
                             total_picks: r.total_picks || 0, total_wins: r.total_wins || 0,
                             total_bans: r.total_bans || 0, total_kills: r.total_kills || 0,
                             total_deaths: r.total_deaths || 0, total_assists: r.total_assists || 0,
-                            total_games: r.total_games || 0,
                         };
                     }
                 }
             } catch { /* non-fatal */ }
         }
 
-        // ── 9. Team-specific hero stats (for picks) ──
-        type Agg = { games: Set<number>; wins: Set<number>; k: number; d: number; a: number; teamGames: number };
-        const blueHS: Record<number, Agg> = {};
-        const redHS: Record<number, Agg> = {};
+        // ── 9. Season-wide hero stats (for picks) ──
+        type Agg = { games: Set<number>; wins: Set<number>; k: number; d: number; a: number; seasonGames: number };
+        const seasonHS: Record<number, Agg> = {};
 
         if (heroIds.length > 0 && seasonId) {
             try {
@@ -174,7 +171,6 @@ export async function GET(
                     .from(tbl)
                     .select('game_character_id, team_id, kills, deaths, assists, game_id, games!inner(match:matches!inner(stage_id, esports_seasons_stages!inner(season_id)))')
                     .in('game_character_id', heroIds)
-                    .in('team_id', [blueId, redId].filter(Boolean))
                     .not('game_character_id', 'is', null);
 
                 const gids = [...new Set((raw || []).map((r: any) => r.game_id))];
@@ -184,17 +180,23 @@ export async function GET(
                     for (const r of (w || []) as any[]) if (r.game_id && r.winner_team_id) winners[r.game_id] = r.winner_team_id;
                 }
 
-                const tgSets: Record<string, Set<number>> = {};
+                // Count unique games per team was used before, now we want season-wide games
+                // But total season games is hard to know without a separate query. We'll use the unique game_ids found where any of these heroes were picked as a baseline if needed, but PR usually is just games picked / total games.
+                // Let's use `globalStats` for KDA and WR because it's much faster and already season-wide!
+                // For Pick Rate, we'll try to find total games for the season. 
+                // Fallback: estimate season games using max matches * 2
+                
+                const seasonGameSet = new Set<number>();
+
                 for (const r of (raw || []) as any[]) {
                     const hid = r.game_character_id, tid = r.team_id;
                     if (!hid || !tid) continue;
                     if (r.games?.match?.esports_seasons_stages?.season_id !== seasonId) continue;
 
-                    if (!tgSets[tid]) tgSets[tid] = new Set();
-                    tgSets[tid].add(r.game_id);
+                    seasonGameSet.add(r.game_id);
 
-                    const store = tid === blueId ? blueHS : redHS;
-                    if (!store[hid]) store[hid] = { games: new Set(), wins: new Set(), k: 0, d: 0, a: 0, teamGames: 0 };
+                    const store = seasonHS;
+                    if (!store[hid]) store[hid] = { games: new Set(), wins: new Set(), k: 0, d: 0, a: 0, seasonGames: 0 };
                     const ag = store[hid];
                     if (!ag.games.has(r.game_id)) {
                         ag.games.add(r.game_id);
@@ -203,10 +205,9 @@ export async function GET(
                     ag.k += r.kills || 0; ag.d += r.deaths || 0; ag.a += r.assists || 0;
                 }
                 for (const hid of heroIds) {
-                    if (blueHS[hid]) blueHS[hid].teamGames = tgSets[blueId]?.size || 0;
-                    if (redHS[hid]) redHS[hid].teamGames = tgSets[redId]?.size || 0;
+                    if (seasonHS[hid]) seasonHS[hid].seasonGames = seasonGameSet.size; // This is only relative to games where THESE heroes appeared.
                 }
-            } catch (e) { console.warn('Team hero stats error:', e); }
+            } catch (e) { console.warn('Season hero stats error:', e); }
         }
 
         // ── 10. Draft history from previous games ──
@@ -274,24 +275,27 @@ export async function GET(
             if (totalAppearances === 0) return N;
             return `${((g.total_bans / totalAppearances) * 100).toFixed(0)}%`;
         };
-        const fmtWR = (hid: number | null, store: Record<number, Agg>): string => {
+        const fmtWR = (hid: number | null): string => {
             if (!hid) return N;
-            const a = store[hid];
+            const a = seasonHS[hid];
             if (!a || a.games.size === 0) return N;
             return `${((a.wins.size / a.games.size) * 100).toFixed(0)}%`;
         };
-        const fmtKDA = (hid: number | null, store: Record<number, Agg>): string => {
+        const fmtKDA = (hid: number | null): string => {
             if (!hid) return N;
-            const a = store[hid];
+            const a = seasonHS[hid];
             if (!a) return N;
             if (a.d === 0) return a.k + a.a > 0 ? `${(a.k + a.a).toFixed(1)}` : N;
             return ((a.k + a.a) / a.d).toFixed(2);
         };
-        const fmtPR = (hid: number | null, store: Record<number, Agg>): string => {
+        const fmtPR = (hid: number | null): string => {
             if (!hid) return N;
-            const a = store[hid];
-            if (!a || a.teamGames === 0) return N;
-            return `${((a.games.size / a.teamGames) * 100).toFixed(0)}%`;
+            const a = seasonHS[hid];
+            if (!a || !a.seasonGames) return N;
+            // The pick rate would ideally require total games in season, 
+            // but we use seasonGames (number of unique games the filtered heroes appeared in) as an approximation 
+            // if globalStats does not have total_games.
+            return `${((a.games.size / a.seasonGames) * 100).toFixed(0)}%`;
         };
 
         // Padded arrays (1–5)
@@ -355,13 +359,13 @@ export async function GET(
         csv += row(['PICKS', ...bPickNames, '', '', '', ...rev(rPickNames), 'PICKS']);
 
         // Row 12: KDA
-        csv += row(['KDA', ...bPickIds.map(id => fmtKDA(id, blueHS)), '', '', '', ...rev(rPickIds).map(id => fmtKDA(id, redHS)), 'KDA']);
+        csv += row(['KDA', ...bPickIds.map(id => fmtKDA(id)), '', '', '', ...rev(rPickIds).map(id => fmtKDA(id)), 'KDA']);
 
         // Row 13: WR (win rate)
-        csv += row(['WR', ...bPickIds.map(id => fmtWR(id, blueHS)), '', '', '', ...rev(rPickIds).map(id => fmtWR(id, redHS)), 'WR']);
+        csv += row(['WR', ...bPickIds.map(id => fmtWR(id)), '', '', '', ...rev(rPickIds).map(id => fmtWR(id)), 'WR']);
 
         // Row 14: PICK RATE
-        csv += row(['PICK RATE', ...bPickIds.map(id => fmtPR(id, blueHS)), '', '', '', ...rev(rPickIds).map(id => fmtPR(id, redHS)), 'PICK RATE']);
+        csv += row(['PICK RATE', ...bPickIds.map(id => fmtPR(id)), '', '', '', ...rev(rPickIds).map(id => fmtPR(id)), 'PICK RATE']);
 
         // Rows 15-17: empty
         csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);

@@ -532,6 +532,13 @@ export function DraftPanel({
     const takenCharacters = useMemo(() => new Set(actions.map(a => a.hero_name)), [actions]);
 
     // Team-specific taken characters (For Valorant)
+    const leftTeam = blueSideTeamId === team1.id ? team1 : team2;
+    const rightTeam = blueSideTeamId === team1.id ? team2 : team1;
+    const leftTeamPlayers = blueSideTeamId === team1.id ? team1Players : team2Players;
+    const rightTeamPlayers = blueSideTeamId === team1.id ? team2Players : team1Players;
+    const leftTeamRoster = blueSideTeamId === team1.id ? team1Roster : team2Roster;
+    const rightTeamRoster = blueSideTeamId === team1.id ? team2Roster : team1Roster;
+
     const team1TakenCharacters = useMemo(() => new Set(actions.filter(a => a.team_id === team1.id).map(a => a.hero_name)), [actions, team1.id]);
     const team2TakenCharacters = useMemo(() => new Set(actions.filter(a => a.team_id === team2.id).map(a => a.hero_name)), [actions, team2.id]);
 
@@ -574,47 +581,47 @@ export function DraftPanel({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <ValorantTeamPanel
-                        team={team1}
-                        teamId={team1.id}
-                        picks={actions.filter(a => a.team_id === team1.id && a.action_type === 'pick')}
-                        roster={team1Roster}
-                        players={team1Players || []}
+                        team={leftTeam}
+                        teamId={leftTeam.id}
+                        picks={actions.filter(a => a.team_id === leftTeam.id && a.action_type === 'pick')}
+                        roster={leftTeamRoster}
+                        players={leftTeamPlayers || []}
                         characters={characters}
-                        takenCharacters={team1TakenCharacters}
+                        takenCharacters={leftTeam.id === team1.id ? team1TakenCharacters : team2TakenCharacters}
                         isAdmin={isAdmin}
-                        onPickAgent={(char, slot) => handleValorantPick(team1.id, char, slot)}
+                        onPickAgent={(char, slot) => handleValorantPick(leftTeam.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeAgent={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
                         onAssignPlayer={(pid, role, idx) => {
-                            const pIndex = team1Roster.length > 0 ? (actions.find(a => a.action_type === 'pick' && a.team_id === team1.id && a.sort_order === idx + 1) ? idx + 1 : idx + 1) : idx + 1;
-                            const pick = actions.find(a => a.team_id === team1.id && a.action_type === 'pick' && a.sort_order === pIndex);
+                            const pIndex = leftTeamRoster.length > 0 ? (actions.find(a => a.action_type === 'pick' && a.team_id === leftTeam.id && a.sort_order === idx + (leftTeam.id === team1.id ? 1 : 101)) ? idx + (leftTeam.id === team1.id ? 1 : 101) : idx + (leftTeam.id === team1.id ? 1 : 101)) : idx + (leftTeam.id === team1.id ? 1 : 101);
+                            const pick = actions.find(a => a.team_id === leftTeam.id && a.action_type === 'pick' && a.sort_order === pIndex);
                             const agentRole = pick ? characters.find(c => c.name === pick.hero_name)?.role : null;
-                            assignPlayerMutation.mutate({ teamId: team1.id, playerId: pid, role: agentRole || 'Flex', sortOrder: idx });
+                            assignPlayerMutation.mutate({ teamId: leftTeam.id, playerId: pid, role: agentRole || 'Flex', sortOrder: idx });
                         }}
-                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team1.id, sortOrder: idx })}
-                        onAutoFill={() => handleAutoFill(team1.id, team1Players || [])}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: leftTeam.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(leftTeam.id, leftTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                     <ValorantTeamPanel
-                        team={team2}
-                        teamId={team2.id}
-                        picks={actions.filter(a => a.team_id === team2.id && a.action_type === 'pick')}
-                        roster={team2Roster}
-                        players={team2Players || []}
+                        team={rightTeam}
+                        teamId={rightTeam.id}
+                        picks={actions.filter(a => a.team_id === rightTeam.id && a.action_type === 'pick')}
+                        roster={rightTeamRoster}
+                        players={rightTeamPlayers || []}
                         characters={characters}
-                        takenCharacters={team2TakenCharacters}
+                        takenCharacters={rightTeam.id === team1.id ? team1TakenCharacters : team2TakenCharacters}
                         isAdmin={isAdmin}
-                        onPickAgent={(char, slot) => handleValorantPick(team2.id, char, slot)}
+                        onPickAgent={(char, slot) => handleValorantPick(rightTeam.id, char, slot)}
                         onSwapAgent={(actionId, char) => handleCharacterSwap(actionId, char)}
                         onTradeAgent={(action1Id, action2Id) => handleCharacterTrade(action1Id, action2Id)}
                         onAssignPlayer={(pid, role, idx) => {
-                            const pIndex = team2Roster.length > 0 ? (actions.find(a => a.action_type === 'pick' && a.team_id === team2.id && a.sort_order === idx + 101) ? idx + 101 : idx + 101) : idx + 101;
-                            const pick = actions.find(a => a.team_id === team2.id && a.action_type === 'pick' && a.sort_order === pIndex);
+                            const pIndex = rightTeamRoster.length > 0 ? (actions.find(a => a.action_type === 'pick' && a.team_id === rightTeam.id && a.sort_order === idx + (rightTeam.id === team1.id ? 1 : 101)) ? idx + (rightTeam.id === team1.id ? 1 : 101) : idx + (rightTeam.id === team1.id ? 1 : 101)) : idx + (rightTeam.id === team1.id ? 1 : 101);
+                            const pick = actions.find(a => a.team_id === rightTeam.id && a.action_type === 'pick' && a.sort_order === pIndex);
                             const agentRole = pick ? characters.find(c => c.name === pick.hero_name)?.role : null;
-                            assignPlayerMutation.mutate({ teamId: team2.id, playerId: pid, role: agentRole || 'Flex', sortOrder: idx });
+                            assignPlayerMutation.mutate({ teamId: rightTeam.id, playerId: pid, role: agentRole || 'Flex', sortOrder: idx });
                         }}
-                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: team2.id, sortOrder: idx })}
-                        onAutoFill={() => handleAutoFill(team2.id, team2Players || [])}
+                        onUnassignPlayer={(idx) => unassignPlayerMutation.mutate({ teamId: rightTeam.id, sortOrder: idx })}
+                        onAutoFill={() => handleAutoFill(rightTeam.id, rightTeamPlayers || [])}
                         onAutoFillGame1={gameNumber > 1 ? () => autoFillGame1Mutation.mutate() : undefined}
                     />
                 </div>
@@ -630,13 +637,6 @@ export function DraftPanel({
     const activeTeamId = currentAction?.team === 'team1' ? blueSideTeamId : redSideTeamId;
     const activeTeam = activeTeamId === team1.id ? team1 : team2;
     const isBanPhase = currentAction?.action === 'ban';
-
-    const leftTeam = blueSideTeamId === team1.id ? team1 : team2;
-    const rightTeam = blueSideTeamId === team1.id ? team2 : team1;
-    const leftTeamPlayers = blueSideTeamId === team1.id ? team1Players : team2Players;
-    const rightTeamPlayers = blueSideTeamId === team1.id ? team2Players : team1Players;
-    const leftTeamRoster = blueSideTeamId === team1.id ? team1Roster : team2Roster;
-    const rightTeamRoster = blueSideTeamId === team1.id ? team2Roster : team1Roster;
 
     return (
         <div className="space-y-6 pb-10">
