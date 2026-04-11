@@ -52,11 +52,14 @@ export const PUBLIC_ROUTES = [
   '/api/export/head-to-head/teams',
   '/api/export/head-to-head/players',
   '/api/export/maps/stats',
-  '/api/export/matches/[matchId]',
+  '/api/export/matches',
   '/api/export/standings',
   '/api/export/hub',
   '/api/games/game-results/[gameId]',
   '/api/matches/valorant-map-veto/[matchId]',
+  '/api/export/draft',
+  '/api/export/game-results',
+  '/api/export/valorant-map-veto',
 
   // Map Veto
   '/veto/[token]'
@@ -162,11 +165,14 @@ export const ROUTE_PATTERNS = {
     /^\/api\/export\/head-to-head\/teams$/, // /api/export/head-to-head/teams
     /^\/api\/export\/head-to-head\/players$/, // /api/export/head-to-head/players
     /^\/api\/export\/maps\/stats$/, // /api/export/maps/stats
-    /^\/api\/export\/matches\/[^\/]+$/, // /api/export/matches/[matchId]
+    /^\/api\/export\/matches(\?.*)?$/, // /api/export/matches
     /^\/api\/export\/standings$/, // /api/export/standings
     /^\/api\/export\/hub$/, // /api/export/hub (unified endpoint)
     /^\/api\/games\/game-results\/[^\/]+$/, // /api/games/game-results/[gameId]
     /^\/api\/matches\/valorant-map-veto\/[^\/]+$/, // /api/matches/valorant-map-veto/[matchId]
+    /^\/api\/export\/draft$/, // /api/export/draft
+    /^\/api\/export\/game-results$/, // /api/export/game-results
+    /^\/api\/export\/valorant-map-veto$/, // /api/export/valorant-map-veto
     /^\/lobby\/[^\/]+$/, // /lobby/[matchId]
     /^\/veto(\/.*)?$/ // /veto/[token] and /veto
   ],

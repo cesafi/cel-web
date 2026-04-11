@@ -136,18 +136,26 @@ const LINK_CARDS: LinkCard[] = [
   {
     id: 'match-overview', title: 'Match Overview', description: 'Scores, teams, schedule, stream',
     category: 'match', icon: Trophy, game: 'both', supportsHub: true,
-    buildUrl: (b, f) => `${b}/api/export/matches/${f.matchId || '0'}`,
+    buildUrl: (b, f) => `${b}/api/export/matches?matchId=${f.matchId || '0'}`,
     buildHubUrl: (b) => `${b}/api/export/matches`,
   },
   {
     id: 'draft', title: 'Draft + Character Stats', description: 'Live draft with pick/ban rates',
-    category: 'match', icon: Shield, game: 'both',
-    buildUrl: (b) => `${b}/api/games/draft`,
+    category: 'match', icon: Shield, game: 'both', supportsHub: true,
+    buildUrl: (b) => `${b}/api/export/draft`,
+    buildHubUrl: (b) => `${b}/api/export/draft`,
   },
   {
     id: 'game-stats', title: 'Per-Game Stats', description: 'Individual game player stats',
-    category: 'match', icon: BarChart3, game: 'both',
-    buildUrl: (b) => `${b}/api/games/game-results`,
+    category: 'match', icon: BarChart3, game: 'both', supportsHub: true,
+    buildUrl: (b) => `${b}/api/export/game-results`,
+    buildHubUrl: (b) => `${b}/api/export/game-results`,
+  },
+  {
+    id: 'map-veto', title: 'Valorant Map Veto', description: 'Pick/ban sequences for Valorant matches',
+    category: 'match', icon: Map, game: 'valorant', supportsHub: true,
+    buildUrl: (b, f) => `${b}/api/matches/valorant-map-veto/${f.matchId || '0'}`,
+    buildHubUrl: (b) => `${b}/api/export/valorant-map-veto`,
   },
   {
     id: 'standings', title: 'Standings', description: 'League standings by stage',

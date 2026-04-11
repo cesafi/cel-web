@@ -411,10 +411,10 @@ export default function GameDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/games/draft`}
+                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/draft`}
                     </code>
                     <Button variant="outline" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/games/draft`);
+                        navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/draft`);
                         toast.success('Draft API link copied to clipboard');
                     }}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
@@ -481,10 +481,10 @@ export default function GameDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">
-                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/games/game-results`}
+                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/game-results`}
                     </code>
                     <Button variant="outline" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/games/game-results`)
+                        navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/export/game-results`)
                         toast.success('Game Results API link copied to clipboard')
                     }}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
