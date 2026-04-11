@@ -3,6 +3,7 @@
 import { GameScoreService } from '@/services/game-scores';
 import { GameScoreInsert, GameScoreUpdate } from '@/lib/types/game-scores';
 import { RevalidationHelper } from '@/lib/utils/revalidation';
+import { bumpExportCache } from '@/lib/utils/export-cache';
 
 export async function getGameScoresByGameId(gameId: number) {
   return await GameScoreService.getByGameId(gameId);
@@ -13,6 +14,7 @@ export async function createGameScore(data: GameScoreInsert) {
   if (result.success && data.game_id) {
     await GameScoreService.syncMatchScoresFromGame(data.game_id);
     RevalidationHelper.revalidateMatches();
+    bumpExportCache('game-results');
   }
   return result;
 }
@@ -32,6 +34,7 @@ export async function updateGameScore(data: GameScoreUpdate) {
     if (gameId) {
       await GameScoreService.syncMatchScoresFromGame(gameId);
       RevalidationHelper.revalidateMatches();
+      bumpExportCache('game-results');
     }
   }
   return result;
@@ -46,6 +49,7 @@ export async function upsertGameScoresForGame(gameId: number, scores: GameScoreI
   if (insertResult.success) {
     await GameScoreService.syncMatchScoresFromGame(gameId);
     RevalidationHelper.revalidateMatches();
+    bumpExportCache('game-results');
   }
   return insertResult;
 }

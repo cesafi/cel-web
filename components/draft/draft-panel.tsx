@@ -42,10 +42,9 @@ import {
 } from '@/lib/types/game-draft';
 
 import { getGameCharactersByEsportId } from '@/actions/game-characters';
-import { autoFillRosterFromGame1 } from '@/actions/game-roster';
+import { autoFillRosterFromGame1, upsertGameRoster, deleteGameRosterBySlot, swapGameRosterSlots, getGameRosterByGameId } from '@/actions/game-roster';
 import { updateGameDraftAction } from '@/actions/game-draft';
 import { updateGameById } from '@/actions/games';
-import { GameRosterService } from '@/services/game-roster';
 import { useGameDraftActions, useSubmitGameDraftAction, useResetGameDraft, useUndoLastGameDraftAction, useUpdateGameDraftAction } from '@/hooks/use-game-draft';
 import { useRealtimeDraft } from '@/hooks/use-realtime-draft';
 import { matchKeys } from '@/hooks/use-matches';
@@ -149,7 +148,7 @@ export function DraftPanel({
     const { data: rosters = [], refetch: refetchRosters } = useQuery({
         queryKey: ['game-rosters', gameId],
         queryFn: async () => {
-            const result = await GameRosterService.getByGameId(gameId);
+            const result = await getGameRosterByGameId(gameId);
             if (!result.success) throw new Error(result.error);
             return result.data;
         },
@@ -194,7 +193,7 @@ export function DraftPanel({
     // Mutations
     const assignPlayerMutation = useMutation({
         mutationFn: async (data: { teamId: string, playerId: string, role: string, sortOrder: number }) => {
-            const result = await GameRosterService.upsert({
+            const result = await upsertGameRoster({
                 game_id: gameId,
                 team_id: data.teamId,
                 player_id: data.playerId,
@@ -219,7 +218,7 @@ export function DraftPanel({
 
     const unassignPlayerMutation = useMutation({
         mutationFn: async (data: { teamId: string, sortOrder: number }) => {
-            const result = await GameRosterService.deleteBySlot(gameId, data.teamId, data.sortOrder);
+            const result = await deleteGameRosterBySlot(gameId, data.teamId, data.sortOrder);
             if (!result.success) throw new Error(result.error);
             return result;
         },
@@ -245,7 +244,7 @@ export function DraftPanel({
 
     const swapPlayersMutation = useMutation({
         mutationFn: async (data: { teamId: string, sortOrderA: number, sortOrderB: number, slotRoleA?: string, slotRoleB?: string }) => {
-            const result = await GameRosterService.swapSlots(gameId, data.teamId, data.sortOrderA, data.sortOrderB, data.slotRoleA, data.slotRoleB);
+            const result = await swapGameRosterSlots(gameId, data.teamId, data.sortOrderA, data.sortOrderB, data.slotRoleA, data.slotRoleB);
             if (!result.success) throw new Error(result.error);
             return result;
         },
@@ -449,7 +448,7 @@ export function DraftPanel({
 
             if (matchingPlayer) {
                 try {
-                    await GameRosterService.upsert({
+                    await upsertGameRoster({
                         game_id: gameId,
                         team_id: teamId,
                         player_id: matchingPlayer.id,
@@ -476,7 +475,7 @@ export function DraftPanel({
             if (remainingIdx < remainingPlayers.length) {
                 const player = remainingPlayers[remainingIdx++];
                 try {
-                    await GameRosterService.upsert({
+                    await upsertGameRoster({
                         game_id: gameId,
                         team_id: teamId,
                         player_id: player.id,

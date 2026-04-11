@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { StatisticsService } from '@/services/statistics';
 import { getActiveParams, getProductionFormat } from '@/lib/utils/active-params';
 import { vmixResponse } from '@/lib/utils/vmix-format';
+import { getExportCacheVersion } from '@/lib/utils/export-cache';
 
 // ── CSV helpers ──
 const escapeCsv = (v: any): string => {
@@ -35,6 +36,13 @@ function schoolLogoPath(abbrev: string): string {
     return `C:\\Users\\CESAFI\\Desktop\\CEL S4\\IMAGES\\SCHOOL_LOGOS\\${abbrev.toUpperCase()}.png`;
 }
 
+// Event-driven in-memory cache for H2H Players
+let h2hPlayersCache: {
+    key: string;
+    response: { text: string; status: number; headers: Record<string, string> };
+    version: number;
+} | null = null;
+
 /**
  * Player Head-to-Head CSV — production matrix for vMix broadcast overlay.
  *
@@ -48,6 +56,15 @@ export async function GET(request: NextRequest) {
         const playerAId = (params.playerAId as string) || (params.playerA as string);
         const playerBId = (params.playerBId as string) || (params.playerB as string);
         const format = getProductionFormat(request);
+        const cacheKey = `${game}:${playerAId}:${playerBId}:${format}`;
+
+        // Serve from cache if version matches
+        if (h2hPlayersCache && h2hPlayersCache.key === cacheKey && h2hPlayersCache.version === getExportCacheVersion('h2h')) {
+            return new NextResponse(h2hPlayersCache.response.text, {
+                status: h2hPlayersCache.response.status,
+                headers: h2hPlayersCache.response.headers
+            });
+        }
 
         const filters = {
             season_id: params.seasonId ? parseInt(params.seasonId as string) : undefined,
@@ -144,7 +161,7 @@ export async function GET(request: NextRequest) {
         csv += row(['', '', '', '', '', '', '']);
 
         // ── Return CSV ──
-        return new NextResponse(csv, {
+        const csvResponse = new NextResponse(csv, {
             status: 200,
             headers: {
                 'Content-Type': 'text/csv; charset=utf-8',
@@ -152,6 +169,19 @@ export async function GET(request: NextRequest) {
                 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
             },
         });
+
+        // Store in cache
+        h2hPlayersCache = {
+            key: cacheKey,
+            response: {
+                text: csv,
+                status: 200,
+                headers: Object.fromEntries(csvResponse.headers.entries())
+            },
+            version: getExportCacheVersion('h2h')
+        };
+
+        return csvResponse;
 
     } catch (error: any) {
         console.error('Error in player h2h API:', error);

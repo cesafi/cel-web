@@ -6,6 +6,7 @@ import { ServiceResponse } from '@/lib/types/base';
 import { MatchParticipant } from '@/lib/types/match-participants';
 import { RevalidationHelper } from '@/lib/utils/revalidation';
 import { revalidatePath } from 'next/cache';
+import { bumpExportCache } from '@/lib/utils/export-cache';
 
 // Core context-based fetching actions
 export async function getMatchParticipantsByMatchId(matchId: number) {
@@ -58,6 +59,8 @@ export async function updateMatchParticipantById(data: unknown): Promise<Service
 
   if (result.success) {
     RevalidationHelper.revalidateMatchParticipants();
+    bumpExportCache('draft');
+    bumpExportCache('game-results');
   }
 
   return result;
@@ -89,11 +92,12 @@ export async function updateMatchScores(
 
   if (result.success) {
     RevalidationHelper.revalidateMatchParticipants();
-    // Also revalidate specific match detail pages
     if (scoreUpdates.length > 0) {
       const matchId = scoreUpdates[0].match_id;
       revalidatePath(`/admin/matches/${matchId}`);
     }
+    bumpExportCache('draft');
+    bumpExportCache('game-results');
   }
 
   return result;

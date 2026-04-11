@@ -6,6 +6,7 @@ import { SeasonService } from '@/services/seasons';
 import { EsportsSeasonsStagesService } from '@/services/esports-seasons-stages';
 import { SchedulePaginationOptions, ScheduleFilters, MatchInsert, MatchUpdate, Match } from '@/lib/types/matches';
 import { ServiceResponse } from '@/lib/types/base';
+import { bumpExportCache } from '@/lib/utils/export-cache';
 
 export async function getMatchById(id: number) {
   return MatchesService.getMatchById(id);
@@ -57,7 +58,12 @@ export async function getAvailableSportCategories() {
 
 export async function updateMatchById(data: MatchUpdate & { id: number }, participantTeamIds?: string[]) {
   const result = await MatchesService.updateMatchById(data, participantTeamIds);
-  if (result.success) revalidatePath('/admin/matches');
+  if (result.success) {
+    revalidatePath('/admin/matches');
+    bumpExportCache('draft');
+    bumpExportCache('game-results');
+    bumpExportCache('map-veto');
+  }
   return result;
 }
 
@@ -118,6 +124,7 @@ export async function performMatchCoinToss(matchId: number, team1Id: string, tea
     if (update.success) {
       revalidatePath(`/admin/matches/${matchId}`);
       revalidatePath(`/veto/${matchId}`);
+      bumpExportCache('map-veto');
     }
 
     return update;
@@ -138,6 +145,7 @@ export async function resetMatchCoinToss(matchId: number): Promise<ServiceRespon
     if (update.success) {
       revalidatePath(`/admin/matches/${matchId}`);
       revalidatePath(`/veto/${matchId}`);
+      bumpExportCache('map-veto');
     }
 
     return update;
@@ -171,6 +179,7 @@ export async function switchMatchCoinTossWinner(matchId: number, currentWinnerId
     if (update.success) {
       revalidatePath(`/admin/matches/${matchId}`);
       revalidatePath(`/veto/${matchId}`);
+      bumpExportCache('map-veto');
     }
 
     return update;
@@ -193,6 +202,7 @@ export async function setMatchCoinTossChoice(matchId: number, currentResult: str
     if (update.success) {
       revalidatePath(`/admin/matches/${matchId}`);
       revalidatePath(`/veto/${matchId}`);
+      bumpExportCache('map-veto');
     }
 
     return update;

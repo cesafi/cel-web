@@ -1,6 +1,34 @@
 import { NextRequest } from 'next/server';
-import { ActiveApiExportService } from '@/services/active-api-exports';
 import { VmixFormat } from './vmix-format';
+import { createClient } from '@supabase/supabase-js';
+
+import { unstable_cache } from 'next/cache';
+
+const getCachedActiveConfig = unstable_cache(
+    async (title: string) => {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+        
+        if (!supabaseUrl || !supabaseAnonKey) {
+            return { success: false, error: 'Missing Supabase environment variables' };
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+
+        const { data, error } = await supabase
+            .from('active_api_exports')
+            .select('*')
+            .eq('title', title)
+            .single();
+
+        if (error) return { success: false, error: error.message };
+        return { success: true, data };
+    },
+    ['active-api-export-cache'],
+    { revalidate: 5 } // Cache for 5 seconds
+);
 
 /**
  * Utility to fetch and merge active parameters for a production API.
@@ -29,8 +57,9 @@ export async function getActiveParams(
         };
     }
 
-    // Otherwise, fetch from the "Active" database table
-    const result = await ActiveApiExportService.getByTitle(title);
+    // Otherwise, fetch from the "Active" database table (cached for 5 seconds)
+    const result = await getCachedActiveConfig(title);
+    console.log(`[getActiveParams] title: ${title}, result:`, result);
     if (!result.success || !result.data) {
         return {
             ...cleanedDynamic,

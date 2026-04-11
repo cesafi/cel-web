@@ -211,7 +211,7 @@ export async function GET(
         }
 
         // ── 10. Draft history from previous games ──
-        let draftHistory: { blueBans: string[]; redBans: string[]; bluePicks: string[]; redPicks: string[] }[] = [];
+        let draftHistoryByGame: Record<number, { blueBans: string[]; redBans: string[]; bluePicks: string[]; redPicks: string[] }> = {};
         if (game.match_id) {
             try {
                 const { data: allGames } = await supabase
@@ -248,12 +248,12 @@ export async function GET(
                         const rBans = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'ban').map((d: any) => formatHeroName(d.hero_name));
                         const bPicks = gameDrafts.filter((d: any) => d.team_id === blueId && d.action_type === 'pick').map((d: any) => formatHeroName(d.hero_name));
                         const rPicks = gameDrafts.filter((d: any) => d.team_id === redId && d.action_type === 'pick').map((d: any) => formatHeroName(d.hero_name));
-                        draftHistory.push({
+                        draftHistoryByGame[g.game_number] = {
                             blueBans: pad5(bBans),
                             redBans: pad5(rBans),
                             bluePicks: pad5(bPicks),
                             redPicks: pad5(rPicks),
-                        });
+                        };
                     }
                 }
             } catch { /* non-fatal */ }
@@ -372,10 +372,13 @@ export async function GET(
         csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
         csv += row(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
 
-        // Rows 18+: Draft history (GAME 1 BAN, GAME 1 PICK, GAME 2 BAN, GAME 2 PICK, etc)
+        // Rows 18+: Draft history (Latest previous game at the top, going down)
+        let renderedHistoryRows = 0;
         const totalGames = bestOf || 3;
-        for (let i = 1; i <= totalGames; i++) {
-            const hist = draftHistory[i - 1];
+
+        // Output previous games in reverse order of game_number
+        for (let i = gameNumber - 1; i >= 1; i--) {
+            const hist = draftHistoryByGame[i];
             const banLabel = `GAME ${i} BAN`;
             const pickLabel = `GAME ${i} PICK`;
             if (hist) {
@@ -385,6 +388,14 @@ export async function GET(
                 csv += row([banLabel, N, N, N, N, N, '', '', '', N, N, N, N, N, banLabel]);
                 csv += row([pickLabel, N, N, N, N, N, '', '', '', N, N, N, N, N, pickLabel]);
             }
+            renderedHistoryRows++;
+        }
+
+        // Pad with empty rows to maintain exactly `totalGames` pairs of rows for CSV consistency
+        while (renderedHistoryRows < totalGames) {
+            csv += row(['BAN', N, N, N, N, N, '', '', '', N, N, N, N, N, 'BAN']);
+            csv += row(['PICK', N, N, N, N, N, '', '', '', N, N, N, N, N, 'PICK']);
+            renderedHistoryRows++;
         }
 
         // ── Return CSV ──

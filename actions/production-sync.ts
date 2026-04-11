@@ -1,6 +1,7 @@
 'use server';
 
 import { ActiveApiExportService } from '@/services/active-api-exports';
+import { bumpExportCache, ExportCacheDomain } from '@/lib/utils/export-cache';
 
 /**
  * Syncs the global production filter state to the database for all 
@@ -61,6 +62,11 @@ export async function syncProductionState(filters: any) {
 
     return {
         success: results.every(r => r.success),
-        errors: results.filter(r => !r.success).map(r => r.error)
+        errors: results.filter(r => !r.success).map(r => r.error),
+        ...(results.every(r => r.success) && (() => {
+            // Bump all export caches when production state changes
+            (['draft', 'game-results', 'map-veto', 'h2h'] as ExportCacheDomain[]).forEach(d => bumpExportCache(d));
+            return {};
+        })())
     };
 }

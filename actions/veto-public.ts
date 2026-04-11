@@ -4,6 +4,7 @@ import { MatchesService } from '@/services/matches';
 import { ValorantMapVetoService } from '@/services/valorant-map-vetoes';
 import { getVetoSequence, getCurrentVetoStep, VetoAction } from '@/lib/types/map-veto';
 import { revalidatePath } from 'next/cache';
+import { bumpExportCache } from '@/lib/utils/export-cache';
 
 /**
  * Validates public veto access using matchId and teamId
@@ -118,8 +119,9 @@ export async function performPublicVeto(
       return { success: false, error: insertResult.error || 'Failed to record veto' };
     }
 
-    revalidatePath(`/veto/${matchId}`); // Revalidate public page
-    revalidatePath(`/admin/matches/${match.id}`); // Revalidate admin page
+    revalidatePath(`/veto/${matchId}`);
+    revalidatePath(`/admin/matches/${match.id}`);
+    bumpExportCache('map-veto');
 
     return { success: true };
 
@@ -179,6 +181,7 @@ export async function selectPublicVetoSide(
 
     revalidatePath(`/veto/${matchId}`);
     revalidatePath(`/admin/matches/${match.id}`);
+    bumpExportCache('map-veto');
 
     return { success: true };
 

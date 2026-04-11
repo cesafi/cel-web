@@ -6,6 +6,7 @@ import { GameService } from '@/services/games';
 import { createGameSchema, updateGameSchema } from '@/lib/validations/games';
 import { Game } from '@/lib/types/games';
 import { RevalidationHelper } from '@/lib/utils/revalidation';
+import { bumpExportCache } from '@/lib/utils/export-cache';
 
 export async function getPaginatedGames(options: PaginationOptions) {
   return await GameService.getPaginated(options);
@@ -64,6 +65,8 @@ export async function updateGameById(data: unknown): Promise<ServiceResponse<Gam
 
   if (result.success) {
     RevalidationHelper.revalidateGames();
+    bumpExportCache('draft');
+    bumpExportCache('game-results');
   }
 
   return result;
@@ -121,13 +124,12 @@ export async function performGameCoinToss(gameId: number, matchId: number, team1
 
     if (update.success) {
       if (matchId) {
-        // We revalidate matches index because calculating match duration might require it,
-        // and we specifically invalidate the match route here if needed, or rely on a custom helper:
         RevalidationHelper.revalidateMatches();
-        // Also revalidate the broadcast/draft paths since they rely on game data
         revalidatePath(`/broadcast/mlbb/draft/${matchId}`);
       }
       RevalidationHelper.revalidateGames();
+      bumpExportCache('draft');
+      bumpExportCache('game-results');
     }
 
     return update;
