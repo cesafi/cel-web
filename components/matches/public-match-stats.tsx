@@ -420,11 +420,11 @@ function GameStatsViewer({ game, sport, matchParticipants }: { game: Game; sport
                               </td>
                               {/* Lord Slain */}
                               <td className="text-center px-3 py-2 border-l border-border/10">
-                                <span className="text-xs font-medium text-purple-400 tabular-nums">{stat.lord_slain ?? '—'}</span>
+                                <span className="text-xs font-medium text-purple-400 tabular-nums">{stat.lord_slain ?? 0}</span>
                               </td>
                               {/* Turtle Slain */}
                               <td className="text-center px-3 py-2 border-l border-border/10">
-                                <span className="text-xs font-medium text-teal-400 tabular-nums">{stat.turtle_slain ?? '—'}</span>
+                                <span className="text-xs font-medium text-teal-400 tabular-nums">{stat.turtle_slain ?? 0}</span>
                               </td>
                               {/* Teamfight */}
                               <td className="text-center px-3 py-2 border-l border-border/10">

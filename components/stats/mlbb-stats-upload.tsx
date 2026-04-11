@@ -418,8 +418,8 @@ export function MlbbStatsUpload({ gameId, matchId, team1, team2, coinTossWinnerI
                 turretDamage: stat.turret_damage ?? 0,
                 damageTaken: stat.damage_taken ?? 0,
                 teamfight: stat.teamfight ?? 0,
-                turtle_slain: stat.turtle_slain ?? 0,
-                lord_slain: stat.lord_slain ?? 0
+                turtlesSlain: stat.turtle_slain ?? 0,
+                lordsSlain: stat.lord_slain ?? 0
               };
             }
           });
