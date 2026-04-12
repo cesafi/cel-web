@@ -107,6 +107,16 @@ BEGIN
         AND (p_stage_id IS NULL OR stage_id = p_stage_id)
       GROUP BY team_id, team_name, school_abbreviation
     ),
+    player_agg_stats AS (
+      SELECT 
+        team_id,
+        CASE WHEN SUM(games_played) > 0 THEN SUM(avg_econ_rating * games_played) / SUM(games_played) ELSE 0 END as avg_econ_rating
+      FROM mv_valorant_player_stats
+      WHERE team_id IN (p_id_a, p_id_b)
+        AND (p_season_id IS NULL OR season_id = p_season_id)
+        AND (p_stage_id IS NULL OR stage_id = p_stage_id)
+      GROUP BY team_id
+    ),
     round_stats AS (
       SELECT 
         mp.team_id,

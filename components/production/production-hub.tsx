@@ -317,9 +317,12 @@ export default function ProductionHub() {
               
               // Find the best candidate for initial filters (prefer standings)
               const source = activeJson.data.find((e: any) => e.title === 'standings') || activeJson.data[0];
+              const h2hSource = activeJson.data.find((e: any) => e.title === 'h2h-players' || e.title === 'h2h-teams');
               
               if (source && source.query_params) {
                 const { query_params, match_id } = source;
+                const h2hParams = h2hSource?.query_params || {};
+                
                 setFilters(prev => ({
                   ...prev,
                   game: query_params.game || prev.game,
@@ -329,11 +332,11 @@ export default function ProductionHub() {
                   metric: query_params.metric || prev.metric,
                   leaderboardLimit: query_params.leaderboardLimit ? String(query_params.leaderboardLimit) : prev.leaderboardLimit,
                   matchId: match_id ? String(match_id) : (query_params.matchId ? String(query_params.matchId) : prev.matchId),
-                  playerA: query_params.playerA ? String(query_params.playerA) : prev.playerA,
-                  playerB: query_params.playerB ? String(query_params.playerB) : prev.playerB,
-                  teamA: query_params.teamA ? String(query_params.teamA) : prev.teamA,
-                  teamB: query_params.teamB ? String(query_params.teamB) : prev.teamB,
-                  h2hMode: query_params.mode || prev.h2hMode,
+                  playerA: h2hParams.playerA ? String(h2hParams.playerA) : prev.playerA,
+                  playerB: h2hParams.playerB ? String(h2hParams.playerB) : prev.playerB,
+                  teamA: h2hParams.teamA ? String(h2hParams.teamA) : prev.teamA,
+                  teamB: h2hParams.teamB ? String(h2hParams.teamB) : prev.teamB,
+                  h2hMode: h2hParams.mode || prev.h2hMode,
                 }));
               }
             }
