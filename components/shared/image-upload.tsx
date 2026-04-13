@@ -37,7 +37,7 @@ export const UPLOAD_PRESETS = {
     aspectRatio: 16 / 9,
     quality: 'auto',
     format: 'auto',
-    maxFileSize: 300 * 1024, // 300KB
+    maxFileSize: 800 * 1024, // 800KB
     acceptedTypes: ['image/jpeg', 'image/png', 'image/webp']
   },
   TIMELINE: {
