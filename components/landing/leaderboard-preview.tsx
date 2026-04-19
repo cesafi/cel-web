@@ -1,29 +1,34 @@
-import { LeaderboardCard } from '@/components/statistics/leaderboard-card';
+import { LeaderboardToggle } from '@/components/landing/leaderboard-toggle';
 import { getLeaderboard } from '@/actions/statistics';
 import { getCurrentSeason } from '@/actions/seasons';
-import { ArrowRight, TrendingUp } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { moderniz, roboto } from '@/lib/fonts';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
 
 export default async function LeaderboardPreview() {
   // First fetch the current active season
   const activeSeasonResult = await getCurrentSeason();
   const seasonId = activeSeasonResult.success && activeSeasonResult.data ? activeSeasonResult.data.id : undefined;
 
-  // Fetch top stats in parallel with seasonId filter
+  // Default to Men's division, fetch top stats in parallel with seasonId filter
   const [
     mlbbRating,
     valorantAcs,
     mlbbMvp,
     valorantMvp
   ] = await Promise.all([
-    getLeaderboard('mlbb', 'avg_rating', 5, seasonId),
-    getLeaderboard('valorant', 'avg_acs', 5, seasonId),
-    getLeaderboard('mlbb', 'mvp_count', 5, seasonId),
-    getLeaderboard('valorant', 'mvp_count', 5, seasonId)
+    getLeaderboard('mlbb', 'avg_rating', 5, seasonId, "Men's", 5),
+    getLeaderboard('valorant', 'avg_acs', 5, seasonId, "Men's", 5),
+    getLeaderboard('mlbb', 'mvp_count', 5, seasonId, "Men's", 5),
+    getLeaderboard('valorant', 'mvp_count', 5, seasonId, "Men's", 5)
   ]);
+
+  const initialData = {
+    mlbbRating: mlbbRating.data || [],
+    valorantAcs: valorantAcs.data || [],
+    mlbbMvp: mlbbMvp.data || [],
+    valorantMvp: valorantMvp.data || [],
+  };
 
   return (
     <section className="py-20 md:py-32 bg-background relative overflow-hidden">
@@ -42,58 +47,18 @@ export default async function LeaderboardPreview() {
           </p>
         </div>
 
-        {/* Leaderboard Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto">
-          <LeaderboardCard
-            title="MVP Race"
-            game="valorant"
-            metric="MVPs"
-            data={valorantMvp.data || []}
-            iconImage="/img/valorant.webp"
-            accentColor="yellow"
-            delay={0.1}
-          />
-
-          <LeaderboardCard
-            title="MVP Race"
-            game="mlbb"
-            metric="MVPs"
-            data={mlbbMvp.data || []}
-            iconImage="/img/mlbb.webp"
-            accentColor="yellow"
-            delay={0.2}
-          />
-
-          <LeaderboardCard
-            title="Average Rating"
-            game="mlbb"
-            metric="Rating"
-            data={mlbbRating.data || []}
-            iconImage="/img/mlbb.webp"
-            accentColor="blue"
-            delay={0.3}
-          />
-
-          <LeaderboardCard
-            title="Combat Score"
-            game="valorant"
-            metric="ACS"
-            data={valorantAcs.data || []}
-            iconImage="/img/valorant.webp"
-            accentColor="red"
-            delay={0.4}
-          />
-        </div>
+        {/* Division Toggle + Leaderboard Cards */}
+        <LeaderboardToggle initialData={initialData} seasonId={seasonId} />
 
         {/* View All Button */}
         <div className="text-center mt-10 md:mt-12 flex flex-col gap-3 sm:gap-4 justify-center">
           <Link href="/statistics">
-              <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
-                View Full Statistics
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-            <p className={`${roboto.className} text-sm text-muted-foreground`}>
+            <button className={`${roboto.className} bg-foreground hover:bg-foreground/90 text-background px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 hover:scale-105 shadow-lg inline-flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center`}>
+              View Full Statistics
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+          <p className={`${roboto.className} text-sm text-muted-foreground`}>
             Explore comprehensive player stats, team standings, and match data
           </p>
         </div>

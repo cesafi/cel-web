@@ -15,9 +15,11 @@ export async function getLeaderboard(
   game: 'mlbb' | 'valorant',
   metric: string,
   limit: number = 5,
-  seasonId?: number
+  seasonId?: number,
+  division?: string,
+  minGames?: number
 ) {
-  return StatisticsService.getLeaderboard(game, metric, limit, seasonId);
+  return StatisticsService.getLeaderboard(game, metric, limit, seasonId, division, minGames);
 }
 
 // Hero/Agent/Map/Team Statistics Actions

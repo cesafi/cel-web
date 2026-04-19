@@ -439,22 +439,58 @@ export class StatisticsService extends BaseService {
     game: 'mlbb' | 'valorant',
     metric: string,
     limit: number = 5,
-    seasonId?: number
+    seasonId?: number,
+    division?: string,
+    minGames?: number
   ): Promise<{ success: boolean; data?: LeaderboardEntry[]; error?: string }> {
     try {
       const supabase = await this.getClient();
 
       const viewName = game === 'mlbb' ? 'mv_mlbb_player_stats' : 'mv_valorant_player_stats';
       
-      // Select only the fields needed for leaderboard display + the metric column
+      // Tiebreaker: avg_acs for Valorant, avg_rating for MLBB
+      const tiebreaker = game === 'valorant' ? 'avg_acs' : 'avg_rating';
+
+      // Select only the fields needed for leaderboard display + the metric column + tiebreaker
       let query = supabase
         .from(viewName as any)
-        .select(`player_id, player_ign, player_photo_url, team_name, team_logo_url, ${metric}`)
+        .select(`player_id, player_ign, player_photo_url, team_name, team_logo_url, games_played, ${metric}, ${tiebreaker}`)
         .order(metric, { ascending: false, nullsFirst: false })
+        .order(tiebreaker, { ascending: false, nullsFirst: false })
         .limit(limit);
 
       if (seasonId) {
         query = query.eq('season_id', seasonId);
+      }
+
+      // Filter by division (resolve through categories → stages)
+      if (division) {
+        const { data: categoriesData } = await supabase
+          .from('esports_categories')
+          .select('id')
+          .eq('division', division);
+
+        if (!categoriesData || categoriesData.length === 0) {
+          return { success: true, data: [] };
+        }
+
+        const categoryIds = categoriesData.map(c => c.id);
+
+        const { data: stages } = await supabase
+          .from('esports_seasons_stages')
+          .select('id')
+          .in('esport_category_id', categoryIds);
+
+        if (stages && stages.length > 0) {
+          query = query.in('stage_id', stages.map(s => s.id));
+        } else {
+          return { success: true, data: [] };
+        }
+      }
+
+      // Filter by minimum games played
+      if (minGames && minGames > 0) {
+        query = query.gte('games_played', minGames);
       }
 
       const { data, error } = await query;

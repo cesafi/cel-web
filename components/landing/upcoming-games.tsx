@@ -116,13 +116,13 @@ export default function UpcomingGames({ initialMatches }: UpcomingGamesProps) {
     return {
       id: match.id,
       teamA: {
-        name: participants[0]?.schools_teams?.school?.name || 'TBA',
-        abbreviation: participants[0]?.schools_teams?.school?.abbreviation || 'TBA',
+        name: participants[0]?.schools_teams?.school?.name || 'TBD',
+        abbreviation: participants[0]?.schools_teams?.school?.abbreviation || 'TBD',
         logo: participants[0]?.schools_teams?.school?.logo_url || null
       },
       teamB: {
-        name: participants[1]?.schools_teams?.school?.name || 'TBA',
-        abbreviation: participants[1]?.schools_teams?.school?.abbreviation || 'TBA',
+        name: participants[1]?.schools_teams?.school?.name || 'TBD',
+        abbreviation: participants[1]?.schools_teams?.school?.abbreviation || 'TBD',
         logo: participants[1]?.schools_teams?.school?.logo_url || null
       },
       esport: match.esports_seasons_stages?.esports_categories?.esports,
