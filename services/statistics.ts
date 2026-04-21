@@ -433,7 +433,7 @@ export class StatisticsService extends BaseService {
 
   /**
    * Get top players for a specific metric (leaderboard)
-   * Queries the MV directly with ORDER BY and LIMIT to avoid full data dump.
+   * Uses existing aggregate fetchers to ensure stats are combined across multiple stages safely.
    */
   static async getLeaderboard(
     game: 'mlbb' | 'valorant',
@@ -444,64 +444,45 @@ export class StatisticsService extends BaseService {
     minGames?: number
   ): Promise<{ success: boolean; data?: LeaderboardEntry[]; error?: string }> {
     try {
-      const supabase = await this.getClient();
-
-      const viewName = game === 'mlbb' ? 'mv_mlbb_player_stats' : 'mv_valorant_player_stats';
-      
-      // Tiebreaker: avg_acs for Valorant, avg_rating for MLBB
       const tiebreaker = game === 'valorant' ? 'avg_acs' : 'avg_rating';
 
-      // Select only the fields needed for leaderboard display + the metric column + tiebreaker
-      let query = supabase
-        .from(viewName as any)
-        .select(`player_id, player_ign, player_photo_url, team_name, team_logo_url, games_played, ${metric}, ${tiebreaker}`)
-        .order(metric, { ascending: false, nullsFirst: false })
-        .order(tiebreaker, { ascending: false, nullsFirst: false })
-        .limit(limit);
+      // Build filters
+      const filters: Partial<StatisticsFilters> = {};
+      if (seasonId) filters.season_id = seasonId;
+      if (division) filters.division = division;
 
-      if (seasonId) {
-        query = query.eq('season_id', seasonId);
-      }
+      // Fetch ALL aggregated stats for the season/division
+      const statsResult = game === 'mlbb' 
+        ? await this.getMlbbPlayerStats(filters)
+        : await this.getValorantPlayerStats(filters);
 
-      // Filter by division (resolve through categories → stages)
-      if (division) {
-        const { data: categoriesData } = await supabase
-          .from('esports_categories')
-          .select('id')
-          .eq('division', division);
-
-        if (!categoriesData || categoriesData.length === 0) {
-          return { success: true, data: [] };
-        }
-
-        const categoryIds = categoriesData.map(c => c.id);
-
-        const { data: stages } = await supabase
-          .from('esports_seasons_stages')
-          .select('id')
-          .in('esport_category_id', categoryIds);
-
-        if (stages && stages.length > 0) {
-          query = query.in('stage_id', stages.map(s => s.id));
-        } else {
-          return { success: true, data: [] };
-        }
-      }
-
-      // Filter by minimum games played
-      if (minGames && minGames > 0) {
-        query = query.gte('games_played', minGames);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
+      if (!statsResult.success || !statsResult.data) {
         return { success: true, data: [] };
       }
 
-      const leaderboard: LeaderboardEntry[] = (data as any[]).map(player => ({
+      let data = statsResult.data as any[];
+
+      // Filter by minimum games played
+      if (minGames && minGames > 0) {
+        data = data.filter((player: any) => player.games_played >= minGames);
+      }
+
+      // Sort data descending by metric, then by tiebreaker
+      data.sort((a, b) => {
+        const valA = Number(a[metric]) || 0;
+        const valB = Number(b[metric]) || 0;
+        
+        if (valB !== valA) {
+          return valB - valA;
+        }
+        
+        const tieA = Number(a[tiebreaker]) || 0;
+        const tieB = Number(b[tiebreaker]) || 0;
+        return tieB - tieA;
+      });
+
+      // Limit and map to LeaderboardEntry
+      const leaderboard: LeaderboardEntry[] = data.slice(0, limit).map((player: any) => ({
         player_id: player.player_id,
         player_ign: player.player_ign,
         player_photo_url: player.player_photo_url,
