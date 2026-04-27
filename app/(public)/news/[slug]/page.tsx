@@ -17,6 +17,7 @@ import { renderArticleContent, extractSmartExcerpt, getArticleContentProps } fro
 import { formatSmartDate } from '@/lib/utils/date';
 import { calculateSportsReadTime } from '@/lib/utils/read-time';
 import { getArticleUrl } from '@/lib/utils/site-url';
+import ArticlePlaceholderCover from '@/components/shared/article-placeholder-cover';
 import '@/styles/article-content.css';
 
 export default function NewsArticlePage() {
@@ -90,19 +91,30 @@ export default function NewsArticlePage() {
       {/* Hero Image */}
       <section className="relative h-[40vh] overflow-hidden md:h-[50vh]">
         <div className="absolute inset-0">
-          <Image
-            src={displayArticle.image}
-            alt={displayArticle.title}
-            fill
-            className="object-cover"
-            style={displayArticle.coverPosition ? {
-              objectPosition: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
-              transform: `scale(${displayArticle.coverPosition.scale})`,
-              transformOrigin: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
-            } : undefined}
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          {!article.cover_image_url ? (
+            <ArticlePlaceholderCover
+              title={displayArticle.title}
+              category={displayArticle.category}
+              variant="hero"
+              className="h-full"
+            />
+          ) : (
+            <>
+              <Image
+                src={displayArticle.image}
+                alt={displayArticle.title}
+                fill
+                className="object-cover"
+                style={displayArticle.coverPosition ? {
+                  objectPosition: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
+                  transform: `scale(${displayArticle.coverPosition.scale})`,
+                  transformOrigin: `${displayArticle.coverPosition.x}% ${displayArticle.coverPosition.y}%`,
+                } : undefined}
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            </>
+          )}
         </div>
       </section>
 

@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import ViewCounter from '@/components/articles/view-counter';
+import ArticlePlaceholderCover from '@/components/shared/article-placeholder-cover';
 import { moderniz, roboto } from '@/lib/fonts';
 import { formatSmartDate } from '@/lib/utils/date';
 
@@ -30,6 +31,12 @@ interface ArticleCardProps {
   index?: number;
 }
 
+const DEFAULT_FALLBACK = '/img/cesafi-banner.jpg';
+
+function isPlaceholder(image: string) {
+  return !image || image === DEFAULT_FALLBACK;
+}
+
 export default function ArticleCard({ article, variant = 'default', index = 0 }: ArticleCardProps) {
   if (variant === 'featured') {
     return (
@@ -41,17 +48,26 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
         <Card className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/30 hover:border-primary/30 transition-all duration-300">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
             <div className="relative h-64 lg:h-full">
-              <Image
-                src={article.image}
-                alt={article.title}
-                fill
-                className="object-cover"
-                style={article.coverPosition ? {
-                  objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
-                  transform: `scale(${article.coverPosition.scale})`,
-                  transformOrigin: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
-                } : undefined}
-              />
+              {isPlaceholder(article.image) ? (
+                <ArticlePlaceholderCover
+                  title={article.title}
+                  category={article.category}
+                  variant="hero"
+                  className="h-full"
+                />
+              ) : (
+                <Image
+                  src={article.image}
+                  alt={article.title}
+                  fill
+                  className="object-cover"
+                  style={article.coverPosition ? {
+                    objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                    transform: `scale(${article.coverPosition.scale})`,
+                    transformOrigin: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                  } : undefined}
+                />
+              )}
               <div className="absolute top-4 left-4">
                 <Badge className="bg-primary text-primary-foreground">
                   Featured
@@ -103,15 +119,23 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
         <Link href={`/news/${article.slug}`} className="block">
           <div className="flex gap-3">
             <div className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden">
-              <Image
-                src={article.image}
-                alt={article.title}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-200"
-                style={article.coverPosition ? {
-                  objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
-                } : undefined}
-              />
+              {isPlaceholder(article.image) ? (
+                <ArticlePlaceholderCover
+                  title={article.title}
+                  variant="card"
+                  className="h-full"
+                />
+              ) : (
+                <Image
+                  src={article.image}
+                  alt={article.title}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-200"
+                  style={article.coverPosition ? {
+                    objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                  } : undefined}
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <h4 className={`${roboto.className} text-[13px] sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-200 line-clamp-2 mb-1.5`}>
@@ -147,17 +171,26 @@ export default function ArticleCard({ article, variant = 'default', index = 0 }:
     >
       <Card className="h-full overflow-hidden bg-background/60 backdrop-blur-sm border-border/30 hover:border-primary/30 transition-all duration-300">
         <div className="relative h-48">
-          <Image
-            src={article.image}
-            alt={article.title}
-            fill
-            className="object-cover"
-            style={article.coverPosition ? {
-              objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
-              transform: `scale(${article.coverPosition.scale})`,
-              transformOrigin: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
-            } : undefined}
-          />
+          {isPlaceholder(article.image) ? (
+            <ArticlePlaceholderCover
+              title={article.title}
+              category={article.category}
+              variant="card"
+              className="h-full"
+            />
+          ) : (
+            <Image
+              src={article.image}
+              alt={article.title}
+              fill
+              className="object-cover"
+              style={article.coverPosition ? {
+                objectPosition: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+                transform: `scale(${article.coverPosition.scale})`,
+                transformOrigin: `${article.coverPosition.x}% ${article.coverPosition.y}%`,
+              } : undefined}
+            />
+          )}
         </div>
         <CardContent className="p-6 flex flex-col h-[calc(100%-12rem)]">
           <div className="flex-1 space-y-3">

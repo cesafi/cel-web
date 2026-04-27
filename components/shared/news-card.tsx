@@ -11,6 +11,7 @@ import { Article } from '@/lib/types/articles';
 import { extractPlainText } from '@/lib/utils/content-renderer';
 import { formatSmartDate } from '@/lib/utils/date';
 import { calculateSportsReadTime } from '@/lib/utils/read-time';
+import ArticlePlaceholderCover from '@/components/shared/article-placeholder-cover';
 
 interface NewsCardProps {
   article: Article;
@@ -45,17 +46,26 @@ export default function NewsCard({ article, index, className = '' }: NewsCardPro
     >
       <Card className="h-full overflow-hidden bg-background/60 backdrop-blur-sm border-border/30 hover:border-primary/30 transition-all duration-300">
         <div className="relative h-48">
-          <Image
-            src={newsArticle.image}
-            alt={newsArticle.title}
-            fill
-            className="object-cover"
-            style={newsArticle.coverPosition ? {
-              objectPosition: `${newsArticle.coverPosition.x}% ${newsArticle.coverPosition.y}%`,
-              transform: `scale(${newsArticle.coverPosition.scale})`,
-              transformOrigin: `${newsArticle.coverPosition.x}% ${newsArticle.coverPosition.y}%`,
-            } : undefined}
-          />
+          {!article.cover_image_url ? (
+            <ArticlePlaceholderCover
+              title={newsArticle.title}
+              category={newsArticle.category}
+              variant="card"
+              className="h-full"
+            />
+          ) : (
+            <Image
+              src={newsArticle.image}
+              alt={newsArticle.title}
+              fill
+              className="object-cover"
+              style={newsArticle.coverPosition ? {
+                objectPosition: `${newsArticle.coverPosition.x}% ${newsArticle.coverPosition.y}%`,
+                transform: `scale(${newsArticle.coverPosition.scale})`,
+                transformOrigin: `${newsArticle.coverPosition.x}% ${newsArticle.coverPosition.y}%`,
+              } : undefined}
+            />
+          )}
         </div>
         <CardContent className="p-6 flex flex-col h-[calc(100%-12rem)]">
           <div className="flex-1 space-y-4">
