@@ -57,7 +57,7 @@ export interface HeroStats {
 // Agent Stats (Valorant)
 // ============================================
 
-export type AgentRole = 'duelist' | 'initiator' | 'controller' | 'sentinel';
+export type AgentRole = 'duelist' | 'initiator' | 'controller' | 'sentinel' | 'flex';
 
 export interface AgentStats {
     agent_name: string;
@@ -268,10 +268,55 @@ export const LEADERBOARD_METRICS: LeaderboardConfig[] = [
 ];
 
 // ============================================
+// Role Mastery Types
+// ============================================
+
+export type MlbbRole = 'EXP' | 'Jungle' | 'Mid' | 'Gold' | 'Roam';
+export type ValorantRole = 'Duelist' | 'Controller' | 'Initiator' | 'Sentinel' | 'Flex';
+
+export interface RoleMasteryEntry {
+    player_id: string;
+    player_ign: string;
+    player_photo_url: string | null;
+    team_name: string | null;
+    team_logo_url: string | null;
+    role: string;
+    mastery_score: number;
+    /** The key contributing stats displayed beneath the score */
+    breakdown: { label: string; value: string }[];
+    games_played: number;
+}
+
+export interface RoleMasteryConfig {
+    role: string;
+    label: string;
+    icon: string; // emoji or icon key
+    accentColor: string;
+    /** Human-readable description of what this role rewards */
+    description: string;
+}
+
+export const MLBB_ROLE_CONFIGS: RoleMasteryConfig[] = [
+    { role: 'EXP', label: 'EXP Laner', icon: 'EXP', accentColor: 'orange', description: 'Frontline bruisers who split-push and tank damage' },
+    { role: 'Jungle', label: 'Jungler', icon: 'JG', accentColor: 'green', description: 'Objective controllers who secure Lords and Turtles' },
+    { role: 'Mid', label: 'Mid Laner', icon: 'MID', accentColor: 'purple', description: 'Tempo controllers with high damage output' },
+    { role: 'Gold', label: 'Gold Laner', icon: 'GLD', accentColor: 'yellow', description: 'Carries who farm efficiently and deal sustained damage' },
+    { role: 'Roam', label: 'Roamer', icon: 'ROM', accentColor: 'blue', description: 'Playmakers who rotate and protect the team' },
+];
+
+export const VALORANT_ROLE_CONFIGS: RoleMasteryConfig[] = [
+    { role: 'Duelist', label: 'Duelist', icon: 'DUE', accentColor: 'red', description: 'Entry fraggers who open sites with first bloods' },
+    { role: 'Controller', label: 'Controller', icon: 'CTL', accentColor: 'green', description: 'Smoke anchors who stay alive and enable the team' },
+    { role: 'Initiator', label: 'Initiator', icon: 'INI', accentColor: 'blue', description: 'Utility specialists who set up plays and trade kills' },
+    { role: 'Sentinel', label: 'Sentinel', icon: 'SEN', accentColor: 'yellow', description: 'Site anchors who control objectives and retakes' },
+    { role: 'Flex', label: 'Flex', icon: 'FLX', accentColor: 'purple', description: 'Swiss army knives with diverse agent pools' },
+];
+
+// ============================================
 // Stat View Type
 // ============================================
 
-export type StatisticsViewType = 'players' | 'heroes' | 'agents' | 'maps' | 'teams';
+export type StatisticsViewType = 'players' | 'heroes' | 'agents' | 'maps' | 'teams' | 'role-mastery';
 
 export const STATISTICS_VIEWS: {
     type: StatisticsViewType;
@@ -284,4 +329,5 @@ export const STATISTICS_VIEWS: {
         { type: 'agents', label: 'Agents', mlbb: false, valorant: true },
         { type: 'maps', label: 'Maps', mlbb: false, valorant: true },
         { type: 'teams', label: 'Teams', mlbb: true, valorant: true },
+        { type: 'role-mastery', label: 'Role Mastery', mlbb: true, valorant: true },
     ];

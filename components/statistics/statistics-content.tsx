@@ -20,6 +20,7 @@ import { PlayerLeaderboard } from './player-leaderboard';
 import { CharacterStatsTable } from './character-stats-table';
 import { MapStatsDisplay } from './map-stats-display';
 import { TeamRankings } from './team-rankings';
+import { RoleMasteryTable } from './role-mastery-table';
 import { StatisticsLoading } from './statistics-loading';
 import { MlbbPlayerStats, ValorantPlayerStats } from '@/services/statistics';
 import {
@@ -409,6 +410,15 @@ export function StatisticsContent({ availableStages = [] }: StatisticsContentPro
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onSort={handleSort}
+          />
+        );
+      case 'role-mastery':
+        return (
+          <RoleMasteryTable
+            game={game}
+            seasonId={selectedSeason}
+            stageId={selectedStage}
+            division={selectedDivision}
           />
         );
       default:

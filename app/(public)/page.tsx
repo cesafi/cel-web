@@ -15,6 +15,7 @@ import { MatchWithFullDetails } from '@/lib/types/matches';
 import { Faq } from '@/lib/types/faq';
 import { School } from '@/lib/types/schools';
 import LeaderboardPreview from '@/components/landing/leaderboard-preview';
+import RoleMasteryPreview from '@/components/landing/role-mastery-preview';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -58,6 +59,9 @@ export default async function LandingPage() {
 
       {/* Leaderboard Preview - Top stats */}
       <LeaderboardPreview />
+
+      {/* Role Mastery Preview - Role-based rankings */}
+      <RoleMasteryPreview />
 
       {/* Upcoming Games - Sports showcase */}
       <UpcomingGames initialMatches={matches} />

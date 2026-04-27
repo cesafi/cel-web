@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Target, Shield, Crosshair, Zap, Users } from 'lucide-react';
+import { Target, Shield, Crosshair, Zap, Users, Shuffle } from 'lucide-react';
 import { AgentStats, AgentRole } from '@/lib/types/stats-enhanced';
 
 interface AgentStatsGridProps {
@@ -36,6 +36,12 @@ const roleConfig: Record<AgentRole, { label: string; icon: React.ReactNode; colo
         icon: <Shield className="w-4 h-4" />,
         color: 'text-yellow-500',
         bgColor: 'from-yellow-500/20 to-yellow-600/30'
+    },
+    flex: {
+        label: 'Flex',
+        icon: <Shuffle className="w-4 h-4" />,
+        color: 'text-violet-500',
+        bgColor: 'from-violet-500/20 to-violet-600/30'
     },
 };
 

@@ -1275,5 +1275,391 @@ export class StatisticsService extends BaseService {
       return this.formatError(error, 'Failed to fetch team H2H stats');
     }
   }
+
+  /**
+   * Get Role Mastery Leaderboard
+   * Computes composite mastery scores for each role using weighted multi-metric formulas.
+   * Resolves player roles from game_rosters (per-game) and falls back to player_seasons.
+   * 
+   * IMPORTANT: avg_teamfight_percent from the MV is already in percentage form (e.g., 88.5 = 88.5%).
+   * Scores are normalized to a 0–1 scale where 1.0 = the best player for that role.
+   * A games_played confidence multiplier penalizes players with fewer games.
+   */
+  static async getRoleMasteryLeaderboard(
+    game: 'mlbb' | 'valorant',
+    role: string,
+    limit: number = 10,
+    seasonId?: number,
+    division?: string,
+    minGames: number = 3
+  ): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    try {
+      const supabase = await this.getClient();
+
+      // Build filters for the aggregation fetchers
+      const filters: Partial<StatisticsFilters> = {};
+      if (seasonId) filters.season_id = seasonId;
+      if (division) filters.division = division;
+
+      // 1. Get all aggregated player stats
+      const statsResult = game === 'mlbb'
+        ? await this.getMlbbPlayerStats(filters)
+        : await this.getValorantPlayerStats(filters);
+
+      if (!statsResult.success || !statsResult.data) {
+        return { success: true, data: [] };
+      }
+
+      let allPlayers = statsResult.data as any[];
+
+      // Filter minimum games
+      allPlayers = allPlayers.filter(p => (p.games_played || 0) >= minGames);
+
+      // 2. Resolve player roles
+      const playerIds = allPlayers.map(p => p.player_id).filter(Boolean);
+      if (playerIds.length === 0) return { success: true, data: [] };
+
+      // 2a. Resolve game_ids scoped to the current season/division so that
+      //     roster roles and unique-character counts only reflect THIS season.
+      let seasonGameIds: number[] | null = null;
+      if (seasonId) {
+        // Get stage_ids for this season (optionally filtered by division)
+        let stageQuery = supabase
+          .from('esports_seasons_stages')
+          .select('id');
+        stageQuery = stageQuery.eq('season_id', seasonId);
+
+        if (division) {
+          const { data: catData } = await supabase
+            .from('esports_categories')
+            .select('id')
+            .eq('division', division);
+          if (catData && catData.length > 0) {
+            stageQuery = stageQuery.in('esport_category_id', catData.map(c => c.id));
+          }
+        }
+
+        const { data: stagesData } = await stageQuery;
+        if (stagesData && stagesData.length > 0) {
+          const stageIds = stagesData.map(s => s.id);
+
+          // Get match_ids from those stages
+          const { data: matchesData } = await supabase
+            .from('matches')
+            .select('id')
+            .in('stage_id', stageIds);
+
+          if (matchesData && matchesData.length > 0) {
+            const matchIds = matchesData.map(m => m.id);
+
+            // Get game_ids from those matches
+            const { data: gamesData } = await supabase
+              .from('games')
+              .select('id')
+              .in('match_id', matchIds);
+
+            if (gamesData && gamesData.length > 0) {
+              seasonGameIds = gamesData.map(g => g.id);
+            }
+          }
+        }
+      }
+
+      // PRIMARY: Use player_seasons.player_role (registered role for THIS season).
+      // This ensures each player only appears in one role tab.
+      // player_seasons has no season_id — link via team_id → schools_teams.season_id.
+      const playerRoleMap = new Map<string, string>();
+
+      // Get team_ids for this season to scope player_seasons
+      let seasonTeamIds: string[] | null = null;
+      if (seasonId) {
+        const { data: teamsForSeason } = await supabase
+          .from('schools_teams')
+          .select('id')
+          .eq('season_id', seasonId);
+        if (teamsForSeason && teamsForSeason.length > 0) {
+          seasonTeamIds = teamsForSeason.map(t => t.id);
+        }
+      }
+
+      let psQuery = supabase
+        .from('player_seasons')
+        .select('player_id, player_role')
+        .in('player_id', playerIds)
+        .not('player_role', 'is', null);
+      if (seasonTeamIds) {
+        psQuery = psQuery.in('team_id', seasonTeamIds);
+      }
+      const { data: psData } = await psQuery;
+
+      (psData || []).forEach((ps: any) => {
+        if (ps.player_role && !playerRoleMap.has(ps.player_id)) {
+          playerRoleMap.set(ps.player_id, ps.player_role);
+        }
+      });
+
+      // FALLBACK: game_rosters for players not found in player_seasons
+      const missingPlayers = playerIds.filter(id => !playerRoleMap.has(id));
+      if (missingPlayers.length > 0) {
+        let rosterQuery = supabase
+          .from('game_rosters')
+          .select('player_id, player_role')
+          .in('player_id', missingPlayers);
+        if (seasonGameIds) {
+          rosterQuery = rosterQuery.in('game_id', seasonGameIds);
+        }
+        const { data: rosterData } = await rosterQuery;
+
+        const roleCountMap = new Map<string, Map<string, number>>();
+        (rosterData || []).forEach((r: any) => {
+          if (!roleCountMap.has(r.player_id)) {
+            roleCountMap.set(r.player_id, new Map());
+          }
+          const counts = roleCountMap.get(r.player_id)!;
+          counts.set(r.player_role, (counts.get(r.player_role) || 0) + 1);
+        });
+
+        roleCountMap.forEach((counts, playerId) => {
+          let maxRole = '';
+          let maxCount = 0;
+          counts.forEach((count, roleName) => {
+            if (count > maxCount) { maxCount = count; maxRole = roleName; }
+          });
+          if (maxRole) playerRoleMap.set(playerId, maxRole);
+        });
+      }
+
+      // 3. Compute unique characters played per player (heroes for MLBB, agents for Valorant)
+      //    Scoped to current season game_ids so we don't count agents from previous seasons.
+      let uniqueCharacterMap = new Map<string, number>();
+      const tableName = game === 'mlbb' ? 'stats_mlbb_game_player' : 'stats_valorant_game_player';
+      let charQuery = supabase
+        .from(tableName as any)
+        .select('player_id, game_character_id')
+        .in('player_id', playerIds);
+      if (seasonGameIds) {
+        charQuery = charQuery.in('game_id', seasonGameIds);
+      }
+      const { data: charData } = await charQuery;
+
+      const playerCharSet = new Map<string, Set<number>>();
+      (charData || []).forEach((row: any) => {
+        if (!playerCharSet.has(row.player_id)) {
+          playerCharSet.set(row.player_id, new Set());
+        }
+        if (row.game_character_id) {
+          playerCharSet.get(row.player_id)!.add(row.game_character_id);
+        }
+      });
+      playerCharSet.forEach((chars, playerId) => {
+        uniqueCharacterMap.set(playerId, chars.size);
+      });
+
+      // 4. Compute reference games for confidence multiplier
+      // Use median games_played among role-qualified players as the reference
+      const rolePlayerStats = allPlayers.filter(p => playerRoleMap.get(p.player_id) === role);
+      const gamesArray = rolePlayerStats.map(p => p.games_played || 0).sort((a, b) => a - b);
+      const medianGames = gamesArray.length > 0
+        ? gamesArray[Math.floor(gamesArray.length / 2)]
+        : 6;
+      // Reference: at least the median, minimum 5 games for full confidence
+      const referenceGames = Math.max(medianGames, 5);
+
+      // 5. Filter players by role and compute RAW mastery score
+      const rolePlayers = rolePlayerStats.map(p => {
+          const g = p.games_played || 1;
+          let raw_score = 0;
+          let breakdown: { label: string; value: string }[] = [];
+
+          // Confidence multiplier: penalize players with few games, cap at 1.0
+          const confidence = Math.min(1.0, g / referenceGames);
+
+          if (game === 'mlbb') {
+            const avgDmgDealt = (p.total_damage_dealt || 0) / g;
+            const avgDmgTaken = (p.total_damage_taken || 0) / g;
+            const avgTurretDmg = (p.total_turret_damage || 0) / g;
+            const avgGpm = p.avg_gpm || ((p.total_gold || 0) / g);
+            // MV stores teamfight as percentage already (88.5 = 88.5%)
+            const avgTeamfight = p.avg_teamfight_percent || 0;
+            const avgKills = (p.total_kills || 0) / g;
+            const avgAssists = (p.total_assists || 0) / g;
+            const deaths = (p.total_deaths || 0);
+            const kda = deaths > 0 ? ((p.total_kills || 0) + (p.total_assists || 0)) / deaths : ((p.total_kills || 0) + (p.total_assists || 0));
+            const objectivesPerGame = ((p.total_lord_slain || 0) + (p.total_turtle_slain || 0)) / g;
+            const uniqueChars = uniqueCharacterMap.get(p.player_id) || 1;
+            
+            const avgRating = p.avg_rating || 0;
+            
+            // Base Rating component: ~20% of score (avg rating is ~7.0 * 4.5 ≈ 31.5 points)
+            const rating_score = avgRating * 4.5;
+            const rating_breakdown = { label: 'RTG', value: avgRating.toFixed(1) };
+
+            switch (role) {
+              case 'Gold':
+                // 20% Rating, 35% GPM, 30% Damage, 15% KDA
+                raw_score = rating_score + (avgGpm * 0.07) + (avgDmgDealt / 1300) + (kda * 5.5);
+                breakdown = [
+                  rating_breakdown,
+                  { label: 'GPM', value: avgGpm.toFixed(0) },
+                  { label: 'Avg Dmg', value: avgDmgDealt.toFixed(0) },
+                  { label: 'KDA', value: kda.toFixed(2) },
+                ];
+                break;
+              case 'Roam':
+                // 20% Rating, 35% Teamfight, 25% Assists, 20% Dmg Taken
+                raw_score = rating_score + (avgTeamfight * 0.8) + (avgAssists * 3.5) + (avgDmgTaken / 2000);
+                breakdown = [
+                  rating_breakdown,
+                  { label: 'TF%', value: avgTeamfight.toFixed(1) + '%' },
+                  { label: 'Assists', value: avgAssists.toFixed(1) },
+                  { label: 'Dmg Taken', value: avgDmgTaken.toFixed(0) },
+                ];
+                break;
+              case 'Jungle':
+                // 20% Rating, 40% Objectives, 25% GPM, 15% Kills
+                raw_score = rating_score + (objectivesPerGame * 18) + (avgGpm * 0.05) + (avgKills * 3.3);
+                breakdown = [
+                  rating_breakdown,
+                  { label: 'Obj/Game', value: objectivesPerGame.toFixed(2) },
+                  { label: 'GPM', value: avgGpm.toFixed(0) },
+                  { label: 'Kills', value: avgKills.toFixed(1) },
+                ];
+                break;
+              case 'Mid':
+                // 20% Rating, 35% Damage, 30% Teamfight, 15% KDA
+                raw_score = rating_score + (avgDmgDealt / 1000) + (avgTeamfight * 0.7) + (kda * 5);
+                breakdown = [
+                  rating_breakdown,
+                  { label: 'Avg Dmg', value: avgDmgDealt.toFixed(0) },
+                  { label: 'TF%', value: avgTeamfight.toFixed(1) + '%' },
+                  { label: 'KDA', value: kda.toFixed(2) },
+                ];
+                break;
+              case 'EXP':
+                // 20% Rating, 35% Dmg Taken, 25% Turret Dmg, 20% Teamfight
+                raw_score = rating_score + (avgDmgTaken / 1200) + (avgTurretDmg / 85) + (avgTeamfight * 0.55);
+                breakdown = [
+                  rating_breakdown,
+                  { label: 'Dmg Taken', value: avgDmgTaken.toFixed(0) },
+                  { label: 'Turret Dmg', value: avgTurretDmg.toFixed(0) },
+                  { label: 'TF%', value: avgTeamfight.toFixed(1) + '%' },
+                ];
+                break;
+              case 'Flex':
+                // 20% Rating, 40% Hero diversity, 40% KDA
+                raw_score = rating_score + (Math.sqrt(uniqueChars) * 20) + (kda * 12);
+                breakdown = [
+                  rating_breakdown,
+                  { label: 'Heroes', value: String(uniqueChars) },
+                  { label: 'KDA', value: kda.toFixed(2) },
+                ];
+                break;
+            }
+
+            // Apply confidence multiplier
+            raw_score *= confidence;
+          } else {
+            // Valorant
+            const avgAcs = p.avg_acs || 0;
+            const avgKills = (p.total_kills || 0) / g;
+            const avgDeaths = (p.total_deaths || 0) / g;
+            const avgAssists = (p.total_assists || 0) / g;
+            const avgFBs = (p.total_first_bloods || 0) / g;
+            const avgPlants = (p.total_plants || 0) / g;
+            const avgDefuses = (p.total_defuses || 0) / g;
+            const avgPlantsDefuses = avgPlants + avgDefuses;
+            const deaths = (p.total_deaths || 0);
+            const kda = deaths > 0 ? ((p.total_kills || 0) + (p.total_assists || 0)) / deaths : ((p.total_kills || 0) + (p.total_assists || 0));
+            const uniqueChars = uniqueCharacterMap.get(p.player_id) || 1;
+
+            // Base ACS component: ~25% of score for all except Duelist (which is naturally higher)
+            // Avg ACS is ~200, so 200 * 0.22 ≈ 44 points.
+            const acs_score = avgAcs * 0.22;
+            const acs_breakdown = { label: 'ACS', value: avgAcs.toFixed(1) };
+
+            switch (role) {
+              case 'Duelist':
+                // 35% ACS, 45% First Bloods, 20% Kills
+                raw_score = (avgAcs * 0.3) + (avgFBs * 26) + (avgKills * 2);
+                breakdown = [
+                  { label: 'ACS', value: avgAcs.toFixed(1) },
+                  { label: 'FB/Game', value: avgFBs.toFixed(2) },
+                  { label: 'Kills', value: avgKills.toFixed(1) },
+                ];
+                break;
+              case 'Controller':
+                // 25% ACS, 35% Assists, 25% Survivability, 15% Objective
+                raw_score = acs_score + (avgAssists * 8) + (Math.max(0, 24 - avgDeaths) * 5) + (avgPlantsDefuses * 12.5);
+                breakdown = [
+                  acs_breakdown,
+                  { label: 'Assists', value: avgAssists.toFixed(1) },
+                  { label: 'Deaths', value: avgDeaths.toFixed(1) },
+                  { label: 'Obj/Game', value: avgPlantsDefuses.toFixed(2) },
+                ];
+                break;
+              case 'Initiator':
+                // 25% ACS, 40% Assists, 20% Kills, 15% Objective
+                raw_score = acs_score + (avgAssists * 8.5) + (avgKills * 2.5) + (avgPlantsDefuses * 12.5);
+                breakdown = [
+                  acs_breakdown,
+                  { label: 'Assists', value: avgAssists.toFixed(1) },
+                  { label: 'Kills', value: avgKills.toFixed(1) },
+                  { label: 'Obj/Game', value: avgPlantsDefuses.toFixed(2) },
+                ];
+                break;
+              case 'Sentinel':
+                // 25% ACS, 40% Objective, 35% KDA
+                raw_score = acs_score + (avgPlantsDefuses * 23) + (kda * 50);
+                breakdown = [
+                  acs_breakdown,
+                  { label: 'Obj/Game', value: avgPlantsDefuses.toFixed(2) },
+                  { label: 'KDA', value: kda.toFixed(2) },
+                ];
+                break;
+              case 'Flex':
+                // 25% ACS, 40% Agent diversity, 35% KDA
+                raw_score = acs_score + (Math.sqrt(uniqueChars) * 20) + (kda * 50);
+                breakdown = [
+                  acs_breakdown,
+                  { label: 'Agents', value: String(uniqueChars) },
+                  { label: 'KDA', value: kda.toFixed(2) },
+                ];
+                break;
+            }
+
+            // Apply confidence multiplier
+            raw_score *= confidence;
+          }
+
+          return {
+            player_id: p.player_id,
+            player_ign: p.player_ign,
+            player_photo_url: p.player_photo_url,
+            team_name: p.team_name,
+            team_logo_url: p.team_logo_url,
+            role,
+            raw_score,
+            breakdown,
+            games_played: p.games_played,
+            unique_characters: uniqueCharacterMap.get(p.player_id) || 0,
+          };
+        });
+
+      // 6. Normalize to 0–1 scale (1.0 = best in role)
+      const maxScore = Math.max(...rolePlayers.map(p => p.raw_score), 1);
+
+      const normalized = rolePlayers.map(p => ({
+        ...p,
+        mastery_score: Math.round((p.raw_score / maxScore) * 1000) / 1000, // 3 decimal places (e.g. 0.847)
+      }));
+
+      // 7. Sort by mastery_score descending, then limit
+      normalized.sort((a, b) => b.mastery_score - a.mastery_score);
+
+      return { success: true, data: normalized.slice(0, limit) };
+    } catch (error) {
+      return this.formatError<any[]>(error, 'Failed to fetch role mastery leaderboard');
+    }
+  }
 }
 

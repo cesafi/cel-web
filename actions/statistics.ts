@@ -16,7 +16,7 @@ interface CacheEntry {
   timestamp: number;
 }
 
-const CACHE_KEY = '__leaderboardCache' as const;
+const CACHE_KEY = '__leaderboardCache_v5' as const;
 const globalForCache = globalThis as unknown as {
     [CACHE_KEY]: Record<string, CacheEntry>;
 };
@@ -45,6 +45,33 @@ export async function getLeaderboard(
 
   const result = await StatisticsService.getLeaderboard(game, metric, limit, seasonId, division, minGames);
   
+  if (result.success) {
+      globalForCache[CACHE_KEY][cacheKey] = {
+          data: result,
+          timestamp: Date.now()
+      };
+  }
+
+  return result;
+}
+
+export async function getRoleMastery(
+  game: 'mlbb' | 'valorant',
+  role: string,
+  limit: number = 10,
+  seasonId?: number,
+  division?: string,
+  minGames: number = 3
+) {
+  const cacheKey = `role-mastery-${game}-${role}-${limit}-${seasonId || 'all'}-${division || 'all'}-${minGames}`;
+  
+  const cached = globalForCache[CACHE_KEY][cacheKey];
+  if (cached && (Date.now() - cached.timestamp < TTL_5_DAYS)) {
+      return cached.data;
+  }
+
+  const result = await StatisticsService.getRoleMasteryLeaderboard(game, role, limit, seasonId, division, minGames);
+
   if (result.success) {
       globalForCache[CACHE_KEY][cacheKey] = {
           data: result,

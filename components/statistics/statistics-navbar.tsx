@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Users, Swords, Target, Map, Trophy } from 'lucide-react';
+import { Users, Swords, Target, Map, Trophy, Crown } from 'lucide-react';
 import { StatisticsViewType, STATISTICS_VIEWS } from '@/lib/types/stats-enhanced';
 
 interface StatisticsNavbarProps {
@@ -17,6 +17,7 @@ const viewIcons: Record<StatisticsViewType, React.ReactNode> = {
     agents: <Target className="w-4 h-4" />,
     maps: <Map className="w-4 h-4" />,
     teams: <Trophy className="w-4 h-4" />,
+    'role-mastery': <Crown className="w-4 h-4" />,
 };
 
 export function StatisticsNavbar({
