@@ -51,7 +51,7 @@ export async function getPublicActiveSchools() {
   if (result.success && result.data) {
     return {
       ...result,
-      data: result.data.filter(s => s.abbreviation !== 'TBD' && s.name !== 'To Be Determined')
+      data: result.data.filter(s => s.abbreviation !== 'TBD' && s.name !== 'To Be Determined' && s.abbreviation !== 'CEL')
     };
   }
   

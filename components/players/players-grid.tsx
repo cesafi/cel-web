@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { toPlayerSlug } from '@/lib/utils/player-slug';
 import { RichSportCategory } from '../schedule/schedule-content';
 import { getAllSchoolsTeams } from '@/actions/schools-teams';
-import { getAllSchools } from '@/actions/schools';
+import { getPublicActiveSchools } from '@/actions/schools';
 import { getAllPlayersWithTeams } from '@/actions/players';
 
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -98,7 +98,7 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
       try {
         const [teamsResult, schoolsResult] = await Promise.all([
           getAllSchoolsTeams(),
-          getAllSchools()
+          getPublicActiveSchools()
         ]);
 
         if (teamsResult.success && teamsResult.data) {
@@ -169,9 +169,12 @@ export default function PlayersGrid({ availableRichSports }: { availableRichSpor
       if (isVAL && !isMLBB && !teamGame.includes('valorant')) return false;
 
       // 3. School Filter
+      const schoolId = targetSeasonEntry?.team?.schools?.id?.toString();
+      const schoolAbbrev = targetSeasonEntry?.team?.schools?.abbreviation;
+      
+      if (schoolAbbrev === 'CEL') return false;
+
       if (selectedSchool !== 'all') {
-        const schoolId = targetSeasonEntry?.team?.schools?.id?.toString();
-        const schoolAbbrev = targetSeasonEntry?.team?.schools?.abbreviation;
         if (schoolId !== selectedSchool && schoolAbbrev !== selectedSchool) return false;
       }
 
