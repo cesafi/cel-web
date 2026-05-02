@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import StandingsContent from '@/components/standings/standings-content';
+import StandingsLoading from '@/components/standings/standings-loading';
 import {
   getAvailableSeasons,
   getAvailableSports,
@@ -7,6 +8,14 @@ import {
   getStandingsNavigation
 } from '@/actions/standings';
 import { findItemBySlug, fromSlug, normalizeStageSlug } from '@/lib/slug-utils';
+
+function StandingsLoadingFallback() {
+  return (
+    <div className="bg-background min-h-screen flex items-center justify-center">
+      <StandingsLoading className="min-h-0 bg-transparent" />
+    </div>
+  );
+}
 
 export const revalidate = 900; // Revalidate every 15 minutes
 
@@ -97,7 +106,7 @@ export default async function StandingsPage({ params, searchParams }: StandingsP
   };
 
   return (
-    <Suspense fallback={<div className="min-h-screen">Loading...</div>}>
+    <Suspense fallback={<StandingsLoadingFallback />}>
       <StandingsContent
         searchParams={resolvedSearchParams as any}
         initialFilters={initialFilters}

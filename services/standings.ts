@@ -399,17 +399,20 @@ export class StandingsService extends BaseService {
 
           if (m.games && m.games.length > 0) {
               m.games.forEach((g: any) => {
-                  if (g.game_scores && g.game_scores.length >= 2) {
-                      const s1 = g.game_scores.find((gs: any) => gs.match_participant_id === team1?.id)?.score || 0;
-                      const s2 = g.game_scores.find((gs: any) => gs.match_participant_id === team2?.id)?.score || 0;
+                  if (g.game_scores && g.game_scores.length >= 1) {
+                      const s1 = g.game_scores.find((gs: any) => gs.match_participant_id === team1?.id)?.score ?? 0;
+                      const s2 = g.game_scores.find((gs: any) => gs.match_participant_id === team2?.id)?.score ?? 0;
                       if (s1 > s2) team1Score++;
                       if (s2 > s1) team2Score++;
                   }
               });
-          } else {
-             // Fallback to match_score if no games (or manual override)
-             team1Score = team1?.match_score || 0;
-             team2Score = team2?.match_score || 0;
+          }
+
+          // Fallback to match_score if game-based calculation yielded 0-0
+          // This handles cases where games exist but game_scores are empty/incomplete
+          if (team1Score === 0 && team2Score === 0) {
+             team1Score = team1?.match_score ?? 0;
+             team2Score = team2?.match_score ?? 0;
           }
           
           // Determine winner dynamically if not explicitly set

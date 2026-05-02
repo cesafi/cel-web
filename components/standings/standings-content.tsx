@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useTransition, useMemo } from 'react';
+import { useState, useEffect, useTransition, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CalendarDays, ChevronDown } from 'lucide-react';
+import { AlertCircle, ChevronDown } from 'lucide-react';
 import { moderniz, roboto } from '@/lib/fonts';
 import SeasonSidebar from './season-sidebar';
 import StandingsNavbar from './standings-navbar';
@@ -41,6 +41,9 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
 
   const [selectedStage, setSelectedStage] = useState<number | undefined>(filters.stage_id);
 
+  // Track last selected category name for preservation across sport changes
+  const lastCategoryNameRef = useRef<string | undefined>(undefined);
+
   // Fetch data for default selection
   const { data: seasons } = useAvailableSeasons();
   const { data: sports } = useAvailableSports(filters.season_id ?? 0);
@@ -52,14 +55,23 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
   // Fetch standings data
   const { data: standingsData, isLoading, error, refetch, isFetching } = useStandings(filters);
 
-  // Detect if we're in the initial loading phase (no data yet, still resolving defaults)
+  // Track if we've ever had data (to distinguish initial load from filter transitions)
+  const hasEverHadData = useRef(false);
+  if (standingsData) hasEverHadData.current = true;
+
+  // Detect if we're in the initial loading phase (never had data, no filters yet)
   const isInitialLoading = useMemo(() => {
+    if (hasEverHadData.current) return false;
     const hasNoFilters = !filters.season_id && !filters.sport_id && !filters.esport_category_id;
     const isResolvingDefaults = hasNoFilters && (!seasons || seasons.length === 0);
-    const isWaitingForData = (isLoading || isFetching) && !standingsData;
     const filtersIncomplete = !filters.season_id || !filters.sport_id || !filters.esport_category_id;
-    return isResolvingDefaults || isWaitingForData || (filtersIncomplete && !standingsData && !error);
-  }, [filters, seasons, isLoading, isFetching, standingsData, error]);
+    return isResolvingDefaults || (filtersIncomplete && !standingsData && !error);
+  }, [filters, seasons, standingsData, error]);
+
+  // Is transitioning between filter states (have had data before, now fetching new)
+  const isTransitioning = useMemo(() => {
+    return isPending || isFetching;
+  }, [isPending, isFetching]);
 
   // Auto-select defaults when no filters are present
   useEffect(() => {
@@ -120,13 +132,30 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
       const currentCategoryValid = categories.some(c => c.id === filters.esport_category_id);
       
       if (!filters.esport_category_id || !currentCategoryValid) {
-         const first = categories[0];
+         // Try to preserve category by matching the previously selected name
+         let targetCategory = undefined;
+         const prevName = lastCategoryNameRef.current;
+         if (prevName) {
+           targetCategory = categories.find(c => c.display_name?.toLowerCase() === prevName.toLowerCase());
+         }
+         
+         // If no matching name found, pick the first one
+         if (!targetCategory) {
+           targetCategory = categories[0];
+         }
+         
          // Construct path with new category
          const season = seasons?.find(s => s.id === filters.season_id);
          const sport = sports?.find(s => s.id === filters.sport_id);
          
-         if (season && sport) {
-             router.replace(`/standings/${toSlug(season.name || '')}/${toSlug(sport.abbreviation || sport.name)}/${toSlug(first.display_name || '')}`);
+         if (season && sport && targetCategory) {
+             router.replace(`/standings/${toSlug(season.name || '')}/${toSlug(sport.abbreviation || sport.name)}/${toSlug(targetCategory.display_name || '')}`);
+         }
+      } else {
+         // Category is valid — update the ref with its name
+         const currentCategory = categories.find(c => c.id === filters.esport_category_id);
+         if (currentCategory?.display_name) {
+           lastCategoryNameRef.current = currentCategory.display_name;
          }
       }
     }
@@ -188,35 +217,61 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
      }
   };
 
-  // Handle sport change
+  // Handle sport change - PRESERVE category and stage
   const handleSportChange = (sportId: number) => {
-    // When sport changes, we clear category (and stage)
-    const path = constructSlugPath(undefined, sportId, undefined, undefined).split('/').slice(0, 4).join('/'); 
-    // ^ Hacky way to ensure we stop at sport? 
-    // Better: constructSlugPath(undefined, sportId, -1, -1) but -1 isn't valid.
-    // Let's just build it manually for clarity:
     const season = seasons?.find(s => s.id === filters.season_id);
     const sport = sports?.find(s => s.id === sportId);
-    if (season && sport) {
-        router.push(`/standings/${toSlug(season.name || '')}/${toSlug(sport.abbreviation || sport.name)}`);
-    }
+    
+    if (!season || !sport) return;
+    
+    // Build path with sport, but also try to preserve current category
+    // Categories are loaded for the NEW sport, so we can't check them here.
+    // Instead, navigate to just the sport level and let the auto-select effect
+    // try to match the current category name in the new sport's categories.
+    // The auto-select effect already handles name-matching now.
+    router.push(`/standings/${toSlug(season.name || '')}/${toSlug(sport.abbreviation || sport.name)}`);
     
     setSelectedStage(undefined);
   };
 
-  // Handle category change
+  // Handle category change - PRESERVE stage if possible
   const handleCategoryChange = (categoryId: number) => {
-    // When category changes, we clear stage
     const season = seasons?.find(s => s.id === filters.season_id);
     const sport = sports?.find(s => s.id === filters.sport_id);
     const category = categories?.find(c => c.id === categoryId);
     
     if (season && sport && category) {
+        // Remember this category name for future sport switches
+        if (category.display_name) {
+          lastCategoryNameRef.current = category.display_name;
+        }
         router.push(`/standings/${toSlug(season.name || '')}/${toSlug(sport.abbreviation || sport.name)}/${toSlug(category.display_name || '')}`);
     }
     
+    // Reset stage so the new category's first stage is auto-selected
     setSelectedStage(undefined);
   };
+
+  // Content loading skeleton
+  const ContentSkeleton = () => (
+    <div className="flex-1 pt-6 space-y-6 animate-pulse">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-1 bg-muted rounded-full" />
+          <div className="h-7 w-48 bg-muted rounded" />
+        </div>
+        <div className="h-6 w-24 bg-muted rounded-full" />
+      </div>
+      {/* Table skeleton */}
+      <div className="space-y-3 px-2">
+        <div className="h-10 w-full bg-muted/60 rounded" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={`skel-row-${i}`} className="h-16 w-full bg-muted/40 rounded" />
+        ))}
+      </div>
+    </div>
+  );
 
   // Determine content to render
   const renderContent = () => {
@@ -234,17 +289,18 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
        );
     }
 
-    if (isLoading && !standingsData) {
-        return <StandingsLoading />;
+    // Show skeleton when loading and no data
+    if ((isLoading || isTransitioning) && !standingsData) {
+        return <ContentSkeleton />;
     }
 
     if (!standingsData) {
         return (
           <div className="py-8 text-center min-h-[500px] flex flex-col items-center justify-center">
              {isFetching ? (
-                <StandingsLoading className="min-h-0 bg-transparent w-full" />
+                <ContentSkeleton />
              ) : (
-                <p className="text-muted-foreground">Select filters to view standings</p>
+                <ContentSkeleton />
              )}
           </div>
         );
@@ -290,10 +346,10 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
 
   return (
     <div className="bg-background min-h-screen relative">
-      {/* Initial Loading Overlay */}
+      {/* Initial Loading Overlay — only when we've NEVER had data and filters are resolving */}
       {isInitialLoading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
-          <StandingsLoading className="min-h-0 bg-transparent" />
+          <StandingsLoading />
         </div>
       )}
 
@@ -329,9 +385,10 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
         <div className="lg:hidden mb-4">
           <div className="relative">
             <select
-              className="w-full appearance-none rounded-md border border-input bg-background px-3 py-2 h-9 text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full appearance-none rounded-md border border-input bg-background px-3 py-2 h-9 text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:pointer-events-none"
               value={filters.season_id || ''}
               onChange={(e) => handleSeasonChange(Number(e.target.value))}
+              disabled={isTransitioning}
             >
               <option value="" disabled>Select Season</option>
               {seasons?.map((season) => (
@@ -350,6 +407,7 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
             <SeasonSidebar
               currentSeasonId={filters.season_id}
               onSeasonChange={handleSeasonChange}
+              disabled={isTransitioning}
             />
           </div>
         </div>
@@ -366,6 +424,7 @@ export default function StandingsContent({ searchParams: _, initialFilters }: St
             currentStage={selectedStage}
             availableSports={sports}
             availableCategories={categories}
+            disabled={isTransitioning}
           />
 
           {/* Visualization Area */}

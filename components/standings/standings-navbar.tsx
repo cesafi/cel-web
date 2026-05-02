@@ -18,6 +18,7 @@ interface StandingsNavbarProps {
   currentStage?: number;
   availableSports?: Array<{ id: number; name: string; logo_url: string | null; abbreviation: string | null }>;
   availableCategories?: Array<{ id: number; display_name: string }>;
+  disabled?: boolean;
 }
 
 export default function StandingsNavbar({
@@ -28,7 +29,8 @@ export default function StandingsNavbar({
   navigation,
   currentStage,
   availableSports,
-  availableCategories
+  availableCategories,
+  disabled = false
 }: StandingsNavbarProps) {
   const formatCompetitionStage = (stage: string) => {
     switch (stage) {
@@ -56,7 +58,7 @@ export default function StandingsNavbar({
   }, [availableSports]);
 
   return (
-    <div className="bg-background border-b z-10 sticky top-0">
+    <div className={`bg-background border-b z-10 sticky top-0 transition-opacity duration-200 ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
       <div className="flex flex-col">
         {/* Row 1: Filters & Context */}
          <div className="container px-3 sm:px-4 py-2 sm:py-3 border-b border-border/40">
@@ -68,6 +70,7 @@ export default function StandingsNavbar({
                   value={currentFilters.sport_id?.toString() || ''}
                   onChange={(val) => onSportChange(Number(val))}
                   variant="buttons"
+                  disabled={disabled}
                 />
              </div>
 
@@ -81,12 +84,14 @@ export default function StandingsNavbar({
                    value={currentFilters.sport_id?.toString() || ''}
                    onChange={(val) => onSportChange(Number(val))}
                    variant="dropdown"
+                   disabled={disabled}
                  />
                </div>
 
                <Select 
                  value={currentFilters.esport_category_id?.toString() || ''} 
                  onValueChange={(val) => onCategoryChange(Number(val))}
+                 disabled={disabled}
                >
                  <SelectTrigger className="h-9 w-full sm:w-[200px] bg-background shadow-sm font-medium text-xs">
                    <SelectValue placeholder="Select Category" />
@@ -113,11 +118,12 @@ export default function StandingsNavbar({
                    <button
                      key={stage.id}
                      onClick={() => onStageChange(stage.id)}
-                     className={`relative py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                     disabled={disabled}
+                     className={`relative py-3 text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
                        isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                      }`}
                    >
-                     {formatCompetitionStage(stage.competition_stage)}
+                     {stage.name || formatCompetitionStage(stage.competition_stage)}
                      {isActive && (
                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
                      )}

@@ -16,6 +16,7 @@ interface CompactGameSelectorProps {
   onChange: (value: string) => void;
   className?: string;
   variant?: 'all' | 'dropdown' | 'buttons';
+  disabled?: boolean;
 }
 
 export function CompactGameSelector({
@@ -24,6 +25,7 @@ export function CompactGameSelector({
   onChange,
   className,
   variant = 'all',
+  disabled = false,
 }: CompactGameSelectorProps) {
   if (!options || options.length === 0) {
     return null;
@@ -45,7 +47,7 @@ export function CompactGameSelector({
       {/* Selection Box */}
       {showDropdown && (
       <div className={cn(variant === 'all' ? "sm:hidden w-full" : "w-full", className)}>
-        <Select value={value} onValueChange={onChange}>
+        <Select value={value} onValueChange={onChange} disabled={disabled}>
           <SelectTrigger className="h-9 w-full bg-background shadow-sm font-bold tracking-wide text-xs">
              <SelectValue placeholder="Select Game" />
           </SelectTrigger>
@@ -77,9 +79,10 @@ export function CompactGameSelector({
             <button
               key={option.id}
               onClick={() => onChange(option.id)}
+              disabled={disabled}
               title={option.name}
               className={cn(
-                "relative group flex items-center justify-center p-[2px] rounded-lg transition-all duration-200 ease-in-out border outline-none",
+                "relative group flex items-center justify-center p-[2px] rounded-lg transition-all duration-200 ease-in-out border outline-none disabled:opacity-50 disabled:cursor-not-allowed",
                 isActive 
                   ? activeColors.borderBg
                   : "border-border/50 bg-background hover:bg-muted/50 hover:border-border"

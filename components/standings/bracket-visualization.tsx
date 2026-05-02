@@ -490,13 +490,24 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
                 if (roundMatches.length === 1) baseRoundName = 'Finals';
               }
 
-              const roundName = title
-                ? `${title} ${baseRoundName}`.replace('Grand Finals Finals', 'Grand Finals')
-                : baseRoundName;
+              // Avoid redundant naming like "Finals Finals" or "Grand Finals Finals"
+              let roundName = baseRoundName;
+              if (title) {
+                const titleLower = title.toLowerCase();
+                const baseLower = baseRoundName.toLowerCase();
+                // Skip prepending title if it's the same as base, or one contains the other
+                if (titleLower === baseLower || baseLower.includes(titleLower) || titleLower.includes(baseLower)) {
+                  // Use whichever is more specific (longer)
+                  roundName = title.length >= baseRoundName.length ? title : baseRoundName;
+                } else {
+                  roundName = `${title} ${baseRoundName}`;
+                }
+              }
 
               return (
                 <div key={roundNumber} className="flex flex-col items-center group relative">
-                  {!hideRoundHeaders && (
+                  {/* Hide round headers when section title already provides context and there's only 1 round */}
+                  {!hideRoundHeaders && !(title && totalRounds === 1) && (
                     <div className="mb-4 text-center">
                       <h3 className="text-foreground text-sm font-semibold">{roundName}</h3>
                     </div>
@@ -558,15 +569,7 @@ export default function BracketVisualization({ standings, loading }: BracketVisu
           <div className="flex items-center gap-3">
             <div className="h-8 w-1 bg-primary rounded-full" />
             <h3 className={`${moderniz.className} text-xl md:text-2xl font-bold tracking-wide`}>
-              {(() => {
-                const stageLabel = formatCompetitionStage(standings.competition_stage);
-                const stageName = standings.stage_name;
-                // Avoid redundancy like "Playoffs - Playoffs"
-                if (stageName.toLowerCase().includes(stageLabel.toLowerCase()) || stageLabel.toLowerCase().includes(stageName.toLowerCase())) {
-                  return stageName;
-                }
-                return `${stageLabel} - ${stageName}`;
-              })()}
+              {formatCompetitionStage(standings.stage_name)}
             </h3>
           </div>
           <Badge variant="outline" className="text-xs uppercase tracking-widest bg-background/50 backdrop-blur-md">
