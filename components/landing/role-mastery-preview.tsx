@@ -1,12 +1,12 @@
 import { RoleMasteryToggle } from '@/components/landing/role-mastery-toggle';
 import { getRoleMastery } from '@/actions/statistics';
-import { getCurrentSeason } from '@/actions/seasons';
+import { getLatestOrOngoingSeason } from '@/actions/seasons';
 import { ArrowRight } from 'lucide-react';
 import { moderniz, roboto } from '@/lib/fonts';
 import Link from 'next/link';
 
 export default async function RoleMasteryPreview() {
-  const activeSeasonResult = await getCurrentSeason();
+  const activeSeasonResult = await getLatestOrOngoingSeason();
   const seasonId = activeSeasonResult.success && activeSeasonResult.data ? activeSeasonResult.data.id : undefined;
 
   // Default: MLBB EXP role, Men's division

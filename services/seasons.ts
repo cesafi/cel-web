@@ -271,6 +271,45 @@ export class SeasonService extends BaseService {
     }
   }
 
+  static async getLatestOrOngoingSeason(): Promise<ServiceResponse<Season | null>> {
+    try {
+      const supabase = await this.getClient();
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select()
+        .lte('start_at', now)
+        .order('start_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      // If no past or ongoing season exists, just get the first one (e.g. future season)
+      if (!data) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from(TABLE_NAME)
+          .select()
+          .order('start_at', { ascending: true })
+          .limit(1)
+          .single();
+          
+        if (fallbackError && fallbackError.code !== 'PGRST116') {
+            throw fallbackError;
+        }
+        
+        return { success: true, data: fallbackData || null };
+      }
+
+      return { success: true, data: data || null };
+    } catch (err) {
+      return this.formatError(err, `Failed to get latest or ongoing season`);
+    }
+  }
+
   static async getUpcomingSeasons(limit: number = 5): Promise<ServiceResponse<Season[]>> {
     try {
       const supabase = await this.getClient();

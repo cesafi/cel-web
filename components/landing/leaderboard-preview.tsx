@@ -1,13 +1,13 @@
 import { LeaderboardToggle } from '@/components/landing/leaderboard-toggle';
 import { getLeaderboard } from '@/actions/statistics';
-import { getCurrentSeason } from '@/actions/seasons';
+import { getLatestOrOngoingSeason } from '@/actions/seasons';
 import { ArrowRight } from 'lucide-react';
 import { moderniz, roboto } from '@/lib/fonts';
 import Link from 'next/link';
 
 export default async function LeaderboardPreview() {
-  // First fetch the current active season
-  const activeSeasonResult = await getCurrentSeason();
+  // First fetch the current active or latest season
+  const activeSeasonResult = await getLatestOrOngoingSeason();
   const seasonId = activeSeasonResult.success && activeSeasonResult.data ? activeSeasonResult.data.id : undefined;
 
   // Default to Men's division, fetch top stats in parallel with seasonId filter

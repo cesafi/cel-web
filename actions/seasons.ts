@@ -64,6 +64,10 @@ export async function getCurrentSeason() {
   return await SeasonService.getCurrentSeason();
 }
 
+export async function getLatestOrOngoingSeason() {
+  return await SeasonService.getLatestOrOngoingSeason();
+}
+
 export async function getUpcomingSeasons() {
   return await SeasonService.getUpcomingSeasons();
 }
