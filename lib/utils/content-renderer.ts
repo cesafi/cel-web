@@ -360,7 +360,9 @@ function convertNodeToHtml(node: LexicalNode): string {
       if (node.muted) videoAttrs += ' muted';
       if (node.loop) videoAttrs += ' loop';
 
-      return `<video ${videoAttrs} class="article-video">Your browser does not support the video tag.</video>`;
+      return `<div class="my-4">
+        <video ${videoAttrs} class="article-video rounded-lg shadow-sm" style="max-width: 100%; height: auto; border-radius: 8px;">Your browser does not support the video tag.</video>
+      </div>`;
 
     case 'embed':
       const embedUrl = escapeHtml(node.url);

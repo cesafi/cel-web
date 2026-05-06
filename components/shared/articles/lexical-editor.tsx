@@ -19,7 +19,7 @@ import { ListItemNode, ListNode } from '@lexical/list';
 import { CodeHighlightNode, CodeNode } from '@lexical/code';
 import { AutoLinkNode, LinkNode } from '@lexical/link';
 import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
-import { $getRoot, $getSelection, $createTextNode, DecoratorNode, NodeKey, SerializedEditorState, SerializedLexicalNode, FORMAT_ELEMENT_COMMAND } from 'lexical';
+import { $getRoot, $getSelection, $createTextNode, DecoratorNode, NodeKey, SerializedEditorState, SerializedLexicalNode, FORMAT_ELEMENT_COMMAND, $getNodeByKey } from 'lexical';
 import { $setBlocksType } from '@lexical/selection';
 import { $createHeadingNode, $createQuoteNode } from '@lexical/rich-text';
 import { $createParagraphNode } from 'lexical';
@@ -41,6 +41,8 @@ import {
   Quote,
   Minus,
   Image as ImageIcon,
+  Video as VideoIcon,
+  Trash2,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -64,6 +66,83 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+
+// Custom components for editor nodes (with delete functionality)
+function ImageComponent({ src, alt, nodeKey }: { src: string; alt: string; nodeKey: NodeKey }) {
+  const [editor] = useLexicalComposerContext();
+
+  const onDelete = () => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (node) {
+        node.remove();
+      }
+    });
+  };
+
+  return (
+    <div className="my-4 relative group inline-block max-w-full">
+      <Image
+        src={src}
+        alt={alt}
+        width={800}
+        height={600}
+        style={{
+          maxWidth: '100%',
+          height: 'auto',
+          borderRadius: '8px',
+        }}
+        className="rounded-lg shadow-sm"
+      />
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button 
+          type="button" 
+          variant="destructive" 
+          size="icon"
+          className="h-8 w-8 rounded-full shadow-md"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function VideoComponent({ src, nodeKey }: { src: string; nodeKey: NodeKey }) {
+  const [editor] = useLexicalComposerContext();
+
+  const onDelete = () => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (node) {
+        node.remove();
+      }
+    });
+  };
+
+  return (
+    <div className="my-4 relative group inline-block max-w-full">
+      <video
+        src={src}
+        controls
+        className="rounded-lg shadow-sm"
+        style={{ maxWidth: '100%', height: 'auto', maxHeight: '500px' }}
+      />
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button 
+          type="button" 
+          variant="destructive" 
+          size="icon"
+          className="h-8 w-8 rounded-full shadow-md"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // Interface for ImageNode JSON structure
 interface ImageNodeJSON {
@@ -107,22 +186,7 @@ class ImageNode extends DecoratorNode<React.JSX.Element> {
   }
 
   decorate(): React.JSX.Element {
-    return (
-      <div className="my-4">
-        <Image
-          src={this.__src}
-          alt={this.__alt}
-          width={800}
-          height={600}
-          style={{
-            maxWidth: '100%',
-            height: 'auto',
-            borderRadius: '8px',
-          }}
-          className="rounded-lg shadow-sm"
-        />
-      </div>
-    );
+    return <ImageComponent src={this.__src} alt={this.__alt} nodeKey={this.getKey()} />;
   }
 
   getSrc(): string {
@@ -167,6 +231,79 @@ class ImageNode extends DecoratorNode<React.JSX.Element> {
 
 function $createImageNode(src: string, alt: string = ''): ImageNode {
   return new ImageNode(src, alt);
+}
+
+// Interface for VideoNode JSON structure
+interface VideoNodeJSON {
+  src: string;
+  type: 'video';
+  version: 1;
+}
+
+// Custom Video Node for Lexical
+class VideoNode extends DecoratorNode<React.JSX.Element> {
+  __src: string;
+
+  static getType(): string {
+    return 'video';
+  }
+
+  static clone(node: VideoNode): VideoNode {
+    return new VideoNode(node.__src, node.__key);
+  }
+
+  constructor(src: string, key?: NodeKey) {
+    super(key);
+    this.__src = src;
+  }
+
+  createDOM(): HTMLElement {
+    const div = document.createElement('div');
+    div.style.display = 'block';
+    div.style.maxWidth = '100%';
+    return div;
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  decorate(): React.JSX.Element {
+    return <VideoComponent src={this.__src} nodeKey={this.getKey()} />;
+  }
+
+  getSrc(): string {
+    return this.__src;
+  }
+
+  setSrc(src: string): void {
+    const writable = this.getWritable();
+    writable.__src = src;
+  }
+
+  exportJSON(): VideoNodeJSON {
+    return {
+      src: this.__src,
+      type: 'video',
+      version: 1,
+    };
+  }
+
+  static importJSON(json: VideoNodeJSON): VideoNode {
+    return new VideoNode(json.src);
+  }
+
+  isInline(): false {
+    return false;
+  }
+
+  isKeyboardSelectable(): boolean {
+    return true;
+  }
+}
+
+export function $createVideoNode(src: string): VideoNode {
+  return new VideoNode(src);
 }
 
 // Toolbar component
@@ -365,6 +502,51 @@ function ToolbarPlugin({
         } catch (error) {
           console.error('Error uploading image:', error);
           toast.error('Failed to upload image');
+        }
+      }
+    };
+    input.click();
+  };
+
+  const insertVideo = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/mp4, video/webm, video/ogg';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        try {
+          // Validate file size (e.g. 250MB max for highlight reels)
+          if (file.size > 250 * 1024 * 1024) {
+            toast.error('Inline video size must be less than 250MB');
+            return;
+          }
+
+          // Upload to Cloudinary
+          const result = await uploadImage(file, {
+            folder: 'cesafi-articles',
+            resource_type: 'video',
+            quality: 'auto',
+            format: 'auto'
+          });
+
+          if (result.success && result.data) {
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) {
+                // Insert video at current cursor position using custom VideoNode
+                const videoNode = $createVideoNode(result.data!.secure_url);
+                selection.insertNodes([videoNode]);
+              }
+            });
+
+            toast.success('Video uploaded and inserted successfully');
+          } else {
+            toast.error(result.error || 'Failed to upload video');
+          }
+        } catch (error) {
+          console.error('Error uploading video:', error);
+          toast.error('Failed to upload video');
         }
       }
     };
@@ -582,6 +764,21 @@ function ToolbarPlugin({
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <ImageIcon className="h-4 w-4" />
+          )}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={insertVideo}
+          disabled={isUploading}
+          className="h-8 w-8 p-0"
+          title="Insert Video"
+        >
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <VideoIcon className="h-4 w-4" />
           )}
         </Button>
         <Button
@@ -812,6 +1009,7 @@ export function LexicalEditor({
       LinkNode,
       HorizontalRuleNode,
       ImageNode,
+      VideoNode,
     ],
     onError: (error: Error) => {
       // Suppress selection errors that are common in Lexical

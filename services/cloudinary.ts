@@ -72,8 +72,10 @@ class CloudinaryService {
       formData.append('signature', signature);
 
 
+      const resourceType = options.resource_type || 'image';
+
       // Upload to Cloudinary using signed request
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`, {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/upload`, {
         method: 'POST',
         body: formData
       });
